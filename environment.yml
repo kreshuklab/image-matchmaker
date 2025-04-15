@@ -1,0 +1,33 @@
+channels:
+    - conda-forge
+name:
+   matchmaker_env 
+dependencies:
+    - python==3.9
+    - tifffile
+    - z5py
+    - tqdm
+
+    - tmux
+    - vim
+    - git
+  
+    - scikit-image
+    - optuna
+    - proxsuite
+    - cvxpy
+
+    - ipykernel
+    - seaborn
+    - matplotlib
+
+    - pip
+    - pip:
+        - itk-elastix
+        - cupy
+        - probreg
+        - pyscipopt
+        - click
+        - pyyaml
+    
+
