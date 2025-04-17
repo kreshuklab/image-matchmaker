@@ -172,3 +172,8 @@ cython_debug/
 
 # PyPI configuration file
 .pypirc
+
+# huge data
+./examples/data/platy1_muscles_stardist.tif
+
+.DS_Store
