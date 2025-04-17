@@ -1,9 +1,14 @@
 import numpy as np
 import tifffile as tif
 import transforms3d as tf3d
+import z5py
 from scipy.ndimage import affine_transform
 import napari
 from elf.wrapper.resized_volume import ResizedVolume
+
+import sys
+sys.path.append("..")
+from matchmaker.vis import plot_overlay
 
 
 def downscale_seg(seg, factor):
@@ -91,7 +96,9 @@ def main():
     # downsample image
     factor = 4
     seg = downscale_seg(seg, factor)
-    tif.imwrite("./data/platy1_muscles_stardist_fixed.tif", seg)
+    with z5py.File("./data/platy1_muscles_stardist_fixed.n5", "w") as f:
+        f.create_dataset("seg", data=seg)
+
     # rotate image
     angles = [np.deg2rad(155), np.deg2rad(30), np.deg2rad(65)]  # z,y,x
     rotated_seg = rotate_seg(seg, angles)
@@ -101,12 +108,15 @@ def main():
     seg_rm = remove_instances(rotated_seg, prob=probability)
     seg_cropped = crop_to_bbox(seg_rm)
     print("Cropped shape", seg_cropped.shape)
-    tif.imwrite("./data/platy1_muscles_stardist_moving.tif", seg_cropped)
 
+    with z5py.File("./data/platy1_muscles_stardist_moving.n5", "w") as f:
+        f.create_dataset("seg", data=seg_cropped)
+
+    plot_overlay(seg, seg_cropped)
     # visualize
-    v = napari.Viewer()
-    v.add_labels(seg_cropped, name="moving")
-    napari.run()
+    # v = napari.Viewer()
+    # v.add_labels(seg_cropped, name="moving")
+    # napari.run()
 
 
 if __name__ == "__main__":
