@@ -1,11 +1,7 @@
 import numpy as np
-import tifffile as tif
 import transforms3d as tf3d
-import z5py
 from scipy.ndimage import affine_transform
 from elf.wrapper.resized_volume import ResizedVolume
-
-from matchmaker.vis import plot_three_slices, plot_overlay
 
 
 def downscale_seg(seg, factor):
@@ -44,15 +40,15 @@ def get_rotation_matrix(angles, save_path=None):
     return rotation_matrix
 
 
-def rotate_img(img, rot_matrix, output_shape=None):
+def rotate_img(img, rotation_matrix, output_shape=None):
     # Compute center
-    center = np.array(img.shape) / 2  # TODO: rotate around center of mass?
-    offset = center - rot_matrix @ center
+    center = np.array(img.shape) / 2
+    offset = center - rotation_matrix @ center
 
     # rotate the image around the center
     rotated_img = affine_transform(
         img,
-        matrix=rot_matrix,
+        matrix=rotation_matrix,
         output_shape=output_shape,  # new shape after rotation
         offset=offset,  # offset to ensure the image fits within the new bounding box
         order=0,  # interpolation (use 0 for discrete/label data)
@@ -90,7 +86,7 @@ def rotate_with_padding(img, rot_matrix):
 def get_rotated_shape(img, rotation_matrix):
     # Step 1: Define the 8 corners of the original volume
     dz, dy, dx = img.shape
-    center = np.array([dz, dy, dx]) / 2
+
     corners = np.array([
         [0, 0, 0],
         [0, 0, dx],
@@ -101,13 +97,16 @@ def get_rotated_shape(img, rotation_matrix):
         [dz, dy, 0],
         [dz, dy, dx]
     ])
+    center = np.array([dz, dy, dx]) / 2  # NOTE: or center with the center from SVD?
     centered_corners = corners - center  # Center the corners around the origin
     # Step 2: Apply the rotation matrix
-    rotated_corners = corners @ rotation_matrix  # NOTE ohne T?
+    rotated_corners = centered_corners @ rotation_matrix
+
+    final_corners = rotated_corners + center  # Translate back to original position
 
     # Step 3: Find min and max of the rotated corners
-    min_coords = rotated_corners.min(axis=0)
-    max_coords = rotated_corners.max(axis=0)
+    min_coords = final_corners.min(axis=0)
+    max_coords = final_corners.max(axis=0)
 
     # Step 4: Calculate the new shape
     new_shape = np.ceil(max_coords - min_coords).astype(int)
@@ -115,8 +114,8 @@ def get_rotated_shape(img, rotation_matrix):
     return new_shape
 
 
-def rotate_with_shape(img, rot_matrix):
-    new_shape = get_rotated_shape(img, rot_matrix)
-    rotated = rotate_img(img, rot_matrix, output_shape=new_shape)
+def rotate_with_shape(img, rotation_matrix):
+    new_shape = get_rotated_shape(img, rotation_matrix)
+    rotated = rotate_img(img, rotation_matrix, output_shape=new_shape)
 
     return rotated

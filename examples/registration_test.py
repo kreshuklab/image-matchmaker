@@ -20,11 +20,12 @@ def main():
     
 
     # seg_moving_rotated = rotate_with_padding(seg_moving, Vt.T)  # TODO: add gc as rotation center?
-    # seg_moving_rotated2 = rotate_with_shape(seg_moving, Vt.T)
+    seg_moving_rotated2 = rotate_with_shape(seg_moving, np.linalg.inv(Vt))
 
     import napari
     v = napari.Viewer()
-    v.add_image(seg_moving_rotated2, name="fixed")
+    v.add_labels(seg_moving)
+    v.add_labels(seg_moving_rotated2)
     napari.run()
 
     # plot_three_slices(seg_moving_rotated)
