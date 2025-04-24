@@ -64,7 +64,7 @@ def get_SVD_transform(img, plot_path=None, percentile_trsh=90):
     if plot_path:
         plt.savefig(plot_path, dpi=300)
 
-    return gc, Vt, pos_c
+    return gc, Vt
 
 
 def orient_head(img, plot_path=None):
