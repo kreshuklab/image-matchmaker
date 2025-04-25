@@ -1,0 +1,13 @@
+run:
+  name: "registration_test"
+  log_dir: "path/registration_test/logs"
+
+prealignment:
+  flip_x: false
+  flip_y: true
+  flip_z: false
+
+
+mobie_export:
+  mobie_path: "path/mobie_project"
+  dataset_name: "dataset"

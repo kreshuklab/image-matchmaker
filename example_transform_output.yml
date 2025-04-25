@@ -1,0 +1,27 @@
+run:
+  name: "registration_test"
+  log_dir: "path/registration_test/logs"
+
+prealignment:
+  fixed:
+    matrix_path: "fixed_prealignment_matrix.txt"
+    inverse_matrix_path: "fixed_prealignment_matrix_inverse.txt"
+    flip_x: false
+    flip_y: true
+    flip_z: false
+    output_n5_path: "fixed_registration.n5"
+    output_n5_key: "prealigned"
+  moving:
+    matrix_path: "moving_prealignment_matrix.txt"
+    inverse_matrix_path: "moving_prealignment_matrix_inverse.txt"
+    flip_x: false
+    flip_y: false
+    flip_z: true
+    output_n5_path: "moving_registration.n5"
+    output_n5_key: "prealigned"
+
+
+elastix_rigid_alignment:
+  transform_path: "elastix_output_transform.txt"
+  output_n5_path: "moving_registration.n5"
+  output_n5_key: "elastix_rigid"
