@@ -32,20 +32,15 @@ def pad_img(img):
     return padded
 
 
-def get_rotation_matrix(angles, save_path=None):
-    rotation_matrix = tf3d.euler.euler2mat(*angles, axes='szyx')
-    print("Rotation matrix:\n", rotation_matrix)
-    if save_path is not None:
-        np.savetxt(save_path, rotation_matrix)
-    return rotation_matrix
+# def get_rotation_matrix(angles, save_path=None):
+#     rotation_matrix = tf3d.euler.euler2mat(*angles, axes='szyx')
+#     print("Rotation matrix:\n", rotation_matrix)
+#     if save_path is not None:
+#         np.savetxt(save_path, rotation_matrix)
+#     return rotation_matrix
 
 
-def rotate_img(img, rotation_matrix, output_shape=None):
-    # Compute center
-    center = np.array(img.shape) / 2
-    offset = center - rotation_matrix @ center
-
-    # rotate the image around the center
+def rotate_img(img, rotation_matrix, output_shape=None, offset=None):
     rotated_img = affine_transform(
         img,
         matrix=rotation_matrix,
@@ -97,25 +92,51 @@ def get_rotated_shape(img, rotation_matrix):
         [dz, dy, 0],
         [dz, dy, dx]
     ])
-    center = np.array([dz, dy, dx]) / 2  # NOTE: or center with the center from SVD?
-    centered_corners = corners - center  # Center the corners around the origin
-    # Step 2: Apply the rotation matrix
-    rotated_corners = centered_corners @ rotation_matrix
 
-    final_corners = rotated_corners + center  # Translate back to original position
+    # Step 2: Apply the rotation matrix
+    rotated_corners = corners @ rotation_matrix[0:3, 0:3]  # Apply rotation
 
     # Step 3: Find min and max of the rotated corners
-    min_coords = final_corners.min(axis=0)
-    max_coords = final_corners.max(axis=0)
+    min_coords = rotated_corners.min(axis=0)
+    max_coords = rotated_corners.max(axis=0)
 
     # Step 4: Calculate the new shape
-    new_shape = np.ceil(max_coords - min_coords).astype(int)
+    new_shape = (np.ceil(max_coords - min_coords).astype(int))
 
     return new_shape
 
 
-def rotate_with_shape(img, rotation_matrix):
-    new_shape = get_rotated_shape(img, rotation_matrix)
-    rotated = rotate_img(img, rotation_matrix, output_shape=new_shape)
+# def get_affine_transform(translation, rotation, rotation_order="szyx"):
+#     M = get_translation_matrix(translation)
+#     M[0:3, 0:3] = tf3d.euler.euler2mat(*rotation, rotation_order)
+#     return M
 
-    return rotated
+
+def get_translation_matrix(translation):
+    M = np.identity(4)
+    M[0:3, 3] = translation
+    return M
+
+
+def get_rotation_matrix(R):
+    M = np.identity(4)
+    M[0:3, 0:3] = R
+    return M
+
+
+### now again: what do I need?
+
+def get_transformation_matrix(img, gc, Vt):
+    # 1. center image on origin
+    center_to_origin = get_translation_matrix(gc)
+    # 2. rotate image
+    rot = get_rotation_matrix(Vt.T)
+    # 3. get new shape
+    new_shape = get_rotated_shape(img, rot)
+    # 4. center image on new shape
+    new_shape_center = np.array(new_shape) // 2
+    center_to_new_shape = get_translation_matrix(-new_shape_center)
+    # 5. combine all transforms: get transformation matrix
+    R = center_to_origin @ rot @ center_to_new_shape
+
+    return R, new_shape
