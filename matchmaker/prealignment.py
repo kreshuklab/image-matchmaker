@@ -8,7 +8,7 @@ from skimage.filters import gaussian
 from matchmaker.data import create_point_cloud
 
 
-def get_SVD_transform(img, plot_path=None, percentile_trsh=90):
+def get_SVD_transform(img, save_path=None, percentile_trsh=90):
     """Convert image to point cloud by thresholding, then run SVD on resulting point cloud.
 
     Args:
@@ -21,26 +21,11 @@ def get_SVD_transform(img, plot_path=None, percentile_trsh=90):
     """
 
     pos, _ = create_point_cloud(img)
-    # how many pos? subsample?
-    # center coord with center of the image
-
-    # else:
-    #     trsh = np.percentile(img, percentile_trsh)
-    #     logging.info(f"Threshold used for converting to point cloud: {trsh}")
-    #     X = convert_to_point_cloud(img, trsh)
     gc = pos.mean(axis=0)
     gc = np.array(img.shape) // 2
     pos_c = pos - gc
     logging.info(f"Point cloud shape {pos.shape}")
     logging.info(f"Point cloud center {gc}")
-
-    #     if X.shape[1] == 3:
-    #         random_subset = np.random.choice(X.shape[0], 10000, replace=False)
-    #         X_subset = X_c[random_subset, 1:]
-    #     else:
-    #         X_subset = X_c[::100]
-    #     logging.info("Subset point cloud")
-    #     logging.info(f"Subset point cloud shape {X_subset.shape}")
 
     logging.info("Run SVD")
     U, S, Vt = np.linalg.svd(pos_c, full_matrices=False)
@@ -61,13 +46,13 @@ def get_SVD_transform(img, plot_path=None, percentile_trsh=90):
     plt.subplot(1, 2, 2)
     plt.title("rotated vertices")
     plt.scatter(vr[:, 0], vr[:, 1], alpha=0.1)
-    if plot_path:
-        plt.savefig(plot_path, dpi=300)
+    if save_path:
+        plt.savefig(save_path, dpi=300)
 
     return gc, Vt
 
 
-def orient_head(img, plot_path=None):
+def orient_head(img, save_path=None):
     """Euristic to orient all samples "head up": calculate sum intensity profile along the Y axis,
     if max is closer to 0 then do nothing, else rotate 180 degrees.
 
@@ -84,7 +69,7 @@ def orient_head(img, plot_path=None):
     plt.plot(int_profile)
     plt.xlabel("Coordinate")
     plt.ylabel("Sum intensity along Y axis")
-    plt.savefig(plot_path, dpi=300)
+    plt.savefig(save_path, dpi=300)
 
     max_pos = int_profile.argmax()
     logging.info(f"Max position is {max_pos}, dimension shape is {img.shape[1]}")
@@ -96,7 +81,7 @@ def orient_head(img, plot_path=None):
         return True
 
 
-def orient_sample(img, dapi_chan, plot_path, dorsal=False):
+def orient_sample(img, dapi_chan, save_path, dorsal=False):
     """Preliminary orientation of the samples with body axis along Y, head closer to 0.
 
     Args:
@@ -109,7 +94,7 @@ def orient_sample(img, dapi_chan, plot_path, dorsal=False):
     """
 
     # Rotate around Y if the volume is dorsal
-    plot_path = Path(plot_path)
+    save_path = Path(save_path)
 
     if dorsal:
         logging.info("Rotated dorsal sample to align Z")
@@ -119,13 +104,13 @@ def orient_sample(img, dapi_chan, plot_path, dorsal=False):
     max_proj = np.max(img, axis=1)[dapi_chan, ...]
     plt.figure()
     plt.imshow(max_proj, cmap="Reds")
-    plt.savefig(plot_path / "max_proj_input.png")
+    plt.savefig(save_path / "max_proj_input.png")
 
     logging.info(f"Smooth image with sigma={2}")
     img_smoothed = gaussian(img[dapi_chan, ::10, ::10, ::10], sigma=3)
     gc, Vt = get_SVD_transform(
         img_smoothed,
-        plot_path / "max_proj_point_cloud_random_angle.png",
+        save_path / "max_proj_point_cloud_random_angle.png",
         percentile_trsh=90,
     )
     rot_angle = 90 - np.degrees(np.arctan2(Vt[0, 1], Vt[0, 0]))
@@ -135,13 +120,13 @@ def orient_sample(img, dapi_chan, plot_path, dorsal=False):
 
     plt.figure()
     plt.imshow(np.max(img, axis=1)[dapi_chan, ...], alpha=0.5, cmap="Blues")
-    plt.savefig(plot_path / "max_proj_rotated_random_angle.png", dpi=300)
+    plt.savefig(save_path / "max_proj_rotated_random_angle.png", dpi=300)
 
     # Check again if the sample is along X or along Y
     # Make max projection and determine the direction of principal axes
     max_proj = np.max(img, axis=1)[dapi_chan, ...]
     img_smoothed = gaussian(img[dapi_chan, ::10, ::10, ::10], sigma=2)
-    gc, Vt = get_SVD_transform(img_smoothed, plot_path / "max_proj_point_cloud.png")
+    gc, Vt = get_SVD_transform(img_smoothed, save_path / "max_proj_point_cloud.png")
 
     rot_angle = np.arccos(Vt[0, 0])
     logging.info(f"Rotation angle is {rot_angle}")
@@ -162,7 +147,7 @@ def orient_sample(img, dapi_chan, plot_path, dorsal=False):
 
     # Check if head is oriented correctly, else rotate 180 degrees
 
-    if orient_head(img_rot[dapi_chan, ...], plot_path / "sum_intensity_profile.png"):
+    if orient_head(img_rot[dapi_chan, ...], save_path / "sum_intensity_profile.png"):
         img_reg = np.rot90(img_rot, k=2, axes=(2, 3))
     else:
         img_reg = img_rot
@@ -170,6 +155,6 @@ def orient_sample(img, dapi_chan, plot_path, dorsal=False):
     logging.info(f"Final image shape is {img_reg.shape}")
     plt.figure()
     plt.imshow(np.max(img_reg, axis=1)[dapi_chan, ...], alpha=0.5, cmap="Blues")
-    plt.savefig(plot_path / "max_proj_rotated_final.png", dpi=300)
+    plt.savefig(save_path / "max_proj_rotated_final.png", dpi=300)
 
     return img_reg

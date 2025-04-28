@@ -1,6 +1,6 @@
 import numpy as np
-import transforms3d as tf3d
 from scipy.ndimage import affine_transform
+import transforms3d as tf3d
 from elf.wrapper.resized_volume import ResizedVolume
 
 
@@ -32,29 +32,6 @@ def pad_img(img):
     return padded
 
 
-# def get_rotation_matrix(angles, save_path=None):
-#     rotation_matrix = tf3d.euler.euler2mat(*angles, axes='szyx')
-#     print("Rotation matrix:\n", rotation_matrix)
-#     if save_path is not None:
-#         np.savetxt(save_path, rotation_matrix)
-#     return rotation_matrix
-
-
-def rotate_img(img, rotation_matrix, output_shape=None, offset=None):
-    rotated_img = affine_transform(
-        img,
-        matrix=rotation_matrix,
-        output_shape=output_shape,  # new shape after rotation
-        offset=offset,  # offset to ensure the image fits within the new bounding box
-        order=0,  # interpolation (use 0 for discrete/label data)
-        mode='constant',  # fill mode
-        cval=0.0  # fill value (if constant mode)
-    )
-
-    print(f"Shape after rotation: {rotated_img.shape}")
-    return rotated_img
-
-
 def crop_to_bbox(img):
     """Crops a 3D volume to the minimal bounding box around all nonzero voxels."""
     # Find where the volume is nonzero (i.e., contains instances)
@@ -69,15 +46,6 @@ def crop_to_bbox(img):
     return cropped
 
 
-# NOTE rotate with padding
-def rotate_with_padding(img, rot_matrix):
-    padded = pad_img(img)
-    rotated = rotate_img(padded, rot_matrix)
-    cropped = crop_to_bbox(rotated)
-    return cropped
-
-
-# NOTE rotate with new shape
 def get_rotated_shape(img, rotation_matrix):
     # Step 1: Define the 8 corners of the original volume
     dz, dy, dx = img.shape
@@ -106,16 +74,15 @@ def get_rotated_shape(img, rotation_matrix):
     return new_shape
 
 
-# def get_affine_transform(translation, rotation, rotation_order="szyx"):
-#     M = get_translation_matrix(translation)
-#     M[0:3, 0:3] = tf3d.euler.euler2mat(*rotation, rotation_order)
-#     return M
-
-
 def get_translation_matrix(translation):
     M = np.identity(4)
     M[0:3, 3] = translation
     return M
+
+
+def get_rotation(angles):
+    R = tf3d.euler.euler2mat(*angles, axes='szyx')
+    return R
 
 
 def get_rotation_matrix(R):
@@ -124,9 +91,7 @@ def get_rotation_matrix(R):
     return M
 
 
-### now again: what do I need?
-
-def get_transformation_matrix(img, gc, Vt):
+def get_transformation_matrix(img, gc, Vt, save_path=None):
     # 1. center image on origin
     center_to_origin = get_translation_matrix(gc)
     # 2. rotate image
@@ -139,4 +104,22 @@ def get_transformation_matrix(img, gc, Vt):
     # 5. combine all transforms: get transformation matrix
     R = center_to_origin @ rot @ center_to_new_shape
 
+    if save_path is not None:
+        np.savetxt(save_path, R)
+
     return R, new_shape
+
+
+def rotate_img(img, rotation_matrix, output_shape=None, offset=None):
+    rotated_img = affine_transform(
+        img,
+        matrix=rotation_matrix,
+        output_shape=output_shape,  # new shape after rotation
+        offset=offset,  # offset to ensure the image fits within the new bounding box
+        order=0,  # interpolation (use 0 for discrete/label data)
+        mode='constant',  # fill mode
+        cval=0.0  # fill value (if constant mode)
+    )
+
+    print(f"Shape after rotation: {rotated_img.shape}")
+    return rotated_img
