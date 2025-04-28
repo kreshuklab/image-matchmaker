@@ -175,5 +175,7 @@ cython_debug/
 
 # huge data
 ./examples/data/platy1_muscles_stardist.tif
+*.n5/
+*.png
 
 .DS_Store
