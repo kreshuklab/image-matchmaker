@@ -4,7 +4,7 @@ import logging
 import z5py
 import os
 from matchmaker.data import create_point_cloud
-from matchmaker.transform_utils import get_rotated_shape, get_transformation_matrix, rotate_img
+from matchmaker.transform_utils import get_transformation_matrix, rotate_img
 from matchmaker.vis import plot_three_slices
 import click
 

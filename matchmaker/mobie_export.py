@@ -4,7 +4,6 @@
 # menu 3: moving_segmentation; then original, pre-aligned, ...
 import os
 import mobie
-from matchmaker.n5_utils import get_attrs
 # from mobie import add_segmentation
 
 
@@ -57,7 +56,7 @@ def create_mobie_project(input_path, input_key, output_dir):
         root=mobie_folder,
         dataset_name=dataset_name,
         segmentation_name="original",
-        resolution=[1,1,1],
+        resolution=[1, 1, 1],
         scale_factors=scale_factors,
         chunks=chunks,
         menu_name="fixed",

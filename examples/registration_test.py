@@ -3,7 +3,7 @@ import z5py
 import numpy as np
 
 from matchmaker.prealignment import prealign_sample
-from matchmaker.transform_utils import get_transformation_matrix, rotate_img
+from matchmaker.transform_utils import rotate_img
 from matchmaker.vis import plot_three_slices, plot_overlay
 
 
