@@ -3,7 +3,12 @@ import tifffile as tif
 import z5py
 import transforms3d as tf3d
 
-from matchmaker.transform_utils import downscale_seg, get_transformation_matrix, rotate_img, crop_to_bbox
+from matchmaker.transform_utils import (
+    downscale_seg,
+    get_transformation_matrix,
+    rotate_img,
+    crop_to_bbox,
+)
 from matchmaker.vis import plot_three_slices, plot_overlay
 
 
@@ -38,19 +43,19 @@ def main():
     with z5py.File("./data/platy1_muscles_stardist_fixed.n5", "w") as f:
         f.create_dataset("seg", data=seg_fixed)
 
+    # save also as tiff
+    tif.imwrite("./data/platy1_muscles_stardist_fixed.tif", seg_fixed)
+
     # rotate image
     center = np.array(seg_fixed.shape) // 2
-    rotation = tf3d.euler.euler2mat(*[np.deg2rad(155), np.deg2rad(30), np.deg2rad(65)], axes="szyx")  # z,y,x
+    rotation = tf3d.euler.euler2mat(
+        *[np.deg2rad(155), np.deg2rad(30), np.deg2rad(65)], axes="szyx"
+    )
 
-    T, new_shape = get_transformation_matrix(seg_fixed, center, rotation, save_path="./data/transformation_matrix.txt")
+    T, new_shape = get_transformation_matrix(
+        seg_fixed, center, rotation, save_path="./data/transformation_matrix.txt"
+    )
     seg_moving = rotate_img(seg_fixed, T, output_shape=new_shape)
-
-    # seg_padded = pad_img(seg)
-    # angles = [np.deg2rad(155), np.deg2rad(30), np.deg2rad(65)]  # z,y,x
-    # rotation_matrix = get_rotation_matrix(angles, save_path="./data/rotation_matrix.txt")
-    # rotated_seg = rotate_img(seg_padded, rotation_matrix)
-    # seg_cropped = crop_to_bbox(rotated_seg)
-    # print("Cropped shape", seg_cropped.shape)
 
     # randomly remove instances
     probability = 0.05
@@ -59,10 +64,13 @@ def main():
     with z5py.File("./data/platy1_muscles_stardist_moving.n5", "w") as f:
         f.create_dataset("seg", data=seg_moving)
 
+    # save also as tiff
+    tif.imwrite("./data/platy1_muscles_stardist_moving.tif", seg_moving)
+
     # visualize
-    plot_three_slices(seg_moving)
-    plot_three_slices(seg_fixed)
-    plot_overlay(seg_fixed, seg_moving)
+    plot_three_slices(seg_moving, save_path="./data/plots/seg_moving.png")
+    plot_three_slices(seg_fixed, save_path="./data/plots/seg_fixed.png")
+    plot_overlay(seg_fixed, seg_moving, save_path="./data/plots/seg_overlay.png")
 
 
 if __name__ == "__main__":

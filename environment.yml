@@ -30,5 +30,6 @@ dependencies:
         - pyscipopt
         - click
         - pyyaml
+        - itk
     
 

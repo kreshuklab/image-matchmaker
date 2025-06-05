@@ -102,12 +102,12 @@ def get_transformation_matrix(img, gc, Vt, save_path=None):
     new_shape_center = np.array(new_shape) // 2
     center_to_new_shape = get_translation_matrix(-new_shape_center)
     # 5. combine all transforms: get transformation matrix
-    R = center_to_origin @ rot @ center_to_new_shape
+    T = center_to_origin @ rot @ center_to_new_shape
 
     if save_path is not None:
-        np.savetxt(save_path, R)
+        np.savetxt(save_path, T)
 
-    return R, new_shape
+    return T, new_shape
 
 
 def rotate_img(img, rotation_matrix, output_shape=None, offset=None):

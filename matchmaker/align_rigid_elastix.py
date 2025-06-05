@@ -1,7 +1,7 @@
 from pathlib import Path
 import numpy as np
 import argparse
-from platy_reg.n5_utils import read_volume, write_volume, get_attrs
+from matchmaker.n5_utils import read_volume, write_volume, get_attrs
 from matchmaker.vis import plot_overlay
 import logging
 import sys
