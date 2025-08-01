@@ -4,6 +4,7 @@ import logging
 import z5py
 import os
 from matchmaker.data import create_point_cloud
+from matchmaker.mobie_export import export_to_mobie
 from matchmaker.transform_utils import get_transformation_matrix, rotate_img
 from matchmaker.vis import plot_three_slices
 import click
@@ -86,8 +87,17 @@ def orient_head(img, save_path=None):
 
 
 def prealign_sample(img, file_name, save_path):
+    """
+    Pre-align a sample segmentation with its principal components.
 
-    # align segmentation with PCs
+    Args:
+        img: Segmentation volume
+        file_name: Name of the sample
+        save_path: Folder to save results
+
+    Returns:
+        Pre-aligned segmentation volume.
+    """
     gc, Vt = get_SVD_transform(img)
     T, new_shape = get_transformation_matrix(img, gc, Vt, save_path=f"{save_path}/{file_name}_T_prealignment.txt")
     img_rotated = rotate_img(img, T, output_shape=new_shape)
@@ -98,7 +108,6 @@ def prealign_sample(img, file_name, save_path):
     )
     if rotate_head:
         print("Rotate head 180 degrees ...")
-        # img_rotated = np.rot90(img_rotated, k=2)  # NOTE: use rotation matrix instead
         R_3x3 = np.array([[-1, 0, 0], [0, -1, 0], [0, 0, 1]])
         img_center = 0.5 * (np.array(img_rotated.shape)-1)
         offset = img_center - R_3x3 @ img_center
@@ -119,25 +128,50 @@ def prealign_sample(img, file_name, save_path):
     return img_rotated
 
 
-@click.command()
-@click.option("-i", "--input-path", required=True, help="Input file")
-@click.option("-k", "--input-key", required=True, help="Input key")
-@click.option("-o", "--output-dir", required=True, help="Output directory")
-def main(input_path, input_key, output_dir):
-    with z5py.File(input_path, "r") as f:
+def prealignment_per_image(input_path, input_key, output_dir, mobie_export, image_type):
+    # load input image
+    with z5py.File(input_path, 'r') as f:
         img = f[input_key][:]
     file_name = os.path.splitext(os.path.basename(input_path))[0]
 
     if not os.path.exists(f"{output_dir}/plots"):
         os.makedirs(f"{output_dir}/plots")
 
+    # plot three slices of input image
+    plot_three_slices(img, save_path=f"{output_dir}/plots/{image_type}.png")
+
+    # pre-align image
     img_prealigned = prealign_sample(img, file_name, save_path=output_dir)
 
+    # save pre-aligned image
     with z5py.File(f"{output_dir}/{file_name}_prealigned.n5", "w") as f:
         f.create_dataset(input_key, data=img_prealigned, compression="gzip")
 
+    # export pre-aligned image to MoBIE
     # create MoBIE project
-    # create_mobie_project()
+    if mobie_export:
+        export_to_mobie(
+            input_path=f"{output_dir}/{file_name}_prealigned.n5",
+            input_key=input_key,
+            output_dir=output_dir,
+            segmentation_name=f"{file_name}_prealigned",
+            menu_name=image_type
+        )
+
+    return img_prealigned
+
+
+@click.command()
+@click.option("-i", "--input_path", required=True, help="Input file")
+@click.option("-k", "--input_key", required=True, help="Input key")
+@click.option("-o", "--output_dir", required=True, help="Output directory")
+@click.option("-m", "--mobie_export", required=False, is_flag=True, help="MoBIE export")
+@click.option("-t", "--image_type", required=False, default="moving", help="Image Type: fixed or moving")
+def main(input_path, input_key, output_dir, mobie_export, image_type):
+    if mobie_export and (image_type is None):
+        raise click.UsageError("--image_type is required when --mobie_export is set.")
+
+    img_prealigned = prealignment_per_image(input_path, input_key, output_dir, mobie_export, image_type)
 
 
 if __name__ == "__main__":

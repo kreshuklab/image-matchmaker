@@ -5,6 +5,9 @@ from matchmaker.transform_utils import rotate_img
 
 
 def main():
+    '''
+    Reverse the deformation of a sample by applying the inverse transformation matrix.
+    '''
     with z5py.File("./data/platy1_muscles_stardist_moving.n5", "r") as f:
         seg_moving = f["seg"][:]
 

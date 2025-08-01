@@ -38,14 +38,13 @@ import mobie
 #         add_segmentation_to_mobie(input_path, input_key, seg_name, scale)
 
 
-def create_mobie_project(input_path, input_key, output_dir):
+def export_to_mobie(input_path, input_key, output_dir, segmentation_name, menu_name):
     if not os.path.exists(f"{output_dir}/mobie_project"):
         os.makedirs(f"{output_dir}/mobie_project")
 
     # Set parameters for MOBIE
     mobie_folder = f"{output_dir}/mobie_project"
     dataset_name = "platy1_muscles_stardist"
-    breakpoint()
     # resolution = get_attrs(input_path, input_key)["resolution"]
     chunks = (64, 64, 64)
     scale_factors = 4 * [[2, 2, 2]]
@@ -55,22 +54,24 @@ def create_mobie_project(input_path, input_key, output_dir):
         input_key=input_key,
         root=mobie_folder,
         dataset_name=dataset_name,
-        segmentation_name="original",
+        segmentation_name=segmentation_name,
         resolution=[1, 1, 1],
         scale_factors=scale_factors,
         chunks=chunks,
-        menu_name="fixed",
+        menu_name=menu_name,
         file_format="ome.zarr",
         is_default_dataset=True
     )
 
 
 def main():
-    input_path = "/Users/marei/git-repositories/matchmaker/examples/data/platy1_muscles_stardist_fixed.n5"
+    input_path = "/Users/marei/git-repositories/matchmaker/examples/CLI_test/platy1_muscles_stardist_fixed_prealigned.n5"
     input_key = "seg"
     output_dir = "/Users/marei/git-repositories/matchmaker/examples/data/test"
 
-    create_mobie_project(input_path, input_key, output_dir)
+    file_name = os.path.splitext(os.path.basename(input_path))[0]
+
+    export_to_mobie(input_path, input_key, output_dir, segmentation_name=f"{file_name}_prealigned", menu_name="fixed")
     print(f"MoBIE project created at {output_dir}/mobie_project")
 
 
