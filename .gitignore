@@ -180,4 +180,4 @@ cython_debug/
 
 .DS_Store
 
-./examples/data/test/*
+./examples/data/*
