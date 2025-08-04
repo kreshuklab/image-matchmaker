@@ -1,6 +1,5 @@
 import numpy as np
 import tifffile as tif
-import z5py
 import transforms3d as tf3d
 
 from matchmaker.transform_utils import (
@@ -10,6 +9,7 @@ from matchmaker.transform_utils import (
     crop_to_bbox,
 )
 from matchmaker.vis import plot_three_slices, plot_overlay
+from matchmaker.n5_utils import write_volume
 
 
 def remove_instances(seg, prob=0.05):
@@ -39,9 +39,15 @@ def main():
     seg_fixed = crop_to_bbox(seg)
     print("Cropped shape", seg_fixed.shape)
 
-    # save downsampled image
-    with z5py.File("./data/platy1_muscles_stardist_fixed.n5", "w") as f:
-        f.create_dataset("seg", data=seg_fixed)
+    # save downsampled, fixed image
+    attributes = {"resolution": [1, 1, 1]}
+    write_volume(
+        f="./data/platy1_muscles_stardist_fixed.n5",
+        arr=seg_fixed,
+        key="seg",
+        chunks=(128, 512, 512),
+        attrs=attributes,
+    )
 
     # save also as tiff
     tif.imwrite("./data/platy1_muscles_stardist_fixed.tif", seg_fixed)
@@ -61,8 +67,15 @@ def main():
     probability = 0.05
     seg_moving = remove_instances(seg_moving, prob=probability)
 
-    with z5py.File("./data/platy1_muscles_stardist_moving.n5", "w") as f:
-        f.create_dataset("seg", data=seg_moving)
+    # save moving image
+    attributes = {"resolution": [1, 1, 1]}
+    write_volume(
+        f="./data/platy1_muscles_stardist_moving.n5",
+        arr=seg_moving,
+        key="seg",
+        chunks=(128, 512, 512),
+        attrs=attributes,
+    )
 
     # save also as tiff
     tif.imwrite("./data/platy1_muscles_stardist_moving.tif", seg_moving)

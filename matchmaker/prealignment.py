@@ -1,22 +1,22 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import logging
-import z5py
 import os
+import click
+
 from matchmaker.data import create_point_cloud
 from matchmaker.mobie_export import export_to_mobie
 from matchmaker.transform_utils import get_transformation_matrix, rotate_img
-from matchmaker.vis import plot_three_slices
-import click
+from matchmaker.n5_utils import read_volume, get_attrs, write_volume
+from matchmaker.vis import plot_three_slices, plot_overlay
 
 
-def get_SVD_transform(img, save_path=None, percentile_trsh=90):
+def get_SVD_transform(img, save_path=None):
     """Convert image to point cloud by thresholding, then run SVD on resulting point cloud.
 
     Args:
         img: _description_
         plot_path: _description_. Defaults to None.
-        percentile_trsh: _description_. Defaults to 90.
 
     Returns:
         Variance matrix and principal axes matrix.
@@ -54,7 +54,7 @@ def get_SVD_transform(img, save_path=None, percentile_trsh=90):
     return gc, Vt
 
 
-def orient_head(img, save_path=None):
+def orient_yaxis(img, save_path=None):
     """Euristic to orient all samples "head up": calculate sum intensity profile along the Y axis,
     if max is closer to 0 then do nothing, else rotate 180 degrees.
 
@@ -65,11 +65,11 @@ def orient_head(img, save_path=None):
         True if rotation is needed.
     """
     assert img.ndim == 3, f"Input image should have 3 dimensions, has {img.ndim}"
-    int_profile = np.sum(img, axis=(0, 2))
+    int_profile = np.sum(img, axis=(0, 2))  # profile along y (2nd dimension)
 
     plt.figure()
     plt.plot(int_profile)
-    plt.xlabel("Coordinate")
+    plt.xlabel("Y Coordinate")
     plt.ylabel("Sum intensity along Y axis")
     if save_path is not None:
         plt.savefig(save_path, dpi=300)
@@ -84,6 +84,37 @@ def orient_head(img, save_path=None):
     else:
         logging.info("Rotate 180 degree to align head position")
         return True
+
+
+def orient_xaxis(img, save_path=None):
+    """Heuristic to orient all samples 'head left': calculate sum intensity profile along the X axis.
+    If max is closer to 0, then do nothing, else flip along x (mirror).
+    
+    Returns:
+        True if mirroring is needed.
+    """
+    assert img.ndim == 3, f"Input image should have 3 dimensions, has {img.ndim}"
+    int_profile = np.sum(img, axis=(0, 1))  # profile along x (3rd dimension)
+
+    plt.figure()
+    plt.plot(int_profile)
+    plt.xlabel("X coordinate")
+    plt.ylabel("Sum intensity along X axis")
+    if save_path is not None:
+        plt.savefig(save_path, dpi=300)
+    else:
+        plt.show()
+
+    max_pos = int_profile.argmax()
+    logging.info(f"[orient_left] Max position is {max_pos}, shape[2] = {img.shape[2]}")
+    if max_pos < img.shape[2] // 2:
+        logging.info("Correct left-right orientation")
+        return False
+    else:
+        logging.info("Mirror along x-axis to align left-right")
+        return True
+
+# NOTE: also needed for z axis?
 
 
 def prealign_sample(img, file_name, save_path):
@@ -103,12 +134,30 @@ def prealign_sample(img, file_name, save_path):
     img_rotated = rotate_img(img, T, output_shape=new_shape)
 
     # Check if head is oriented correctly, else rotate 180 degrees
-    rotate_head = orient_head(
-        img_rotated, f"{save_path}/plots/{file_name}_intensity_profile.png"
+    rotate_y = orient_yaxis(
+        img_rotated, f"{save_path}/plots/{file_name}_intensity_profile_y.png"
     )
-    if rotate_head:
-        print("Rotate head 180 degrees ...")
+    if rotate_y:
+        print("Rotate head 180 degrees/ mirror on y axis ...")
         R_3x3 = np.array([[-1, 0, 0], [0, -1, 0], [0, 0, 1]])
+        img_center = 0.5 * (np.array(img_rotated.shape)-1)
+        offset = img_center - R_3x3 @ img_center
+        R = np.eye(4)
+        R[:3, :3] = R_3x3
+        R[:3, 3] = offset
+        img_rotated = rotate_img(img_rotated, R, output_shape=img_rotated.shape)
+
+        # update transformation matrix
+        T = T @ R
+        np.savetxt(f"{save_path}/{file_name}_T_prealignment.txt", T)
+
+    # Check if left-right is oriented correctly, else mirror on x axis
+    rotate_x = orient_xaxis(
+        img_rotated, f"{save_path}/plots/{file_name}_intensity_profile_x.png"
+    )
+    if rotate_x:
+        print("Mirror on x axis ...")
+        R_3x3 = np.array([[1, 0, 0], [0, 1, 0], [0, 0, -1]])
         img_center = 0.5 * (np.array(img_rotated.shape)-1)
         offset = img_center - R_3x3 @ img_center
         R = np.eye(4)
@@ -130,8 +179,7 @@ def prealign_sample(img, file_name, save_path):
 
 def prealignment_per_image(input_path, input_key, output_dir, mobie_export, image_type):
     # load input image
-    with z5py.File(input_path, 'r') as f:
-        img = f[input_key][:]
+    img = read_volume(input_path, input_key)
     file_name = os.path.splitext(os.path.basename(input_path))[0]
 
     if not os.path.exists(f"{output_dir}/plots"):
@@ -144,11 +192,15 @@ def prealignment_per_image(input_path, input_key, output_dir, mobie_export, imag
     img_prealigned = prealign_sample(img, file_name, save_path=output_dir)
 
     # save pre-aligned image
-    with z5py.File(f"{output_dir}/{file_name}_prealigned.n5", "w") as f:
-        f.create_dataset(input_key, data=img_prealigned, compression="gzip")
+    attributes = dict(get_attrs(input_path, input_key))
+    write_volume(
+        f=f"{output_dir}/{file_name}_prealigned.n5",
+        arr=img_prealigned,
+        key=input_key,
+        attrs=attributes
+    )
 
     # export pre-aligned image to MoBIE
-    # create MoBIE project
     if mobie_export:
         export_to_mobie(
             input_path=f"{output_dir}/{file_name}_prealigned.n5",
@@ -161,17 +213,51 @@ def prealignment_per_image(input_path, input_key, output_dir, mobie_export, imag
     return img_prealigned
 
 
+def run_prealignment(
+    fixed_input_path,
+    fixed_input_key,
+    moving_input_path,
+    moving_input_key,
+    output_dir,
+    mobie_export=True,
+):
+
+    fixed_prealigned = prealignment_per_image(
+        fixed_input_path,
+        fixed_input_key,
+        output_dir,
+        mobie_export,
+        image_type="fixed"
+    )
+
+    moving_prealigned = prealignment_per_image(
+        moving_input_path,
+        moving_input_key,
+        output_dir,
+        mobie_export,
+        image_type="moving",
+    )
+    print(fixed_prealigned.dtype)
+
+    plot_overlay(
+        fixed_prealigned,
+        moving_prealigned,
+        save_path=f"{output_dir}/plots/overlay_prealignment.png",
+    )
+
+    # return fixed_prealigned, moving_prealigned
+
+
 @click.command()
-@click.option("-i", "--input_path", required=True, help="Input file")
-@click.option("-k", "--input_key", required=True, help="Input key")
+@click.option("-fi", "--fixed_path", required=True, help="Fixed input .n5 file")
+@click.option("-fk", "--fixed_key", required=True, help="Fixed input key")
+@click.option("-mi", "--moving_path", required=True, help="Moving input .n5 file")
+@click.option("-mk", "--moving_key", required=True, help="Moving input key")
 @click.option("-o", "--output_dir", required=True, help="Output directory")
 @click.option("-m", "--mobie_export", required=False, is_flag=True, help="MoBIE export")
-@click.option("-t", "--image_type", required=False, default="moving", help="Image Type: fixed or moving")
-def main(input_path, input_key, output_dir, mobie_export, image_type):
-    if mobie_export and (image_type is None):
-        raise click.UsageError("--image_type is required when --mobie_export is set.")
+def main(fixed_path, fixed_key, moving_path, moving_key, output_dir, mobie_export):
 
-    img_prealigned = prealignment_per_image(input_path, input_key, output_dir, mobie_export, image_type)
+    run_prealignment(fixed_path, fixed_key, moving_path, moving_key, output_dir, mobie_export)
 
 
 if __name__ == "__main__":

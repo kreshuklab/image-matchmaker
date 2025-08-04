@@ -81,8 +81,6 @@ def run_registration(
     elastix_object = itk.ElastixRegistrationMethod.New(fixed_img, moving_img)
     logging.info(elastix_object)
     logging.info("Created registration object")
-    # elastix_object.SetFixedImage(fixed_image)
-    # elastix_object.SetMovingImage(moving_image)
     elastix_object.SetParameterObject(parameter_object)
     if set_threads:
         elastix_object.SetNumberOfThreads(32)
