@@ -1,6 +1,4 @@
-from pathlib import Path
 import numpy as np
-import argparse
 from matchmaker.n5_utils import read_volume, write_volume, get_attrs
 from matchmaker.vis import plot_overlay
 import logging
@@ -156,4 +154,5 @@ def main(fixed_path, fixed_key, moving_path, moving_key, output_dir, mobie_expor
 if __name__ == "__main__":
     main()
 
-    # python align_rigid_elastix.py ../examples/data/test/platy1_muscles_stardist_fixed_prealigned.n5 seg ../examples/data/test/platy1_muscles_stardist_moving_prealigned.n5 seg ../examples/data/test/platy1_muscles_stardist_moving_rigid_aligned.n5 seg
+# python align_rigid_elastix.py -fi ../examples/data/test/platy1_muscles_stardist_fixed_prealigned.n5 -fk seg 
+# -mi ../examples/data/test/platy1_muscles_stardist_moving_prealigned.n5 -mk seg -o ../examples/data/test -m

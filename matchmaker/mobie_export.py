@@ -3,46 +3,47 @@
 # menu 2: fixed_segmentation; then original, pre-aligned, ...
 # menu 3: moving_segmentation; then original, pre-aligned, ...
 import os
+import json
 import mobie
 # from mobie import add_segmentation
 
 
-# def add_segmentation_to_mobie(input_path, input_key, seg_name):
+def update_default_view(dataset_json_path, new_segmentation_name):
+    """
+    Update the name and sources for the segmentation in the 'default' view
+    in a MoBIE dataset.json file.
 
-#     resolution = get_attrs(input_path, input_key)["resolution"]
-#     unit = "micrometer"
-#     chunks = (64, 64, 64)
-#     scale_factors = 4 * [[2, 2, 2]]
+    Args:
+        dataset_json_path (str): Path to the dataset.json file.
+        new_segmentation_name (str): New segmentation name to set in the default view.
+    """
+    if not os.path.exists(dataset_json_path):
+        raise FileNotFoundError(f"Could not find: {dataset_json_path}")
 
-#     chunks = (128, 128, 128)
-#     max_jobs = 8
+    with open(dataset_json_path, "r") as f:
+        data = json.load(f)
 
-#     add_segmentation(
-#         input_path=input_path,
-#         input_key=input_key,
-#         root=MOBIE_FOLDER,
-#         dataset_name=DS_NAME,
-#         segmentation_name=seg_name,
-#         resolution=resolution,
-#         scale_factors=scale_factors,
-#         chunks=chunks,
-#         file_format="ome.zarr",
-#         max_jobs=max_jobs,
-#     )
+    views = data.get("views", {})
+    default_view = views.get("default", {})
 
-# def process_segmentation(input_path, input_key, seg_name, scale):
-#     metadata = read_dataset_metadata(os.path.join(MOBIE_FOLDER, DS_NAME))
-#     if seg_name in metadata["sources"]:
-#         update_segmentation(input_path, input_key, seg_name, scale)
-#     else:
-#         add_segmentation_to_mobie(input_path, input_key, seg_name, scale)
+    source_displays = default_view.get("sourceDisplays", [])
+    for display in source_displays:
+        if "segmentationDisplay" in display:
+            display["segmentationDisplay"]["name"] = new_segmentation_name
+            display["segmentationDisplay"]["sources"] = [new_segmentation_name]
+
+    # Save the updated dataset.json
+    with open(dataset_json_path, "w") as f:
+        json.dump(data, f, indent=2)
+
+    print(f"Updated default view to use segmentation: '{new_segmentation_name}'")
 
 
 def create_mobie_project(
     fixed_input_path,
-    fixed_input_key,
+    fixed_key,
     moving_input_path,
-    moving_input_key,
+    moving_key,
     output_dir,
 ):
 
@@ -50,7 +51,7 @@ def create_mobie_project(
     fixed_file_name = os.path.splitext(os.path.basename(fixed_input_path))[0]
     export_to_mobie(
         fixed_input_path,
-        fixed_input_key,
+        fixed_key,
         output_dir,
         segmentation_name=f"{fixed_file_name}_original",
         menu_name="fixed",
@@ -60,7 +61,7 @@ def create_mobie_project(
     moving_file_name = os.path.splitext(os.path.basename(moving_input_path))[0]
     export_to_mobie(
         moving_input_path,
-        moving_input_key,
+        moving_key,
         output_dir,
         segmentation_name=f"{moving_file_name}_original",
         menu_name="moving",
@@ -73,7 +74,7 @@ def export_to_mobie(input_path, input_key, output_dir, segmentation_name, menu_n
 
     # Set parameters for MOBIE
     mobie_folder = f"{output_dir}/mobie_project"
-    dataset_name = "platy1_muscles_stardist"
+    dataset_name = "platy1_muscles_stardist"  # TODO: specify as input
     # resolution = get_attrs(input_path, input_key)["resolution"]
     chunks = (64, 64, 64)
     scale_factors = 4 * [[2, 2, 2]]
