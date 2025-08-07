@@ -174,10 +174,11 @@ cython_debug/
 .pypirc
 
 # huge data
-./examples/data/platy1_muscles_stardist.tif
+*.tif
 *.n5/
 *.png
+*.ome.zarr/
 
 .DS_Store
 
-./examples/data/*
+./examples/data/test/

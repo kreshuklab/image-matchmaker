@@ -13,7 +13,8 @@ def plot_three_slices(
     max_pos=False,
     alpha=False,
 ):
-    """Plot slices of a 3D image along each axis.
+    """
+    Plot slices of a 3D image along each axis.
 
     Args:
         img: _description_
@@ -57,7 +58,8 @@ def plot_three_slices(
 
 
 def plot_overlay(img1, img2, save_path=None, x_pos=None, y_pos=None, z_pos=None):
-    """Plot slices of two 3D images along each axis.
+    """
+    Plot slices of two 3D images along each axis.
 
     Args:
         img1: _description_target_shape = (25, 22, 29)

@@ -42,13 +42,12 @@ def get_SVD_transform(img, save_path=None):
     logging.info("Rotate point cloud")
     vr = pos_c @ Vt.T
 
-    # TODO: update axis labels
     plt.figure(figsize=(10, 5))
     plt.subplot(1, 2, 1)
-    plt.title("original vertices")
+    plt.title("Original Vertices")
     plt.scatter(pos_c[:, 0], pos_c[:, 1], alpha=0.2)
     plt.subplot(1, 2, 2)
-    plt.title("rotated vertices")
+    plt.title("Rotated Vertices")
     plt.scatter(vr[:, 0], vr[:, 1], alpha=0.1)
     if save_path:
         plt.savefig(save_path, dpi=300)
@@ -57,7 +56,18 @@ def get_SVD_transform(img, save_path=None):
 
 
 def orient_axis(img, axis, save_path=None):
-    # logging.info(f"Orient along axis {axis}")
+    """
+    Plot the sum intensity along the given axis and return True if the maximum is closer to the
+    upper boundary than the lower boundary, False otherwise.
+
+    Args:
+        img: 3D image
+        axis: Axis to sum along
+        save_path: Path to save the plot to. If None, show the plot instead.
+
+    Returns:
+        True if the maximum is closer to the upper boundary than the lower boundary, False otherwise.
+    """
     assert img.ndim == 3, f"Input image should have 3 dimensions, has {img.ndim}"
     if axis == 0:
         int_profile = np.sum(img, axis=(1, 2))  # profile along z
@@ -68,7 +78,7 @@ def orient_axis(img, axis, save_path=None):
 
     plt.figure()
     plt.plot(int_profile)
-    plt.xlabel("Y Coordinate")
+    plt.xlabel(f"Axis {axis} Coordinate")
     plt.ylabel(f"Sum intensity along axis = {axis}")
     if save_path is not None:
         plt.savefig(save_path, dpi=300)
@@ -78,10 +88,8 @@ def orient_axis(img, axis, save_path=None):
     max_pos = int_profile.argmax()
     logging.info(f"Max position is {max_pos}, dimension shape is {img.shape[axis]}")
     if max_pos < img.shape[axis] // 2:
-        logging.info("Correct orientation")
         return False
     else:
-        logging.info("Rotate 180 degree to align")
         return True
 
 
@@ -125,20 +133,13 @@ def run_prealignment(
     moving_path,
     moving_key,
     output_dir,
-    mobie_export=True,
+    mobie_export,
+    dataset_name
 ):
     if not os.path.exists(f"{output_dir}/plots"):
         os.makedirs(f"{output_dir}/plots")
 
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s [%(levelname)s] %(message)s",
-        handlers=[
-            logging.FileHandler(f"{output_dir}/prealignment.log", mode="w"),
-            logging.StreamHandler(sys.stdout),
-        ],
-        datefmt="%Y-%m-%d %H:%M:%S",
-    )
+    logging.info("Start prealignment")
     logging.info("Start prealignment of fixed image ...")
     fixed_img = read_volume(fixed_path, fixed_key)
     fixed_file_name = os.path.splitext(os.path.basename(fixed_path))[0]
@@ -163,6 +164,12 @@ def run_prealignment(
         save_path=f"{output_dir}/plots/{moving_file_name}_moving.png"
     )
 
+    plot_overlay(
+        fixed_img,
+        moving_img,
+        save_path=f"{output_dir}/plots/overlay_before.png",
+    )
+
     moving_prealigned, T_moving = prealign_sample(
         moving_img,
         moving_file_name,
@@ -170,18 +177,19 @@ def run_prealignment(
     )
 
     # check orientation (if moving fits to fixed)
+    logging.info("Check axis orientation ...")
     R_3x3 = np.eye(3)
     change_orientation = False
     for axis in range(3):
         rotate_axis_fixed = orient_axis(
             fixed_prealigned,
             axis=axis,
-            save_path=f"{output_dir}/plots/fixed_intensity_profile_{axis}.png",
+            save_path=f"{output_dir}/plots/fixed_prealigned_intensity_profile_{axis}.png",
         )
         rotate_axis_moving = orient_axis(
             moving_prealigned,
             axis=axis,
-            save_path=f"{output_dir}/plots/moving_intensity_profile_{axis}.png",
+            save_path=f"{output_dir}/plots/moving_prealigned_intensity_profile_{axis}.png",
         )
 
         if rotate_axis_fixed or rotate_axis_moving:
@@ -189,10 +197,10 @@ def run_prealignment(
             change_orientation = True
             R_3x3[axis, axis] = -1
         else:
-            print(f"Correct orientation in axis {axis}")
+            print(f"Correct orientation in axis {axis}.")
 
     if not change_orientation:
-        logging.info("Correct orientation")
+        logging.info("Correct orientation.")
     else:
         logging.info("Rotate moving image to align orientation...")
         logging.info(str(R_3x3))
@@ -205,11 +213,11 @@ def run_prealignment(
 
         # update transformation matrix
         T_moving = T_moving @ R
-        np.savetxt(f"{output_dir}/moving_T_prealignment.txt", T_moving)
+        np.savetxt(f"{output_dir}/{moving_file_name}_T_prealignment.txt", T_moving)
 
     logging.info("Prealignment done.")
 
-    logging.info("Save prealigned fixed image")
+    logging.info("Save prealigned fixed image ...")
     attributes = dict(get_attrs(fixed_path, fixed_key))
     write_volume(
         f=f"{output_dir}/{fixed_file_name}_prealigned.n5",
@@ -218,7 +226,7 @@ def run_prealignment(
         attrs=attributes
     )
 
-    logging.info("Save prealigned moving image")
+    logging.info("Save prealigned moving image ...")
     attributes = dict(get_attrs(moving_path, moving_key))
     write_volume(
         f=f"{output_dir}/{moving_file_name}_prealigned.n5",
@@ -240,21 +248,22 @@ def run_prealignment(
     plot_overlay(
         fixed_prealigned,
         moving_prealigned,
-        save_path=f"{output_dir}/plots/overlay_prealignment.png",
+        save_path=f"{output_dir}/plots/overlay_after_prealignment.png",
     )
 
     if mobie_export:
-        logging.info("Export prealigned images to MoBIE")
+        logging.info("Export prealigned images to MoBIE ...")
         export_to_mobie(
             input_path=f"{output_dir}/{fixed_file_name}_prealigned.n5",
             input_key=fixed_key,
             output_dir=output_dir,
+            dataset_name=dataset_name,
             segmentation_name=f"{fixed_file_name}_prealigned",
             menu_name="fixed"
         )
+        logging.info("Change default dataset to prealigned fixed image.")
         update_default_view(
-            dataset_json_path=f"{output_dir}/mobie_project/platy1_muscles_stardist/dataset.json",
-            # TODO: make name independent
+            dataset_json_path=f"{output_dir}/mobie_project/{dataset_name}/dataset.json",
             new_segmentation_name=f"{fixed_file_name}_prealigned"
         )
 
@@ -262,6 +271,7 @@ def run_prealignment(
             input_path=f"{output_dir}/{moving_file_name}_prealigned.n5",
             input_key=moving_key,
             output_dir=output_dir,
+            dataset_name=dataset_name,
             segmentation_name=f"{moving_file_name}_prealigned",
             menu_name="moving"
         )
@@ -277,7 +287,25 @@ def run_prealignment(
 @click.option("-m", "--mobie_export", required=False, is_flag=True, help="MoBIE export")
 def main(fixed_path, fixed_key, moving_path, moving_key, output_dir, mobie_export):
 
-    run_prealignment(fixed_path, fixed_key, moving_path, moving_key, output_dir, mobie_export)
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s [%(levelname)s] %(message)s",
+        handlers=[
+            logging.FileHandler(f"{output_dir}/prealignment.log", mode="w"),
+            logging.StreamHandler(sys.stdout),
+        ],
+        datefmt="%Y-%m-%d %H:%M:%S",
+    )
+
+    run_prealignment(
+        fixed_path,
+        fixed_key,
+        moving_path,
+        moving_key,
+        output_dir,
+        mobie_export,
+        dataset_name="platy1_muscles_stardist",
+    )
 
 
 if __name__ == "__main__":

@@ -141,7 +141,7 @@ def serialize_parameter_object(parameter_object, prefix, write_dir):
     for index in range(parameter_object.GetNumberOfParameterMaps()):
         parameter_map = parameter_object.GetParameterMap(index)
         parameter_object.WriteParameterFile(
-            parameter_map, write_dir / f"{prefix}.{index}.txt"
+            parameter_map, write_dir / f"{prefix}_{index}.txt"
         )
 
 

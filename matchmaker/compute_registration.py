@@ -1,5 +1,7 @@
 import os
+import sys
 import click
+import logging
 from matchmaker.mobie_export import create_mobie_project
 from matchmaker.prealignment import run_prealignment
 from matchmaker.align_rigid_elastix import run_rigid_alignment
@@ -13,15 +15,36 @@ from matchmaker.align_rigid_elastix import run_rigid_alignment
 @click.option("-o", "--output_dir", required=True, help="Output directory")
 @click.option("-m", "--mobie_export", required=False, is_flag=True, help="MoBIE export")
 def main(fixed_path, fixed_key, moving_path, moving_key, output_dir, mobie_export):
-    # fixed_input_path = "../examples/data/platy1_muscles_stardist_fixed.n5"
-    # fixed_input_key = "seg"
-    # moving_input_path = "../examples/data/platy1_muscles_stardist_moving.n5"
-    # moving_input_key = "seg"
+    """
+    Main function to perform registration of moving image to fixed image.
 
-    # output_dir = "../examples/data/test"
+    This function orchestrates the sequence of steps required to register a moving image to a fixed image.
+    It handles the creation of necessary directories, configures logging, and invokes prealignment and 
+    rigid alignment functions. Optionally, it can create a MoBIE project for visualization.
+
+    Args:
+        fixed_path (str): Path to the fixed input .n5 file.
+        fixed_key (str): Key to the fixed image data in the .n5 file.
+        moving_path (str): Path to the moving input .n5 file.
+        moving_key (str): Key to the moving image data in the .n5 file.
+        output_dir (str): Directory where the results should be saved.
+        mobie_export (bool): Flag indicating whether to export results to a MoBIE project.
+    """
+
     if not os.path.exists(f"{output_dir}/plots"):
         os.makedirs(f"{output_dir}/plots")
 
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s [%(levelname)s] %(message)s",
+        handlers=[
+            logging.FileHandler(f"{output_dir}/registration.log", mode="w"),
+            logging.StreamHandler(sys.stdout),
+        ],
+        datefmt="%Y-%m-%d %H:%M:%S",
+    )
+
+    dataset_name = "platy1_muscles_stardist"
     if mobie_export:
         create_mobie_project(
             fixed_path,
@@ -29,6 +52,7 @@ def main(fixed_path, fixed_key, moving_path, moving_key, output_dir, mobie_expor
             moving_path,
             moving_key,
             output_dir,
+            dataset_name
         )
 
     run_prealignment(
@@ -38,6 +62,7 @@ def main(fixed_path, fixed_key, moving_path, moving_key, output_dir, mobie_expor
         moving_key,
         output_dir,
         mobie_export,
+        dataset_name,
     )
 
     fixed_prealigned_path = f"{output_dir}/{os.path.splitext(os.path.basename(fixed_path))[0]}_prealigned.n5"
@@ -49,7 +74,8 @@ def main(fixed_path, fixed_key, moving_path, moving_key, output_dir, mobie_expor
         moving_prealigned_path,
         moving_key,
         output_dir,
-        mobie_export
+        mobie_export,
+        dataset_name,
     )
 
     # fixed_rigid_aligned_path = f"{output_dir}/{os.path.splitext(os.path.basename(fixed_path))[0]}_rigid_aligned.n5"

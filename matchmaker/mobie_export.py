@@ -1,11 +1,8 @@
-# export results as mobie project
-# menu 1: dataset
-# menu 2: fixed_segmentation; then original, pre-aligned, ...
-# menu 3: moving_segmentation; then original, pre-aligned, ...
 import os
 import json
+import logging
 import mobie
-# from mobie import add_segmentation
+from matchmaker.n5_utils import get_attrs
 
 
 def update_default_view(dataset_json_path, new_segmentation_name):
@@ -36,7 +33,7 @@ def update_default_view(dataset_json_path, new_segmentation_name):
     with open(dataset_json_path, "w") as f:
         json.dump(data, f, indent=2)
 
-    print(f"Updated default view to use segmentation: '{new_segmentation_name}'")
+    logging.info(f"Updated default view to use segmentation: '{new_segmentation_name}'")
 
 
 def create_mobie_project(
@@ -45,7 +42,18 @@ def create_mobie_project(
     moving_input_path,
     moving_key,
     output_dir,
+    dataset_name
 ):
+    """
+    Create initial MoBIE project with the fixed and moving images.
+
+    Args:
+        fixed_input_path (str): Path to the fixed image n5 file.
+        fixed_key (str): Key to the fixed image data in the n5 file.
+        moving_input_path (str): Path to the moving image n5 file.
+        moving_key (str): Key to the moving image data in the n5 file.
+        output_dir (str): Directory where the MoBIE project should be saved.
+    """
 
     # export fixed image to MoBIE
     fixed_file_name = os.path.splitext(os.path.basename(fixed_input_path))[0]
@@ -53,6 +61,7 @@ def create_mobie_project(
         fixed_input_path,
         fixed_key,
         output_dir,
+        dataset_name,
         segmentation_name=f"{fixed_file_name}_original",
         menu_name="fixed",
     )
@@ -63,19 +72,31 @@ def create_mobie_project(
         moving_input_path,
         moving_key,
         output_dir,
+        dataset_name,
         segmentation_name=f"{moving_file_name}_original",
         menu_name="moving",
     )
+    logging.info("Created initial MoBIE project with fixed and moving images.")
 
 
-def export_to_mobie(input_path, input_key, output_dir, segmentation_name, menu_name):
+def export_to_mobie(input_path, input_key, output_dir, dataset_name, segmentation_name, menu_name):
+    """
+    Export segmentation from n5 file to MoBIE project.
+
+    Args:
+        input_path (str): Path to the n5 file containing the segmentation.
+        input_key (str): Key to the segmentation data in the n5 file.
+        output_dir (str): Directory where the MoBIE project should be saved.
+        dataset_name (str): Name of the MoBIE dataset.
+        segmentation_name (str): Name of the segmentation in the MoBIE project.
+        menu_name (str): Name of the menu in the MoBIE project.
+    """
     if not os.path.exists(f"{output_dir}/mobie_project"):
         os.makedirs(f"{output_dir}/mobie_project")
 
     # Set parameters for MOBIE
     mobie_folder = f"{output_dir}/mobie_project"
-    dataset_name = "platy1_muscles_stardist"  # TODO: specify as input
-    # resolution = get_attrs(input_path, input_key)["resolution"]
+    resolution = get_attrs(input_path, input_key)["resolution"]
     chunks = (64, 64, 64)
     scale_factors = 4 * [[2, 2, 2]]
 
@@ -85,23 +106,31 @@ def export_to_mobie(input_path, input_key, output_dir, segmentation_name, menu_n
         root=mobie_folder,
         dataset_name=dataset_name,
         segmentation_name=segmentation_name,
-        resolution=[1, 1, 1],
+        resolution=resolution,
         scale_factors=scale_factors,
         chunks=chunks,
         menu_name=menu_name,
         file_format="ome.zarr",
         is_default_dataset=True
     )
+    logging.info(f"Added segmentation: {segmentation_name}")
 
 
 def main():
-    input_path = "/Users/marei/git-repositories/matchmaker/examples/CLI_test/platy1_muscles_stardist_fixed_prealigned.n5"
+    input_path = "../examples/CLI_test/platy1_muscles_stardist_fixed_prealigned.n5"
     input_key = "seg"
-    output_dir = "/Users/marei/git-repositories/matchmaker/examples/data/test"
+    output_dir = "../examples/data/test"
 
     file_name = os.path.splitext(os.path.basename(input_path))[0]
 
-    export_to_mobie(input_path, input_key, output_dir, segmentation_name=f"{file_name}_prealigned", menu_name="fixed")
+    export_to_mobie(
+        input_path,
+        input_key,
+        output_dir,
+        dataset_name="platy1_muscles_stardist",
+        segmentation_name=f"{file_name}_prealigned",
+        menu_name="fixed",
+    )
     print(f"MoBIE project created at {output_dir}/mobie_project")
 
 

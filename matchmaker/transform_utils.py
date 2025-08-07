@@ -111,6 +111,28 @@ def get_transformation_matrix(img, gc, Vt, save_path=None):
 
 
 def rotate_img(img, rotation_matrix, output_shape=None, offset=None):
+    """
+    Rotate an image using a given rotation matrix.
+
+    Parameters
+    ----------
+    img : array
+        The 3D image to be rotated.
+    rotation_matrix : array
+        A 3x3 or 4x4 rotation matrix.
+    output_shape : tuple, optional
+        The desired output shape of the rotated image. If not given, the output shape
+        will be determined from the rotation matrix.
+    offset : tuple, optional
+        The offset to apply to the rotated image to ensure it fits within the new
+        bounding box. If not given, the offset will be determined from the rotation
+        matrix.
+
+    Returns
+    -------
+    rotated_img : array
+        The rotated image with the desired output shape (if given).
+    """
     rotated_img = affine_transform(
         img,
         matrix=rotation_matrix,
