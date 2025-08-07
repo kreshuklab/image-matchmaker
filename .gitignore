@@ -173,6 +173,9 @@ cython_debug/
 # PyPI configuration file
 .pypirc
 
+# test results
+examples/data/test/
+
 # huge data
 *.tif
 *.n5/
@@ -180,5 +183,3 @@ cython_debug/
 *.ome.zarr/
 
 .DS_Store
-
-./examples/data/test/
