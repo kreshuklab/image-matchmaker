@@ -136,6 +136,59 @@ def run_prealignment(
     mobie_export,
     dataset_name
 ):
+    """
+    Run prealignment of a fixed and moving 3D image volume.
+
+    This function reads two volumetric datasets (a fixed and a moving image),
+    performs prealignment to roughly register them into a common space, and
+    saves diagnostic plots, transformation matrices, and prealigned volumes.
+    It also checks axis orientation consistency between the two images and
+    applies corrective rotations if necessary. Optionally, the results can be
+    exported into a MoBIE project for interactive visualization.
+
+    Steps performed:
+        1. Load fixed and moving volumes.
+        2. Plot reference slices and overlays before alignment.
+        3. Apply prealignment to both volumes.
+        4. Check and correct axis orientations if required.
+        5. Save prealigned volumes and transformation matrices.
+        6. Generate plots before and after prealignment.
+        7. Optionally export results to a MoBIE project.
+
+    Parameters
+    ----------
+    fixed_path : str
+        Path to the fixed volume file (e.g. N5, OME-Zarr).
+    fixed_key : str
+        Dataset key inside the fixed volume file.
+    moving_path : str
+        Path to the moving volume file (e.g. N5, OME-Zarr).
+    moving_key : str
+        Dataset key inside the moving volume file.
+    output_dir : str
+        Directory where outputs (plots, volumes, transformations) will be saved.
+    mobie_export : bool
+        If True, export prealigned images to a MoBIE project.
+    dataset_name : str
+        Name of the MoBIE dataset (used only if `mobie_export=True`).
+
+    Outputs
+    -------
+    - Plots of slices and overlays before and after prealignment, saved in
+      ``{output_dir}/plots/``.
+    - Prealigned fixed and moving volumes saved as N5 containers in
+      ``{output_dir}/``.
+    - Transformation matrix for the moving image saved as a text file.
+    - (Optional) Exported MoBIE project with updated views.
+
+    Notes
+    -----
+    - The function assumes the input volumes are large 3D datasets.
+    - Axis orientation is checked via intensity profile analysis; axes may be
+      flipped by 180° if misaligned.
+    - The MoBIE export modifies the `dataset.json` to set the prealigned fixed
+      volume as the default view.
+    """
     if not os.path.exists(f"{output_dir}/plots"):
         os.makedirs(f"{output_dir}/plots")
 
@@ -286,7 +339,24 @@ def run_prealignment(
 @click.option("-o", "--output_dir", required=True, help="Output directory")
 @click.option("-m", "--mobie_export", required=False, is_flag=True, help="MoBIE export")
 def main(fixed_path, fixed_key, moving_path, moving_key, output_dir, mobie_export):
+    """
+    Perform prealignment of moving image to fixed image.
 
+    This function orchestrates the sequence of steps required to prealign a moving image to a fixed image.
+    It handles the creation of necessary directories, configures logging, and invokes prealignment functions.
+    Optionally, it can create a MoBIE project for visualization.
+
+    Args:
+        fixed_path (str): Path to the fixed input .n5 file.
+        fixed_key (str): Key to the fixed image data in the .n5 file.
+        moving_path (str): Path to the moving input .n5 file.
+        moving_key (str): Key to the moving image data in the .n5 file.
+        output_dir (str): Directory where the results should be saved.
+        mobie_export (bool): Flag indicating whether to export results to a MoBIE project.
+
+    Returns:
+        None
+    """
     logging.basicConfig(
         level=logging.INFO,
         format="%(asctime)s [%(levelname)s] %(message)s",
