@@ -16,6 +16,7 @@ dependencies:
     - optuna
     - proxsuite
     - cvxpy
+    - transforms3d
 
     - ipykernel
     - seaborn
@@ -29,5 +30,6 @@ dependencies:
         - pyscipopt
         - click
         - pyyaml
+        - itk
     
 

@@ -172,3 +172,14 @@ cython_debug/
 
 # PyPI configuration file
 .pypirc
+
+# test results
+examples/data/test/
+
+# huge data
+*.tif
+*.n5/
+*.png
+*.ome.zarr/
+
+.DS_Store

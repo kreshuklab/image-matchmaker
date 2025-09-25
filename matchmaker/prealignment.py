@@ -1,164 +1,382 @@
-from pathlib import Path
 import numpy as np
 import matplotlib.pyplot as plt
-from platy_reg.vis import plot_overlay, plot_three_slices
 import logging
-from platy_reg.preprocessing import convert_to_point_cloud
-from scipy.ndimage import rotate
-from skimage.filters import gaussian
+import os
+import click
+import sys
+
+from matchmaker.data import create_point_cloud
+from matchmaker.mobie_export import export_to_mobie, update_default_view
+from matchmaker.transform_utils import get_transformation_matrix, rotate_img
+from matchmaker.n5_utils import read_volume, get_attrs, write_volume
+from matchmaker.vis import plot_three_slices, plot_overlay
 
 
-def get_SVD_transform(img, plot_path=None, percentile_trsh=90):
+def get_SVD_transform(img, save_path=None):
     """Convert image to point cloud by thresholding, then run SVD on resulting point cloud.
 
     Args:
         img: _description_
         plot_path: _description_. Defaults to None.
-        percentile_trsh: _description_. Defaults to 90.
 
     Returns:
         Variance matrix and principal axes matrix.
     """
-    trsh = np.percentile(img, percentile_trsh)
-    logging.info(f"Threshold used for converting to point cloud: {trsh}")
-    X = convert_to_point_cloud(img, trsh)
-    gc = X.mean(axis=0)
+
+    pos, _ = create_point_cloud(img)
+    gc = pos.mean(axis=0)
     gc = np.array(img.shape) // 2
-    X_c = X - gc
-    logging.info(f"Point cloud shape {X.shape}")
+    pos_c = pos - gc
+    logging.info(f"Point cloud shape {pos.shape}")
     logging.info(f"Point cloud center {gc}")
-    
-    if X.shape[1] == 3:
-        random_subset = np.random.choice(X.shape[0], 10000, replace=False)
-        X_subset = X_c[random_subset, 1:]
-    else:
-        X_subset = X_c[::100]
-    logging.info("Subset point cloud")
-    logging.info(f"Subset point cloud shape {X_subset.shape}")
-    
-    logging.info("Run SVD")
-    U, S, Vt = np.linalg.svd(X_subset)
-    # logging.info("U")
-    # logging.info(U)
+
+    logging.info("Run SVD ...")
+    U, S, Vt = np.linalg.svd(pos_c, full_matrices=False)
+    logging.info("U")
+    logging.info(str(U))
     logging.info("S")
     logging.info(str(S))
     logging.info("Vt")
     logging.info(str(Vt))
-    
+
     logging.info("Rotate point cloud")
-    vr = X_subset @ Vt.T
-    
+    vr = pos_c @ Vt.T
+
     plt.figure(figsize=(10, 5))
-    plt.subplot(1,2,1)
-    plt.title('original vertices')
-    plt.scatter(X_subset[:, 0], X_subset[:, 1], alpha=0.2)
-    plt.subplot(1,2,2)
-    plt.title('rotated vertices')
+    plt.subplot(1, 2, 1)
+    plt.title("Original Vertices")
+    plt.scatter(pos_c[:, 0], pos_c[:, 1], alpha=0.2)
+    plt.subplot(1, 2, 2)
+    plt.title("Rotated Vertices")
     plt.scatter(vr[:, 0], vr[:, 1], alpha=0.1)
-    if plot_path:
-            plt.savefig(plot_path, dpi=300)
-    
+    if save_path:
+        plt.savefig(save_path, dpi=300)
+
     return gc, Vt
-    
-    
-def orient_head(img, plot_path=None):
-    """Euristic to orient all samples "head up": calculate sum intensity profile along the Y axis, if max is closer to 0 then do nothing, else rotate 180 degrees.
+
+
+def orient_axis(img, axis, save_path=None):
+    """
+    Plot the sum intensity along the given axis and return True if the maximum is closer to the
+    upper boundary than the lower boundary, False otherwise.
 
     Args:
-        img: DAPI volume
-        
+        img: 3D image
+        axis: Axis to sum along
+        save_path: Path to save the plot to. If None, show the plot instead.
+
     Returns:
-        True if rotation is needed.
+        True if the maximum is closer to the upper boundary than the lower boundary, False otherwise.
     """
     assert img.ndim == 3, f"Input image should have 3 dimensions, has {img.ndim}"
-    int_profile = np.sum(img, axis=(0, 2))
-    
+    if axis == 0:
+        int_profile = np.sum(img, axis=(1, 2))  # profile along z
+    if axis == 1:
+        int_profile = np.sum(img, axis=(0, 2))  # profile along y
+    if axis == 2:
+        int_profile = np.sum(img, axis=(0, 1))  # profile along x
+
     plt.figure()
     plt.plot(int_profile)
-    plt.xlabel("Coordinate")
-    plt.ylabel("Sum intensity along Y axis")
-    plt.savefig(plot_path, dpi=300)
-    
+    plt.xlabel(f"Axis {axis} Coordinate")
+    plt.ylabel(f"Sum intensity along axis = {axis}")
+    if save_path is not None:
+        plt.savefig(save_path, dpi=300)
+    else:
+        plt.show()
+
     max_pos = int_profile.argmax()
-    logging.info(f"Max position is {max_pos}, dimension shape is {img.shape[1]}")
-    if max_pos < img.shape[1] // 2:
-        logging.info("Correct head orientation")
+    logging.info(f"Max position is {max_pos}, dimension shape is {img.shape[axis]}")
+    if max_pos < img.shape[axis] // 2:
         return False
     else:
-        logging.info("Rotate 180 degree to align head position")
         return True
-    
 
-def orient_sample(img, dapi_chan, plot_path, dorsal=False):
-    """Preliminary orientation of the samples with body axis along Y, head closer to 0.
+
+def prealign_sample(img, file_name, save_path):
+    """
+    Pre-align a sample segmentation with its principal components.
 
     Args:
-        img: input volume
-        dapi_chan: channel to use for registration
-        dorsal: if True, rotate around Y to align with ventral in Z direction
+        img: Segmentation volume
+        file_name: Name of the sample
+        save_path: Folder to save results
 
     Returns:
-        oriented image
+        Pre-aligned segmentation volume.
     """
-    
-    # Rotate around Y if the volume is dorsal
-    plot_path = Path(plot_path)
-    
-    if dorsal:
-        logging.info(f"Rotated dorsal sample to align Z")
-        img = img[:, ::-1, :, ::-1]
-    
-    
-    # Rotate in XY plane, because samples can be oriented randomly, not only along X or Y
-    max_proj = np.max(img, axis=1)[dapi_chan, ...]
-    plt.figure()
-    plt.imshow(max_proj, cmap="Reds")
-    plt.savefig(plot_path / "max_proj_input.png")
-    
-    logging.info(f"Smooth image with sigma={2}")
-    img_smoothed = gaussian(img[dapi_chan, ::10, ::10, ::10], sigma=3)
-    gc, Vt = get_SVD_transform(img_smoothed, plot_path / "max_proj_point_cloud_random_angle.png", percentile_trsh=90)
-    rot_angle = 90 - np.degrees(np.arctan2(Vt[0, 1], Vt[0, 0]))
-    logging.info(f"Rotation angle to correct for random angle is {rot_angle}")
-    img = rotate(img, rot_angle, axes=[-2, -1], order=3, mode="constant")
-    logging.info(f"Rotated the input volume around Z by {rot_angle} degrees")
-    
-    plt.figure()
-    plt.imshow(np.max(img, axis=1)[dapi_chan, ...], alpha=0.5, cmap="Blues")
-    plt.savefig(plot_path / "max_proj_rotated_random_angle.png", dpi=300)
-    
-    
-    # Check again if the sample is along X or along Y
-    # Make max projection and determine the direction of principal axes
-    max_proj = np.max(img, axis=1)[dapi_chan, ...]
-    img_smoothed = gaussian(img[dapi_chan, ::10, ::10, ::10], sigma=2)
-    gc, Vt = get_SVD_transform(img_smoothed, plot_path / "max_proj_point_cloud.png")
-    
-    rot_angle = np.arccos(Vt[0, 0])
-    logging.info(f"Rotation angle is {rot_angle}")
-    if np.abs(rot_angle - np.pi / 2) < np.pi / 4:
-        logging.info("Rotate 90 degrees")
-        plt.figure()
-        plt.imshow(max_proj, cmap="Reds")
-        img_rot = np.rot90(img, axes=(2, 3))
-        
-    elif np.abs(rot_angle) < np.pi / 4: 
-        logging.info("Rotation is already correct")
-        img_rot = img
+    gc, Vt = get_SVD_transform(img)
+    T, new_shape = get_transformation_matrix(img, gc, Vt, save_path=f"{save_path}/{file_name}_T_prealignment.txt")
+    img_rotated = rotate_img(img, T, output_shape=new_shape)
+
+    if np.linalg.det(Vt.T) < 0:
+        logging.warning("V includes a reflection (mirroring)")
+        R_3x3 = np.array([[1, 0, 0], [0, 1, 0], [0, 0, -1]])
+        logging.info("Mirror back...")
+        img_center = 0.5 * (np.array(img_rotated.shape)-1)
+        offset = img_center - R_3x3 @ img_center
+        R = np.eye(4)
+        R[:3, :3] = R_3x3
+        R[:3, 3] = offset
+        img_rotated = rotate_img(img_rotated, R, output_shape=img_rotated.shape)
+
+        # update transformation matrix
+        T = T @ R
+        np.savetxt(f"{save_path}/{file_name}_T_prealignment.txt", T)
+
+    return img_rotated, T
+
+
+def run_prealignment(
+    fixed_path,
+    fixed_key,
+    moving_path,
+    moving_key,
+    output_dir,
+    mobie_export,
+    dataset_name
+):
+    """
+    Run prealignment of a fixed and moving 3D image volume.
+
+    This function reads two volumetric datasets (a fixed and a moving image),
+    performs prealignment to roughly register them into a common space, and
+    saves diagnostic plots, transformation matrices, and prealigned volumes.
+    It also checks axis orientation consistency between the two images and
+    applies corrective rotations if necessary. Optionally, the results can be
+    exported into a MoBIE project for interactive visualization.
+
+    Steps performed:
+        1. Load fixed and moving volumes.
+        2. Plot reference slices and overlays before alignment.
+        3. Apply prealignment to both volumes.
+        4. Check and correct axis orientations if required.
+        5. Save prealigned volumes and transformation matrices.
+        6. Generate plots before and after prealignment.
+        7. Optionally export results to a MoBIE project.
+
+    Parameters
+    ----------
+    fixed_path : str
+        Path to the fixed volume file (e.g. N5, OME-Zarr).
+    fixed_key : str
+        Dataset key inside the fixed volume file.
+    moving_path : str
+        Path to the moving volume file (e.g. N5, OME-Zarr).
+    moving_key : str
+        Dataset key inside the moving volume file.
+    output_dir : str
+        Directory where outputs (plots, volumes, transformations) will be saved.
+    mobie_export : bool
+        If True, export prealigned images to a MoBIE project.
+    dataset_name : str
+        Name of the MoBIE dataset (used only if `mobie_export=True`).
+
+    Outputs
+    -------
+    - Plots of slices and overlays before and after prealignment, saved in
+      ``{output_dir}/plots/``.
+    - Prealigned fixed and moving volumes saved as N5 containers in
+      ``{output_dir}/``.
+    - Transformation matrix for the moving image saved as a text file.
+    - (Optional) Exported MoBIE project with updated views.
+
+    Notes
+    -----
+    - The function assumes the input volumes are large 3D datasets.
+    - Axis orientation is checked via intensity profile analysis; axes may be
+      flipped by 180° if misaligned.
+    - The MoBIE export modifies the `dataset.json` to set the prealigned fixed
+      volume as the default view.
+    """
+    if not os.path.exists(f"{output_dir}/plots"):
+        os.makedirs(f"{output_dir}/plots")
+
+    logging.info("Start prealignment")
+    logging.info("Start prealignment of fixed image ...")
+    fixed_img = read_volume(fixed_path, fixed_key)
+    fixed_file_name = os.path.splitext(os.path.basename(fixed_path))[0]
+
+    plot_three_slices(
+        fixed_img,
+        save_path=f"{output_dir}/plots/{fixed_file_name}_fixed.png"
+    )
+
+    fixed_prealigned, _ = prealign_sample(
+        fixed_img,
+        fixed_file_name,
+        output_dir,
+    )
+
+    logging.info("Start prealignment of moving image ...")
+    moving_img = read_volume(moving_path, moving_key)
+    moving_file_name = os.path.splitext(os.path.basename(moving_path))[0]
+
+    plot_three_slices(
+        moving_img,
+        save_path=f"{output_dir}/plots/{moving_file_name}_moving.png"
+    )
+
+    plot_overlay(
+        fixed_img,
+        moving_img,
+        save_path=f"{output_dir}/plots/overlay_before.png",
+    )
+
+    moving_prealigned, T_moving = prealign_sample(
+        moving_img,
+        moving_file_name,
+        output_dir,
+    )
+
+    # check orientation (if moving fits to fixed)
+    logging.info("Check axis orientation ...")
+    R_3x3 = np.eye(3)
+    change_orientation = False
+    for axis in range(3):
+        rotate_axis_fixed = orient_axis(
+            fixed_prealigned,
+            axis=axis,
+            save_path=f"{output_dir}/plots/fixed_prealigned_intensity_profile_{axis}.png",
+        )
+        rotate_axis_moving = orient_axis(
+            moving_prealigned,
+            axis=axis,
+            save_path=f"{output_dir}/plots/moving_prealigned_intensity_profile_{axis}.png",
+        )
+
+        if rotate_axis_fixed or rotate_axis_moving:
+            print(f"Rotate axis {axis} 180 degrees to align...")
+            change_orientation = True
+            R_3x3[axis, axis] = -1
+        else:
+            print(f"Correct orientation in axis {axis}.")
+
+    if not change_orientation:
+        logging.info("Correct orientation.")
     else:
-        logging.info(f"90 degree rotation can't be determined with first principal axis angle of {rot_angle * 180/ np.pi}")
-        img_rot = img
-        
-    # Check if head is oriented correctly, else rotate 180 degrees
-    
-    if orient_head(img_rot[dapi_chan, ...], plot_path / "sum_intensity_profile.png"):
-        img_reg = np.rot90(img_rot, k=2, axes=(2, 3))
-    else:
-        img_reg = img_rot
-    
-    logging.info(f"Final image shape is {img_reg.shape}")
-    plt.figure()
-    plt.imshow(np.max(img_reg, axis=1)[dapi_chan, ...], alpha=0.5, cmap="Blues")
-    plt.savefig(plot_path / "max_proj_rotated_final.png", dpi=300)
-    
-    return img_reg
+        logging.info("Rotate moving image to align orientation...")
+        logging.info(str(R_3x3))
+        img_center = 0.5 * (np.array(moving_prealigned.shape)-1)
+        offset = img_center - R_3x3 @ img_center
+        R = np.eye(4)
+        R[:3, :3] = R_3x3
+        R[:3, 3] = offset
+        moving_prealigned = rotate_img(moving_prealigned, R, output_shape=moving_prealigned.shape)
+
+        # update transformation matrix
+        T_moving = T_moving @ R
+        np.savetxt(f"{output_dir}/{moving_file_name}_T_prealignment.txt", T_moving)
+
+    logging.info("Prealignment done.")
+
+    logging.info("Save prealigned fixed image ...")
+    attributes = dict(get_attrs(fixed_path, fixed_key))
+    write_volume(
+        f=f"{output_dir}/{fixed_file_name}_prealigned.n5",
+        arr=fixed_prealigned,
+        key=fixed_key,
+        attrs=attributes
+    )
+
+    logging.info("Save prealigned moving image ...")
+    attributes = dict(get_attrs(moving_path, moving_key))
+    write_volume(
+        f=f"{output_dir}/{moving_file_name}_prealigned.n5",
+        arr=moving_prealigned,
+        key=moving_key,
+        attrs=attributes
+    )
+
+    plot_three_slices(
+        fixed_prealigned,
+        save_path=f"{output_dir}/plots/{fixed_file_name}_prealigned.png"
+    )
+
+    plot_three_slices(
+        moving_prealigned,
+        save_path=f"{output_dir}/plots/{moving_file_name}_prealigned.png"
+    )
+
+    plot_overlay(
+        fixed_prealigned,
+        moving_prealigned,
+        save_path=f"{output_dir}/plots/overlay_after_prealignment.png",
+    )
+
+    if mobie_export:
+        logging.info("Export prealigned images to MoBIE ...")
+        export_to_mobie(
+            input_path=f"{output_dir}/{fixed_file_name}_prealigned.n5",
+            input_key=fixed_key,
+            output_dir=output_dir,
+            dataset_name=dataset_name,
+            segmentation_name=f"{fixed_file_name}_prealigned",
+            menu_name="fixed"
+        )
+        logging.info("Change default dataset to prealigned fixed image.")
+        update_default_view(
+            dataset_json_path=f"{output_dir}/mobie_project/{dataset_name}/dataset.json",
+            new_segmentation_name=f"{fixed_file_name}_prealigned"
+        )
+
+        export_to_mobie(
+            input_path=f"{output_dir}/{moving_file_name}_prealigned.n5",
+            input_key=moving_key,
+            output_dir=output_dir,
+            dataset_name=dataset_name,
+            segmentation_name=f"{moving_file_name}_prealigned",
+            menu_name="moving"
+        )
+        logging.info("MoBIE export done.")
+
+
+@click.command()
+@click.option("-fi", "--fixed_path", required=True, help="Fixed input .n5 file")
+@click.option("-fk", "--fixed_key", required=True, help="Fixed input key")
+@click.option("-mi", "--moving_path", required=True, help="Moving input .n5 file")
+@click.option("-mk", "--moving_key", required=True, help="Moving input key")
+@click.option("-o", "--output_dir", required=True, help="Output directory")
+@click.option("-m", "--mobie_export", required=False, is_flag=True, help="MoBIE export")
+def main(fixed_path, fixed_key, moving_path, moving_key, output_dir, mobie_export):
+    """
+    Perform prealignment of moving image to fixed image.
+
+    This function orchestrates the sequence of steps required to prealign a moving image to a fixed image.
+    It handles the creation of necessary directories, configures logging, and invokes prealignment functions.
+    Optionally, it can create a MoBIE project for visualization.
+
+    Args:
+        fixed_path (str): Path to the fixed input .n5 file.
+        fixed_key (str): Key to the fixed image data in the .n5 file.
+        moving_path (str): Path to the moving input .n5 file.
+        moving_key (str): Key to the moving image data in the .n5 file.
+        output_dir (str): Directory where the results should be saved.
+        mobie_export (bool): Flag indicating whether to export results to a MoBIE project.
+
+    Returns:
+        None
+    """
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s [%(levelname)s] %(message)s",
+        handlers=[
+            logging.FileHandler(f"{output_dir}/prealignment.log", mode="w"),
+            logging.StreamHandler(sys.stdout),
+        ],
+        datefmt="%Y-%m-%d %H:%M:%S",
+    )
+
+    run_prealignment(
+        fixed_path,
+        fixed_key,
+        moving_path,
+        moving_key,
+        output_dir,
+        mobie_export,
+        dataset_name="platy1_muscles_stardist",
+    )
+
+
+if __name__ == "__main__":
+    main()
