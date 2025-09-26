@@ -183,3 +183,6 @@ examples/data/test/
 *.ome.zarr/
 
 .DS_Store
+
+# Snakemake logs
+.snakemake/*
