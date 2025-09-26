@@ -1,0 +1,14 @@
+fixed_image:
+  path: "examples/data/platy1_muscles_stardist_fixed.tif"
+  x_res: 1
+  y_res: 1
+  z_res: 1
+
+moving_image:
+  path: "examples/data/platy1_muscles_stardist_moving.tif"
+  x_res: 1
+  y_res: 1
+  z_res: 1
+
+log_dir: "data/test_registration"
+output_transform_path: "data/test_registration/final_transform.yaml"
