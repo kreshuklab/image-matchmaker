@@ -3,7 +3,7 @@ channels:
 name:
    matchmaker_env 
 dependencies:
-    - python==3.9
+    - python==3.11
     - tifffile
     - z5py
     - tqdm
@@ -13,23 +13,27 @@ dependencies:
     - git
   
     - scikit-image
-    - optuna
-    - proxsuite
-    - cvxpy
+    # - optuna
+    # - proxsuite
+    # - cvxpy
     - transforms3d
 
     - ipykernel
     - seaborn
     - matplotlib
 
+    - mobie_utils
+
     - pip
     - pip:
         - itk-elastix
-        - cupy
-        - probreg
+    #    - cupy
+    #    - probreg
         - pyscipopt
         - click
         - pyyaml
         - itk
+        - snakemake
+        - -e . --use-pep517
     
 
