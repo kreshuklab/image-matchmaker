@@ -1,6 +1,34 @@
 # 💞 Matchmaker
 Tool for segmentation-based deformable registration and object matching
 
+## How to run
+
+### Create conda environment
+```
+conda env create -f environment.yml
+```
+
+### 3 ways of interaction with the library
+
+- Running the full pipeline using workflow manager and a config file to set up registration parameters
+```
+snakemake workflows/register.smk --configfile registration_config.yml --cores 16
+```
+- Running separate scripts
+```
+prealignment.py --fixed_path ... --fixed_key ... --moving_path ... --moving_key ... --output_dir ... --mobie_export --dataset_name ...
+```
+
+- Importing individual functions from matchmaker:
+```
+import matchmaker as mm
+
+...
+
+mm.n5-utils.read_volume(...)
+```
+
+
 
 
 ## Registration
