@@ -11,4 +11,4 @@ moving_image:
   z_res: 1
 
 log_dir: "data/test_registration"
-output_transform_path: "data/test_registration/final_transform.yaml"
+final_transform_path: "data/test_registration/final_transform.json"
