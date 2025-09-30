@@ -4,12 +4,18 @@ import logging
 import os
 import click
 import sys
+import json
+
 
 from matchmaker.data import create_point_cloud
 from matchmaker.mobie_export import export_to_mobie, update_default_view
 from matchmaker.transform_utils import get_transformation_matrix, rotate_img
 from matchmaker.n5_utils import read_volume, get_attrs, write_volume
 from matchmaker.vis import plot_three_slices, plot_overlay
+from matchmaker.transform_utils import write_transform_dict
+
+
+
 
 
 def get_SVD_transform(img, save_path=None):
@@ -93,7 +99,7 @@ def orient_axis(img, axis, save_path=None):
         return True
 
 
-def prealign_sample(img, file_name, save_path):
+def prealign_sample(img):
     """
     Pre-align a sample segmentation with its principal components.
 
@@ -106,7 +112,7 @@ def prealign_sample(img, file_name, save_path):
         Pre-aligned segmentation volume.
     """
     gc, Vt = get_SVD_transform(img)
-    T, new_shape = get_transformation_matrix(img, gc, Vt, save_path=f"{save_path}/{file_name}_T_prealignment.txt")
+    T, new_shape = get_transformation_matrix(img, gc, Vt)
     img_rotated = rotate_img(img, T, output_shape=new_shape)
 
     if np.linalg.det(Vt.T) < 0:
@@ -122,19 +128,14 @@ def prealign_sample(img, file_name, save_path):
 
         # update transformation matrix
         T = T @ R
-        np.savetxt(f"{save_path}/{file_name}_T_prealignment.txt", T)
 
     return img_rotated, T
 
 
 def run_prealignment(
-    fixed_path,
-    fixed_key,
-    moving_path,
-    moving_key,
-    output_dir,
-    mobie_export,
-    dataset_name
+    fixed_img,
+    moving_img,
+    output_dir
 ):
     """
     Run prealignment of a fixed and moving 3D image volume.
@@ -167,10 +168,6 @@ def run_prealignment(
         Dataset key inside the moving volume file.
     output_dir : str
         Directory where outputs (plots, volumes, transformations) will be saved.
-    mobie_export : bool
-        If True, export prealigned images to a MoBIE project.
-    dataset_name : str
-        Name of the MoBIE dataset (used only if `mobie_export=True`).
 
     Outputs
     -------
@@ -194,40 +191,30 @@ def run_prealignment(
 
     logging.info("Start prealignment")
     logging.info("Start prealignment of fixed image ...")
-    fixed_img = read_volume(fixed_path, fixed_key)
-    fixed_file_name = os.path.splitext(os.path.basename(fixed_path))[0]
+    
 
     plot_three_slices(
         fixed_img,
-        save_path=f"{output_dir}/plots/{fixed_file_name}_fixed.png"
+        save_path=f"{output_dir}/plots/fixed_input.png"
     )
 
-    fixed_prealigned, _ = prealign_sample(
-        fixed_img,
-        fixed_file_name,
-        output_dir,
-    )
+    fixed_prealigned, T_fixed = prealign_sample(fixed_img)
 
     logging.info("Start prealignment of moving image ...")
-    moving_img = read_volume(moving_path, moving_key)
-    moving_file_name = os.path.splitext(os.path.basename(moving_path))[0]
+    
 
     plot_three_slices(
         moving_img,
-        save_path=f"{output_dir}/plots/{moving_file_name}_moving.png"
+        save_path=f"{output_dir}/plots/moving_input.png"
     )
 
     plot_overlay(
         fixed_img,
         moving_img,
-        save_path=f"{output_dir}/plots/overlay_before.png",
+        save_path=f"{output_dir}/plots/overlay_input.png",
     )
 
-    moving_prealigned, T_moving = prealign_sample(
-        moving_img,
-        moving_file_name,
-        output_dir,
-    )
+    moving_prealigned, T_moving = prealign_sample(moving_img)
 
     # check orientation (if moving fits to fixed)
     logging.info("Check axis orientation ...")
@@ -266,36 +253,20 @@ def run_prealignment(
 
         # update transformation matrix
         T_moving = T_moving @ R
-        np.savetxt(f"{output_dir}/{moving_file_name}_T_prealignment.txt", T_moving)
 
     logging.info("Prealignment done.")
 
-    logging.info("Save prealigned fixed image ...")
-    attributes = dict(get_attrs(fixed_path, fixed_key))
-    write_volume(
-        f=f"{output_dir}/{fixed_file_name}_prealigned.n5",
-        arr=fixed_prealigned,
-        key=fixed_key,
-        attrs=attributes
-    )
-
-    logging.info("Save prealigned moving image ...")
-    attributes = dict(get_attrs(moving_path, moving_key))
-    write_volume(
-        f=f"{output_dir}/{moving_file_name}_prealigned.n5",
-        arr=moving_prealigned,
-        key=moving_key,
-        attrs=attributes
-    )
+    prealignment_transform = {"fixed_prealignment": {"matrix": T_fixed, "output_shape": fixed_prealigned.shape},
+                               "moving_prealignment": {"matrix": T_moving, "output_shape": moving_prealigned.shape}}
 
     plot_three_slices(
         fixed_prealigned,
-        save_path=f"{output_dir}/plots/{fixed_file_name}_prealigned.png"
+        save_path=f"{output_dir}/plots/fixed_prealigned.png"
     )
 
     plot_three_slices(
         moving_prealigned,
-        save_path=f"{output_dir}/plots/{moving_file_name}_prealigned.png"
+        save_path=f"{output_dir}/plots/moving_prealigned.png"
     )
 
     plot_overlay(
@@ -304,31 +275,8 @@ def run_prealignment(
         save_path=f"{output_dir}/plots/overlay_after_prealignment.png",
     )
 
-    if mobie_export:
-        logging.info("Export prealigned images to MoBIE ...")
-        export_to_mobie(
-            input_path=f"{output_dir}/{fixed_file_name}_prealigned.n5",
-            input_key=fixed_key,
-            output_dir=output_dir,
-            dataset_name=dataset_name,
-            segmentation_name=f"{fixed_file_name}_prealigned",
-            menu_name="fixed"
-        )
-        logging.info("Change default dataset to prealigned fixed image.")
-        update_default_view(
-            dataset_json_path=f"{output_dir}/mobie_project/{dataset_name}/dataset.json",
-            new_segmentation_name=f"{fixed_file_name}_prealigned"
-        )
+    return fixed_prealigned, moving_prealigned, prealignment_transform
 
-        export_to_mobie(
-            input_path=f"{output_dir}/{moving_file_name}_prealigned.n5",
-            input_key=moving_key,
-            output_dir=output_dir,
-            dataset_name=dataset_name,
-            segmentation_name=f"{moving_file_name}_prealigned",
-            menu_name="moving"
-        )
-        logging.info("MoBIE export done.")
 
 
 @click.command()
@@ -336,9 +284,10 @@ def run_prealignment(
 @click.option("-fk", "--fixed_key", required=True, help="Fixed input key")
 @click.option("-mi", "--moving_path", required=True, help="Moving input .n5 file")
 @click.option("-mk", "--moving_key", required=True, help="Moving input key")
+@click.option("-ok", "--output_key", required=True, help="Output key (same in both n5)")
+@click.option("-trans", "--output_transform_path", required=True, help="Path to write the final transform")
 @click.option("-o", "--output_dir", required=True, help="Output directory")
-@click.option("-m", "--mobie_export", required=False, is_flag=True, help="MoBIE export")
-def main(fixed_path, fixed_key, moving_path, moving_key, output_dir, mobie_export):
+def main(fixed_path, fixed_key, moving_path, moving_key, output_key, output_transform_path, output_dir):
     """
     Perform prealignment of moving image to fixed image.
 
@@ -352,7 +301,6 @@ def main(fixed_path, fixed_key, moving_path, moving_key, output_dir, mobie_expor
         moving_path (str): Path to the moving input .n5 file.
         moving_key (str): Key to the moving image data in the .n5 file.
         output_dir (str): Directory where the results should be saved.
-        mobie_export (bool): Flag indicating whether to export results to a MoBIE project.
 
     Returns:
         None
@@ -367,15 +315,45 @@ def main(fixed_path, fixed_key, moving_path, moving_key, output_dir, mobie_expor
         datefmt="%Y-%m-%d %H:%M:%S",
     )
 
-    run_prealignment(
-        fixed_path,
-        fixed_key,
-        moving_path,
-        moving_key,
-        output_dir,
-        mobie_export,
-        dataset_name="platy1_muscles_stardist",
+    logging.info(f"Reading fixed image")
+    fixed_img = read_volume(fixed_path, fixed_key)
+    logging.info(f"Fixed image shape: {fixed_img.shape}, dtype {fixed_img.dtype}")
+
+    logging.info(f"Reading moving image")
+    moving_img = read_volume(moving_path, moving_key)
+    logging.info(f"Moving image shape: {moving_img.shape}, dtype {moving_img.dtype}")
+
+    
+    fixed_prealigned, moving_prealigned, prealignment_transform = run_prealignment(
+        fixed_img,
+        moving_img,
+        output_dir
     )
+
+    logging.info("Save prealigned fixed image")
+    fixed_attributes = dict(get_attrs(fixed_path, fixed_key))
+    write_volume(
+        f=fixed_path,
+        arr=fixed_prealigned,
+        key=output_key,
+        attrs=fixed_attributes
+    )
+
+    logging.info("Save prealigned moving image")
+    moving_attributes = dict(get_attrs(moving_path, moving_key))
+    write_volume(
+        f=moving_path,
+        arr=moving_prealigned,
+        key=output_key,
+        attrs=moving_attributes
+    )
+
+    logging.info("Save prealignment tranform")
+
+    print(prealignment_transform)
+
+    write_transform_dict(prealignment_transform, output_transform_path)
+
 
 
 if __name__ == "__main__":

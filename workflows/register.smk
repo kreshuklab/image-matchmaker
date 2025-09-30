@@ -11,12 +11,15 @@ print(config["moving_image"])
 fixed_n5_path = f"{config['log_dir']}/fixed_image.n5"
 moving_n5_path = f"{config['log_dir']}/moving_image.n5"
 log_dir = config["log_dir"]
+final_transform = config["final_transform_path"]
 
 
 rule all:
     input:
         input_to_n5_fixed = fixed_n5_path,
         input_to_n5_moving = moving_n5_path,
+        svd = f"{fixed_n5_path}/svd_prealigned",
+        output_transform = f"{log_dir}/svd_prealignment/svd_prealignment_transform.json"
 
 """
 Convert whatever is the input image format (supporting only .tif at the moment) to the internal pipeline's format
@@ -26,10 +29,11 @@ rule input_to_n5:
         fixed_image_path = config["fixed_image"]["path"],
         moving_image_path = config["moving_image"]["path"]
     output:
-        f"{fixed_n5_path}/input/attributes.json",
-        f"{moving_n5_path}/input/attributes.json",
+        directory(f"{fixed_n5_path}/input/"),
+        directory(f"{moving_n5_path}/input/"),
         fixed_image_n5 = directory(fixed_n5_path),
         moving_image_n5 = directory(moving_n5_path),
+        
     params:
         output_n5_key = "input"
     log: f"{log_dir}/matchmaker.log"
@@ -41,3 +45,39 @@ rule input_to_n5:
         f"python matchmaker/raw_to_n5.py --input_path {{input.moving_image_path}} --output_path {{output.moving_image_n5}} --output_key {{params.output_n5_key}} --log_dir {log_dir};"
 
 
+"""
+Run pre-alignment with SVD
+"""
+rule SVD_prealignment:
+    input:
+        fixed_input_ds = f"{fixed_n5_path}/input",
+        moving_input_ds = f"{moving_n5_path}/input",
+        fixed_image_n5 = fixed_n5_path,
+        moving_image_n5 = moving_n5_path,
+    output:
+        directory(f"{fixed_n5_path}/svd_prealigned"),
+        directory(f"{moving_n5_path}/svd_prealigned"),
+        output_transform = f"{log_dir}/svd_prealignment/svd_prealignment_transform.json"
+    params:
+        input_n5_key = "input",
+        output_n5_key = "svd_prealigned"
+    log: f"{log_dir}/matchmaker.log"
+    conda: "matchmaker_env"
+    shell:
+        f"python matchmaker/prealignment.py --fixed_path {{input.fixed_image_n5}} --fixed_key {{params.input_n5_key}} --moving_path {{input.moving_image_n5}} --moving_key {{params.input_n5_key}} --output_transform_path {{output.output_transform}} --output_key {{params.output_n5_key}} --output_dir {log_dir}/svd_prealignment;"
+
+"""
+Combine transforms
+"""
+# rule SVD_prealignment_mobie:
+        # f"python matchmaker/mobie_add_segmentation.py fixed_prealigned ...;"
+        # f"python matchmaker/mobie_add_segmentation.py moving_prealigned ...;"
+
+
+
+"""
+Combine transforms to create one final transform
+"""
+# rule combine_transforms:
+# input:
+#     svd_trans = f"{log_dir}/svd_prealignment_transform.yaml",
