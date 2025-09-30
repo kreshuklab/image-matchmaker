@@ -2,6 +2,24 @@ import numpy as np
 from scipy.ndimage import affine_transform
 import transforms3d as tf3d
 from elf.wrapper.resized_volume import ResizedVolume
+import json
+
+
+def write_transform_dict(transform_dict, json_path):
+    for key, val in transform_dict.items():
+        val["matrix"] = val["matrix"].tolist()
+    with open(json_path, "w") as f:
+	    json.dump(transform_dict, f, indent=2)
+
+
+def read_transform_dict(json_path):
+    with open(json_path, "r") as f:
+        transform_dict = json.load(f)
+         
+    for key, val in transform_dict.items():
+        val["matrix"] = np.array(val["matrix"])
+
+    return transform_dict
 
 
 def downscale_seg(seg, factor):
@@ -91,7 +109,7 @@ def get_rotation_matrix(R):
     return M
 
 
-def get_transformation_matrix(img, gc, Vt, save_path=None):
+def get_transformation_matrix(img, gc, Vt):
     # 1. center image on origin
     center_to_origin = get_translation_matrix(gc)
     # 2. rotate image
@@ -104,8 +122,6 @@ def get_transformation_matrix(img, gc, Vt, save_path=None):
     # 5. combine all transforms: get transformation matrix
     T = center_to_origin @ rot @ center_to_new_shape
 
-    if save_path is not None:
-        np.savetxt(save_path, T)
 
     return T, new_shape
 
