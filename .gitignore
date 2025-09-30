@@ -175,6 +175,7 @@ cython_debug/
 
 # test results
 examples/data/test/
+data
 
 # huge data
 *.tif
