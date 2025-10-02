@@ -1,17 +1,10 @@
-import numpy as np
-import matplotlib.pyplot as plt
-import logging
-import os
-import click
 import sys
+import click
+import logging
 import tifffile as tif
-
-from matchmaker.data import create_point_cloud
-from matchmaker.mobie_export import export_to_mobie, update_default_view
-from matchmaker.transform_utils import get_transformation_matrix, rotate_img
-from matchmaker.n5_utils import write_volume
-from matchmaker.vis import plot_three_slices, plot_overlay
 from pathlib import Path
+
+from matchmaker.utils import (write_volume, plot_three_slices)
 
 
 @click.command()

@@ -1,19 +1,11 @@
-from pathlib import Path
-import numpy as np
-import argparse
 import os
-
-from platy_reg.n5_utils import read_volume, write_volume, get_attrs
-from platy_reg.vis import plot_three_slices
-
-from scipy.ndimage import affine_transform
-
-
-import logging
 import sys
-
 import mobie
+import logging
+import argparse
+from pathlib import Path
 
+from matchmaker.utils import (read_volume, get_attrs, plot_three_slices)
 
 
 def main():

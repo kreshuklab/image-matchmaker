@@ -1,7 +1,5 @@
 import numpy as np
-from matchmaker.vis import plot_three_slices, plot_overlay
-from matchmaker.transform_utils import rotate_img
-from matchmaker.n5_utils import read_volume
+from matchmaker.utils import (rotate_img, read_volume, plot_three_slices, plot_overlay)
 
 
 def main():

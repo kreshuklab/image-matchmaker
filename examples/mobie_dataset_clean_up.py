@@ -1,5 +1,6 @@
 import json
 
+
 # clean up dataset.json
 input_path = "./data/test/mobie_project/platy1_muscles_stardist/dataset.json"
 

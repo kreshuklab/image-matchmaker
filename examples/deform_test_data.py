@@ -1,15 +1,10 @@
+import os
 import numpy as np
 import tifffile as tif
 import transforms3d as tf3d
 
-from matchmaker.transform_utils import (
-    downscale_seg,
-    get_transformation_matrix,
-    rotate_img,
-    crop_to_bbox,
-)
-from matchmaker.vis import plot_three_slices, plot_overlay
-from matchmaker.n5_utils import write_volume
+from matchmaker.utils import (get_transformation_matrix, rotate_img, write_volume, 
+                                plot_three_slices, plot_overlay)
 
 
 def remove_instances(seg, prob=0.05):
@@ -31,12 +26,7 @@ def remove_instances(seg, prob=0.05):
 
 
 def main():
-    seg = tif.imread("data/platy1_muscles_stardist.tif")
-
-    # downsample image
-    factor = 4
-    seg = downscale_seg(seg, factor)
-    seg_fixed = crop_to_bbox(seg)
+    seg_fixed = tif.imread("data/platy1_muscles_stardist_fixed.tif")
     print("Cropped shape", seg_fixed.shape)
 
     # save downsampled, fixed image
@@ -49,21 +39,16 @@ def main():
         attrs=attributes,
     )
 
-    # save also as tiff
-    tif.imwrite("./data/platy1_muscles_stardist_fixed.tif", seg_fixed)
-
     # rotate image
     center = np.array(seg_fixed.shape) // 2
     rotation = tf3d.euler.euler2mat(
         *[np.deg2rad(155), np.deg2rad(30), np.deg2rad(65)], axes="szyx"
     )
 
-    T, new_shape = get_transformation_matrix(
-        seg_fixed, center, rotation, save_path="./data/transformation_matrix.txt"
-    )
+    T, new_shape = get_transformation_matrix(seg_fixed, center, rotation)
     seg_moving = rotate_img(seg_fixed, T, output_shape=new_shape)
 
-    # randomly remove instances
+    # randomly remove instsances
     probability = 0.05
     seg_moving = remove_instances(seg_moving, prob=probability)
 
@@ -81,6 +66,7 @@ def main():
     tif.imwrite("./data/platy1_muscles_stardist_moving.tif", seg_moving)
 
     # visualize
+    os.makedirs("./data/plots", exist_ok=True)
     plot_three_slices(seg_moving, save_path="./data/plots/seg_moving.png")
     plot_three_slices(seg_fixed, save_path="./data/plots/seg_fixed.png")
     plot_overlay(seg_fixed, seg_moving, save_path="./data/plots/seg_overlay.png")

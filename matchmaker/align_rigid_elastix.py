@@ -1,13 +1,13 @@
-import numpy as np
-from matchmaker.n5_utils import read_volume, write_volume, get_attrs
-from matchmaker.vis import plot_overlay
-import logging
+import os
 import sys
-from matchmaker import elastix_utils
-from matchmaker.mobie_export import export_to_mobie
 import itk
 import click
-import os
+import logging
+import numpy as np
+
+from matchmaker.utils import (read_volume, write_volume, get_attrs, plot_overlay, itk_scalar_img, 
+                                run_registration, itk_to_np_order, apply_transform_chanwise)
+from matchmaker.mobie_export import export_to_mobie
 
 
 def elastix_segm_rigid_alignment(
@@ -24,8 +24,8 @@ def elastix_segm_rigid_alignment(
     fixed_img_semantic_np = (fixed_img_np > 0).astype(np.float32)
     moving_img_semantic_np = (moving_img_np > 0).astype(np.float32)
 
-    fixed_img = elastix_utils.itk_scalar_img(fixed_img_semantic_np, fixed_resolution)
-    moving_img = elastix_utils.itk_scalar_img(moving_img_semantic_np, moving_resolution)
+    fixed_img = itk_scalar_img(fixed_img_semantic_np, fixed_resolution)
+    moving_img = itk_scalar_img(moving_img_semantic_np, moving_resolution)
 
     logging.info("Fixed image")
     logging.info(f"{fixed_img}")
@@ -36,7 +36,7 @@ def elastix_segm_rigid_alignment(
         "../ParameterMap_segm_rigid_registration_corr.txt"
     ]
     logging.info("Run rigid registration with elastix")
-    result_image, result_transform_parameters = elastix_utils.run_registration(
+    result_image, result_transform_parameters = run_registration(
         fixed_img,
         moving_img,
         parameter_map_paths,
@@ -46,15 +46,15 @@ def elastix_segm_rigid_alignment(
     )
 
     logging.info(f"Result image shape {result_image.shape}")
-    result_img_np = elastix_utils.itk_to_np_order(itk.GetArrayFromImage(result_image))
+    result_img_np = itk_to_np_order(itk.GetArrayFromImage(result_image))
     plot_overlay(
-        elastix_utils.itk_to_np_order(itk.GetArrayFromImage(fixed_img)),
+        itk_to_np_order(itk.GetArrayFromImage(fixed_img)),
         result_img_np,
         f"{output_dir}/plots/overlay_after_rigid_alignment.png",
     )
     # NOTE: difference between result_img_np before and after applying transform?
     logging.info("Apply transform to all channels")
-    result_img_np = elastix_utils.apply_transform_chanwise(
+    result_img_np = apply_transform_chanwise(
         result_transform_parameters, moving_img_np, moving_resolution
     )
     logging.info(f"Result image shape {result_img_np.shape}")

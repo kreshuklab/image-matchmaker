@@ -2,7 +2,7 @@ import os
 import json
 import logging
 import mobie
-from matchmaker.n5_utils import get_attrs
+from matchmaker.utils import get_attrs
 
 
 def update_default_view(dataset_json_path, new_segmentation_name):

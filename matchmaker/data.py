@@ -1,6 +1,6 @@
-from skimage.measure import regionprops_table
-import pandas as pd
 import numpy as np
+import pandas as pd
+from skimage.measure import regionprops_table
 
 
 def create_point_cloud(segm):
