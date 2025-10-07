@@ -15,9 +15,6 @@ from matchmaker.vis import plot_three_slices, plot_overlay
 from matchmaker.transform_utils import write_transform_dict
 
 
-
-
-
 def get_SVD_transform(img, save_path=None):
     """Convert image to point cloud by thresholding, then run SVD on resulting point cloud.
 
@@ -191,7 +188,6 @@ def run_prealignment(
 
     logging.info("Start prealignment")
     logging.info("Start prealignment of fixed image ...")
-    
 
     plot_three_slices(
         fixed_img,
@@ -201,7 +197,6 @@ def run_prealignment(
     fixed_prealigned, T_fixed = prealign_sample(fixed_img)
 
     logging.info("Start prealignment of moving image ...")
-    
 
     plot_three_slices(
         moving_img,
@@ -256,8 +251,16 @@ def run_prealignment(
 
     logging.info("Prealignment done.")
 
-    prealignment_transform = {"fixed_prealignment": {"matrix": T_fixed, "output_shape": fixed_prealigned.shape},
-                               "moving_prealignment": {"matrix": T_moving, "output_shape": moving_prealigned.shape}}
+    prealignment_transform = {
+        "fixed_prealignment": {
+            "matrix": T_fixed,
+            "output_shape": fixed_prealigned.shape,
+        },
+        "moving_prealignment": {
+            "matrix": T_moving,
+            "output_shape": moving_prealigned.shape,
+        },
+    }
 
     plot_three_slices(
         fixed_prealigned,
@@ -276,7 +279,6 @@ def run_prealignment(
     )
 
     return fixed_prealigned, moving_prealigned, prealignment_transform
-
 
 
 @click.command()
@@ -315,15 +317,14 @@ def main(fixed_path, fixed_key, moving_path, moving_key, output_key, output_tran
         datefmt="%Y-%m-%d %H:%M:%S",
     )
 
-    logging.info(f"Reading fixed image")
+    logging.info("Reading fixed image")
     fixed_img = read_volume(fixed_path, fixed_key)
     logging.info(f"Fixed image shape: {fixed_img.shape}, dtype {fixed_img.dtype}")
 
-    logging.info(f"Reading moving image")
+    logging.info("Reading moving image")
     moving_img = read_volume(moving_path, moving_key)
     logging.info(f"Moving image shape: {moving_img.shape}, dtype {moving_img.dtype}")
 
-    
     fixed_prealigned, moving_prealigned, prealignment_transform = run_prealignment(
         fixed_img,
         moving_img,
@@ -353,7 +354,6 @@ def main(fixed_path, fixed_key, moving_path, moving_key, output_key, output_tran
     print(prealignment_transform)
 
     write_transform_dict(prealignment_transform, output_transform_path)
-
 
 
 if __name__ == "__main__":

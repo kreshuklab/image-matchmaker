@@ -152,7 +152,7 @@ def run_rigid_alignment(
 @click.option("-mi", "--moving_path", required=True, help="Moving input .n5 file")
 @click.option("-mk", "--moving_key", required=True, help="Moving input key")
 @click.option("-o", "--output_dir", required=True, help="Output directory")
-@click.option("-m", "--mobie_export", required=False, is_flag=True, help="MoBIE export")
+@click.option("-m", "--mobie_export", required=False, is_flag=True, help="MoBIE export")  # TODO: unplug MoBIE export
 def main(fixed_path, fixed_key, moving_path, moving_key, output_dir, mobie_export):
 
     logging.basicConfig(
