@@ -1,6 +1,7 @@
 import os
 import logging
 import click
+import sys
 import mobie
 from matchmaker.n5_utils import get_attrs
 
@@ -49,19 +50,29 @@ def export_to_mobie(input_path, input_key, output_dir, dataset_name, segmentatio
 @click.option("-d", "--dataset_name", required=True, help="Name of the MoBIE dataset")
 @click.option("-o", "--output_dir", required=True, help="Output directory")
 def main(input_path, input_key, input_type, dataset_name, output_dir):
-    # TODO: add logging
+
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s [%(levelname)s] %(message)s",
+        handlers=[
+            logging.FileHandler(f"{output_dir}/mobie_export.log", mode="w"),
+            logging.StreamHandler(sys.stdout),
+        ],
+        datefmt="%Y-%m-%d %H:%M:%S",
+    )
 
     file_name = os.path.splitext(os.path.basename(input_path))[0]
-    # NOTE: maybe add specific segmentation name?
+    logging.info(f"Start uploading {file_name} to MoBIE ...")
+
     export_to_mobie(
         input_path,
         input_key,
         output_dir,
         dataset_name=dataset_name,
-        segmentation_name=f"{file_name}",
+        segmentation_name=f"{file_name}_{input_key}",
         menu_name=input_type,
     )
-    print(f"MoBIE project created/updated at {output_dir}/mobie_project")
+    logging.info(f"MoBIE project created/updated at {output_dir}/mobie_project")
 
 
 if __name__ == "__main__":
