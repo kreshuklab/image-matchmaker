@@ -7,7 +7,7 @@ import sys
 import tifffile as tif
 
 from matchmaker.data import create_point_cloud
-from matchmaker.mobie_export import export_to_mobie, update_default_view
+from matchmaker.mobie_export import export_to_mobie
 from matchmaker.transform_utils import get_transformation_matrix, rotate_img
 from matchmaker.n5_utils import write_volume
 from matchmaker.vis import plot_three_slices, plot_overlay
