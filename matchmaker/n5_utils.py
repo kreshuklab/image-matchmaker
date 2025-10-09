@@ -9,7 +9,7 @@ def print_key_tree(f: z5py.File):
 
 
 def read_volume(
-    f: z5py.File, key: str, roi: np.lib.index_tricks.IndexExpression = np.s_[:]
+    f: z5py.File, key: str, roi: any = np.s_[:]
 ):
     if isinstance(f, (str, PurePath)):
         f = z5py.File(f, "r")
