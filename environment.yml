@@ -34,6 +34,6 @@ dependencies:
         - pyyaml
         - itk
         - snakemake
-        - -e . --use-pep517
+        - -e .
     
 
