@@ -3,7 +3,7 @@ import logging
 import click
 import sys
 import mobie
-from matchmaker.n5_utils import get_attrs
+from matchmaker.utils import get_attrs
 
 
 def export_to_mobie(input_path, input_key, output_dir, dataset_name, segmentation_name, menu_name):

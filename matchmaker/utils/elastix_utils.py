@@ -1,7 +1,7 @@
-from pathlib import Path
-import numpy as np
-import logging
 import itk
+import logging
+import numpy as np
+from pathlib import Path
 
 
 def initial_alignment(ventral_img_np, dorsal_img_np):

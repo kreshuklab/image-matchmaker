@@ -1,6 +1,6 @@
 import z5py
-from pathlib import PurePath
 import numpy as np
+from pathlib import PurePath
 
 
 def print_key_tree(f: z5py.File):
