@@ -63,13 +63,11 @@ def elastix_segm_rigid_alignment(
 
 
 def run_rigid_alignment(
-    fixed_path,
-    fixed_key,
-    moving_path,
-    moving_key,
-    output_dir,
-    mobie_export,
-    dataset_name,
+    fixed_img,
+    fixed_resolution,
+    moving_img,
+    moving_resolution,
+    output_dir
 ):
     """
     Perform rigid alignment of a moving image to a fixed image using Elastix.
@@ -85,8 +83,6 @@ def run_rigid_alignment(
         moving_path (str): Path to the moving image .n5 file.
         moving_key (str): Key to the moving image data in the .n5 file.
         output_dir (str): Directory where the aligned image should be saved.
-        mobie_export (bool): Flag indicating whether to export to a MoBIE project.
-        dataset_name (str): Name of the dataset for the MoBIE export.
 
     Returns:
         np.ndarray: The rigidly aligned moving image.
@@ -97,63 +93,31 @@ def run_rigid_alignment(
 
     logging.info("Start rigid alignment")
 
-    logging.info("Read image file")
-    fixed_img_np = read_volume(fixed_path, fixed_key)
+    fixed_img_np = fixed_img.astype(np.float32)
+    moving_img_np = moving_img.astype(np.float32)
 
-    if fixed_path == moving_path:
-        logging.info("Same n5 for fixed and moving image, not doing registration")
-        moving_img_np = fixed_img_np
+    logging.info("Compute rigid alignment of moving image...")
 
-    else:
-        moving_img_np = read_volume(moving_path, moving_key)
-
-        fixed_img_np = fixed_img_np.astype(np.float32)
-        moving_img_np = moving_img_np.astype(np.float32)
-
-        logging.info("Compute rigid alignment ...")
-
-        moving_img_np = elastix_segm_rigid_alignment(
-            fixed_img_np=fixed_img_np,
-            fixed_resolution=get_attrs(fixed_path, fixed_key)["resolution"],
-            moving_img_np=moving_img_np,
-            moving_resolution=get_attrs(moving_path, moving_key)["resolution"],
-            output_dir=output_dir,
-        )
+    moving_img_np = elastix_segm_rigid_alignment(
+        fixed_img_np=fixed_img_np,
+        fixed_resolution=fixed_resolution,
+        moving_img_np=moving_img_np,
+        moving_resolution=moving_resolution,
+        output_dir=output_dir
+    )
     moving_img_np = moving_img_np.astype(np.uint16)
 
-    logging.info("Save rigid aligned moving image")
-    attributes = dict(get_attrs(moving_path, moving_key))
-    file_name = os.path.splitext(os.path.basename(moving_path))[0]
-    file_name = file_name.removesuffix("_prealigned")
-
-    write_volume(
-        f=f"{output_dir}/{file_name}_rigid_aligned.n5",
-        arr=moving_img_np,
-        key=moving_key,
-        attrs=attributes,
-    )
-
-    # export rigid alignment to mobie
-    if mobie_export:
-        logging.info("Export rigid aligned moving image to MoBIE")
-        export_to_mobie(
-            input_path=f"{output_dir}/{file_name}_rigid_aligned.n5",
-            input_key=moving_key,
-            output_dir=output_dir,
-            dataset_name=dataset_name,
-            segmentation_name=f"{file_name}_rigid_aligned",
-            menu_name="moving"
-        )
+    return moving_img_np
 
 
 @click.command()
-@click.option("-fi", "--fixed_path", required=True, help="Fixed input .n5 file")
+@click.option("-fi", "--fixed_path", required=True, help="Fixed prealigned input .n5 file")
 @click.option("-fk", "--fixed_key", required=True, help="Fixed input key")
-@click.option("-mi", "--moving_path", required=True, help="Moving input .n5 file")
+@click.option("-mi", "--moving_path", required=True, help="Moving prealigned input .n5 file")
 @click.option("-mk", "--moving_key", required=True, help="Moving input key")
 @click.option("-o", "--output_dir", required=True, help="Output directory")
-@click.option("-m", "--mobie_export", required=False, is_flag=True, help="MoBIE export")
-def main(fixed_path, fixed_key, moving_path, moving_key, output_dir, mobie_export):
+@click.option("-ok", "--output_key", required=True, help="Output key (same in both n5)")
+def main(fixed_path, fixed_key, moving_path, moving_key, output_dir, output_key):
 
     logging.basicConfig(
         level=logging.INFO,
@@ -165,14 +129,31 @@ def main(fixed_path, fixed_key, moving_path, moving_key, output_dir, mobie_expor
         datefmt="%Y-%m-%d %H:%M:%S",
     )
 
-    run_rigid_alignment(
-        fixed_path,
-        fixed_key,
-        moving_path,
-        moving_key,
-        output_dir,
-        mobie_export,
-        dataset_name="platy1_muscles_stardist",
+    logging.info("Reading fixed image")
+    fixed_resolution = fixed_img = read_volume(fixed_path, fixed_key)
+    get_attrs(fixed_path, fixed_key)["resolution"]
+    logging.info(f"Fixed image shape: {fixed_img.shape}, dtype {fixed_img.dtype}")
+
+    logging.info("Reading moving image")
+    moving_img = read_volume(moving_path, moving_key)
+    moving_resolution = get_attrs(moving_path, moving_key)["resolution"]
+    logging.info(f"Moving image shape: {moving_img.shape}, dtype {moving_img.dtype}")
+
+    moving_rigid_aligned = run_rigid_alignment(
+        fixed_img,
+        fixed_resolution,
+        moving_img,
+        moving_resolution,
+        output_dir
+    )
+
+    logging.info("Save rigid aligned moving image")
+    moving_attributes = dict(get_attrs(moving_path, moving_key))
+    write_volume(
+        f=moving_path,
+        arr=moving_rigid_aligned,
+        key=output_key,
+        attrs=moving_attributes
     )
 
 
