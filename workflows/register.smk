@@ -1,7 +1,7 @@
 import pandas as pd
 
 
-workdir: "/g/kreshuk/buglakova/projects/matchmaker/"
+workdir: "./"
 configfile: "examples/register_config_test.yaml"
 
 
