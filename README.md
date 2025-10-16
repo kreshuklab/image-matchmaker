@@ -12,7 +12,7 @@ conda env create -f environment.yml
 
 - Running the full pipeline using workflow manager and a config file to set up registration parameters
 ```
-snakemake workflows/register.smk --configfile registration_config.yml --cores 16
+snakemake -s workflows/register.smk --cores 16
 ```
 - Running separate scripts
 ```
