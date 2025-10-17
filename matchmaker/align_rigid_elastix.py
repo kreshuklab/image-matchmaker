@@ -33,7 +33,7 @@ def elastix_segm_rigid_alignment(
     logging.info(f"{moving_img}")
 
     parameter_map_paths = [
-        "../ParameterMap_segm_rigid_registration_corr.txt"
+        "./ParameterMap_segm_rigid_registration_corr.txt"
     ]
     logging.info("Run rigid registration with elastix")
     result_image, result_transform_parameters = run_registration(
@@ -130,8 +130,8 @@ def main(fixed_path, fixed_key, moving_path, moving_key, output_dir, output_key)
     )
 
     logging.info("Reading fixed image")
-    fixed_resolution = fixed_img = read_volume(fixed_path, fixed_key)
-    get_attrs(fixed_path, fixed_key)["resolution"]
+    fixed_img = read_volume(fixed_path, fixed_key)
+    fixed_resolution = get_attrs(fixed_path, fixed_key)["resolution"]
     logging.info(f"Fixed image shape: {fixed_img.shape}, dtype {fixed_img.dtype}")
 
     logging.info("Reading moving image")
