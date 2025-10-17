@@ -118,7 +118,7 @@ def run_rigid_alignment(
 @click.option("-o", "--output_dir", required=True, help="Output directory")
 @click.option("-ok", "--output_key", required=True, help="Output key (same in both n5)")
 def main(fixed_path, fixed_key, moving_path, moving_key, output_dir, output_key):
-
+    os.makedirs(output_dir, exist_ok=True)
     logging.basicConfig(
         level=logging.INFO,
         format="%(asctime)s [%(levelname)s] %(message)s",
