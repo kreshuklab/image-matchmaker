@@ -24,6 +24,8 @@ dependencies:
 
     - mobie_utils
 
+    - pytest
+
     - pip
     - pip:
         - itk-elastix
