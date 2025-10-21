@@ -1,14 +1,21 @@
 fixed_image:
   path: "examples/data/platy1_muscles_stardist_fixed.tif"
+  output_name: "fixed_image"
   x_res: 1
   y_res: 1
   z_res: 1
 
 moving_image:
   path: "examples/data/platy1_muscles_stardist_moving.tif"
+  output_name: "moving_image"
   x_res: 1
   y_res: 1
   z_res: 1
 
 log_dir: "data/test_registration"
 final_transform_path: "data/test_registration/final_transform.json"
+
+keys:
+  n5: "input"
+  prealignment: "svd_prealignment"
+  rigid_alignment: "rigid_alignment"
