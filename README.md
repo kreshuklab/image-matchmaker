@@ -8,6 +8,14 @@ Tool for segmentation-based deformable registration and object matching
 conda env create -f environment.yml
 ```
 
+### Run tests
+
+After activating the environment, you can run the tests with:
+
+```bash
+pytest -v tests/test_raw_to_n5.py tests/test_prealignment.py tests/test_rigid_alignment.py
+```
+
 ### 3 ways of interaction with the library
 
 - Running the full pipeline using workflow manager and a config file to set up registration parameters
