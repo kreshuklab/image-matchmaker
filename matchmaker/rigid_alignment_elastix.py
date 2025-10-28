@@ -117,7 +117,8 @@ def run_rigid_alignment(
 @click.option("-mk", "--moving_key", required=True, help="Moving input key")
 @click.option("-o", "--output_dir", required=True, help="Output directory")
 @click.option("-ok", "--output_key", required=True, help="Output key (same in both n5)")
-def main(fixed_path, fixed_key, moving_path, moving_key, output_dir, output_key):
+@click.option("-trans", "--output_transform_path", required=True, help="Path to write the final transform")
+def main(fixed_path, fixed_key, moving_path, moving_key, output_dir, output_key, output_transform_path):
 
     logging.basicConfig(
         level=logging.INFO,
@@ -160,5 +161,4 @@ def main(fixed_path, fixed_key, moving_path, moving_key, output_dir, output_key)
 if __name__ == "__main__":
     main()
 
-# python align_rigid_elastix.py -fi ../examples/data/test/platy1_muscles_stardist_fixed_prealigned.n5 -fk seg
-# -mi ../examples/data/test/platy1_muscles_stardist_moving_prealigned.n5 -mk seg -o ../examples/data/test -m
+# python rigid_alignment_elastix.py -fi ../examples/data/test/platy1_muscles_stardist_fixed_prealigned.n5 -fk seg -mi ../examples/data/test/platy1_muscles_stardist_moving_prealigned.n5 -mk seg -o ../examples/data/test -ok rigid -trans ../examples/data/test/rigid_transform.json
