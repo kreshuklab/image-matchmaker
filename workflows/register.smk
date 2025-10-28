@@ -21,7 +21,7 @@ rule all:
         svd = f"{fixed_n5_path}/svd_prealigned",
         svd_transform = f"{log_dir}/svd_prealignment/svd_prealignment_transform.json",  # NOTE: or only save final transform?
         rigid_aligned = f"{moving_n5_path}/rigid_aligned",
-        rigid_transform = f"{log_dir}/rigid_alignment/rigid_alignment_transform.json"
+        rigid_transform = f"{log_dir}/rigid_alignment/TransformParameters.0.txt"
 
 """
 Convert whatever is the input image format (supporting only .tif at the moment) to the internal pipeline's format
@@ -66,7 +66,7 @@ rule SVD_prealignment:
     log: f"{log_dir}/matchmaker.log"
     conda: "matchmaker_env"
     shell:
-        f"python matchmaker/prealignment.py --fixed_path {{input.fixed_image_n5}} --fixed_key {{params.input_n5_key}} --moving_path {{input.moving_image_n5}} --moving_key {{params.input_n5_key}} --output_transform_path {{output.output_transform}} --output_key {{params.output_n5_key}} --output_dir {log_dir}/svd_prealignment;"
+        f"python matchmaker/prealignment.py --fixed_path {{input.fixed_image_n5}} --fixed_key {{params.input_n5_key}} --moving_path {{input.moving_image_n5}} --moving_key {{params.input_n5_key}} --output_dir {log_dir}/svd_prealignment --output_key {{params.output_n5_key}} --output_transform_path {{output.output_transform}};"
 
 """
 Run rigid alignment with elastix
@@ -79,14 +79,15 @@ rule rigid_alignment:
         moving_image_n5 = moving_n5_path,
     output:
         directory(f"{moving_n5_path}/rigid_aligned"),
-        output_transform = f"{log_dir}/rigid_alignment/rigid_alignment_transform.json"
+        # output_transform = f"{log_dir}/rigid_alignment/rigid_alignment_transform.json"
+        output_transform = f"{log_dir}/rigid_alignment/TransformParameters.0.txt"
     params:
         input_n5_key = "svd_prealigned",
         output_n5_key = "rigid_aligned"
     log: f"{log_dir}/matchmaker.log"
     conda: "matchmaker_env"
     shell:
-        f"python matchmaker/rigid_alignment_elastix.py --fixed_path {{input.fixed_image_n5}} --fixed_key {{params.input_n5_key}} --moving_path {{input.moving_image_n5}} --moving_key {{params.input_n5_key}} --output_transform_path {{output.output_transform}} --output_key {{params.output_n5_key}} --output_dir {log_dir}/rigid_alignment;"
+        f"python matchmaker/rigid_alignment_elastix.py --fixed_path {{input.fixed_image_n5}} --fixed_key {{params.input_n5_key}} --moving_path {{input.moving_image_n5}} --moving_key {{params.input_n5_key}} --output_dir {log_dir}/rigid_alignment --output_key {{params.output_n5_key}} --output_transform_path {{output.output_transform}};"
 
 """
 Combine transforms
