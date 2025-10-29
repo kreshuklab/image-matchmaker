@@ -19,6 +19,11 @@ raw_n5_key = "input"
 prealignment_n5_key = "svd_prealignment"
 rigid_alignment_n5_key = "rigid_alignment"
 
+# define global MoBIE variables
+fixed_type = "fixed"
+moving_type = "moving"
+dataset_name = config["mobie_dataset_name"]
+
 
 rule all:
     input:
@@ -27,7 +32,8 @@ rule all:
         svd_prealignment = f"{fixed_n5_path}/{prealignment_n5_key}",
         svd_transform = f"{log_dir}/{prealignment_n5_key}/{prealignment_n5_key}_transform.json",
         rigid_alignment = f"{moving_n5_path}/{rigid_alignment_n5_key}",
-        rigid_transform = f"{log_dir}/{rigid_alignment_n5_key}/TransformParameters.0.txt"
+        rigid_transform = f"{log_dir}/{rigid_alignment_n5_key}/TransformParameters.0.txt",
+        mobie_output = directory(f"{log_dir}/mobie_project")
 
 """
 Convert whatever is the input image format (supporting only .tif at the moment) to the internal pipeline's format
@@ -61,7 +67,7 @@ rule SVD_prealignment:
         fixed_input_ds = f"{fixed_n5_path}/{raw_n5_key}",
         moving_input_ds = f"{moving_n5_path}/{raw_n5_key}",
         fixed_image_n5 = fixed_n5_path,
-        moving_image_n5 = moving_n5_path,
+        moving_image_n5 = moving_n5_path
     output:
         directory(f"{fixed_n5_path}/{prealignment_n5_key}"),
         directory(f"{moving_n5_path}/{prealignment_n5_key}"),
@@ -83,7 +89,7 @@ rule rigid_alignment:
         fixed_input_ds = f"{fixed_n5_path}/{prealignment_n5_key}",
         moving_input_ds = f"{moving_n5_path}/{prealignment_n5_key}",
         fixed_image_n5 = fixed_n5_path,
-        moving_image_n5 = moving_n5_path,
+        moving_image_n5 = moving_n5_path
     output:
         directory(f"{moving_n5_path}/{rigid_alignment_n5_key}"),
         output_transform = f"{log_dir}/{rigid_alignment_n5_key}/TransformParameters.0.txt"
@@ -94,6 +100,29 @@ rule rigid_alignment:
     conda: "matchmaker_env"
     shell:
         f"python matchmaker/rigid_alignment_elastix.py --fixed_path {{input.fixed_image_n5}} --fixed_key {{params.input_key}} --moving_path {{input.moving_image_n5}} --moving_key {{params.input_key}} --output_dir {log_dir}/{{params.output_key}} --output_key {{params.output_key}};"
+
+
+"""
+Create mobie project
+"""
+rule create_mobie_project:
+    input:
+        fixed_input_ds = f"{fixed_n5_path}/{raw_n5_key}",
+        moving_input_ds = f"{moving_n5_path}/{raw_n5_key}",
+        fixed_image_n5 = fixed_n5_path,
+        moving_image_n5 = moving_n5_path
+    output:
+        directory(f"{log_dir}/mobie_project")
+    params:
+        input_key = raw_n5_key
+    log: f"{log_dir}/matchmaker.log"
+    conda: "matchmaker_env"
+    shell:
+        f"python matchmaker/mobie_export.py --input_path {{input.fixed_image_n5}} --input_key {{params.input_key}} --input_type {fixed_type} --dataset_name {dataset_name} --output_dir {log_dir};"
+        f"python matchmaker/mobie_export.py --input_path {{input.moving_image_n5}} --input_key {{params.input_key}} --input_type {moving_type} --dataset_name {dataset_name} --output_dir {log_dir};"
+        # TODO: remove temporary mobie files
+
+
 
 """
 Combine transforms
