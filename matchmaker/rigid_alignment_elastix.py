@@ -4,10 +4,18 @@ import itk
 import click
 import logging
 import numpy as np
+from pathlib import Path
 
-from matchmaker.utils import (read_volume, write_volume, get_attrs, plot_overlay, itk_scalar_img, 
-                                run_registration, itk_to_np_order, apply_transform_chanwise)
-from matchmaker.mobie_export import export_to_mobie
+from matchmaker.utils import (
+    read_volume,
+    write_volume,
+    get_attrs,
+    plot_overlay,
+    itk_scalar_img,
+    run_registration,
+    itk_to_np_order,
+    apply_transform_chanwise
+)
 
 
 def elastix_segm_rigid_alignment(
@@ -32,10 +40,11 @@ def elastix_segm_rigid_alignment(
     logging.info("Moving image")
     logging.info(f"{moving_img}")
 
+    SCRIPT_DIR = Path(__file__).resolve().parent
     parameter_map_paths = [
-        "./ParameterMap_segm_rigid_registration_corr.txt"  # FIXME: how to best state that path? add to snakemake somehow? now not working if script is run directly
+        f"{SCRIPT_DIR}/ParameterMap_segm_rigid_registration_corr.txt"
     ]
-    print(parameter_map_paths)
+
     logging.info("Run rigid registration with elastix")
     result_image, result_transform_parameters = run_registration(
         fixed_img,
@@ -53,7 +62,7 @@ def elastix_segm_rigid_alignment(
         result_img_np,
         f"{output_dir}/plots/overlay_after_rigid_alignment.png",
     )
-    # NOTE: difference between result_img_np before and after applying transform?
+
     logging.info("Apply transform to all channels")
     result_img_np = apply_transform_chanwise(
         result_transform_parameters, moving_img_np, moving_resolution
@@ -118,8 +127,7 @@ def run_rigid_alignment(
 @click.option("-mk", "--moving_key", required=True, help="Moving input key")
 @click.option("-o", "--output_dir", required=True, help="Output directory")
 @click.option("-ok", "--output_key", required=True, help="Output key (same in both n5)")
-@click.option("-trans", "--output_transform_path", required=True, help="Path to write the final transform")
-def main(fixed_path, fixed_key, moving_path, moving_key, output_dir, output_key, output_transform_path):
+def main(fixed_path, fixed_key, moving_path, moving_key, output_dir, output_key):
 
     logging.basicConfig(
         level=logging.INFO,

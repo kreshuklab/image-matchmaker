@@ -13,15 +13,20 @@ moving_n5_path = f"{config['log_dir']}/moving_image.n5"
 log_dir = config["log_dir"]
 final_transform = config["final_transform_path"]
 
+# define global variables
+input_n5_key = "input"
+prealignment_n5_key = "svd_prealigned"
+rigid_alignment_n5_key = "rigid_aligned"
+
 
 rule all:
     input:
         input_to_n5_fixed = fixed_n5_path,
         input_to_n5_moving = moving_n5_path,
         svd = f"{fixed_n5_path}/svd_prealigned",
-        svd_transform = f"{log_dir}/svd_prealignment/svd_prealignment_transform.json",  # NOTE: or only save final transform?
+        svd_transform = f"{log_dir}/svd_prealignment/svd_prealignment_transform.json",  # NOTE: or only save final transform? no
         rigid_aligned = f"{moving_n5_path}/rigid_aligned",
-        rigid_transform = f"{log_dir}/rigid_alignment/TransformParameters.0.txt"
+        rigid_transform = f"{log_dir}/rigid_alignment/TransformParameters.0.txt"  # leave it like this for now
 
 """
 Convert whatever is the input image format (supporting only .tif at the moment) to the internal pipeline's format
@@ -87,7 +92,7 @@ rule rigid_alignment:
     log: f"{log_dir}/matchmaker.log"
     conda: "matchmaker_env"
     shell:
-        f"python matchmaker/rigid_alignment_elastix.py --fixed_path {{input.fixed_image_n5}} --fixed_key {{params.input_n5_key}} --moving_path {{input.moving_image_n5}} --moving_key {{params.input_n5_key}} --output_dir {log_dir}/rigid_alignment --output_key {{params.output_n5_key}} --output_transform_path {{output.output_transform}};"
+        f"python matchmaker/rigid_alignment_elastix.py --fixed_path {{input.fixed_image_n5}} --fixed_key {{params.input_n5_key}} --moving_path {{input.moving_image_n5}} --moving_key {{params.input_n5_key}} --output_dir {log_dir}/rigid_alignment --output_key {{params.output_n5_key}};"
 
 """
 Combine transforms
