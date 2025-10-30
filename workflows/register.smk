@@ -9,8 +9,10 @@ configfile: "examples/register_config_test.yaml"
 print(config["fixed_image"])
 print(config["moving_image"])
 
-fixed_n5_path = f"{config['log_dir']}/fixed_image.n5"
-moving_n5_path = f"{config['log_dir']}/moving_image.n5"
+fixed_name = "fixed_image"
+fixed_n5_path = f"{config['log_dir']}/{fixed_name}.n5"
+moving_name = "moving_image"
+moving_n5_path = f"{config['log_dir']}/{moving_name}.n5"
 log_dir = config["log_dir"]
 final_transform = config["final_transform_path"]
 
@@ -33,7 +35,12 @@ rule all:
         svd_transform = f"{log_dir}/{prealignment_n5_key}/{prealignment_n5_key}_transform.json",
         rigid_alignment = f"{moving_n5_path}/{rigid_alignment_n5_key}",
         rigid_transform = f"{log_dir}/{rigid_alignment_n5_key}/TransformParameters.0.txt",
-        mobie_output = directory(f"{log_dir}/mobie_project")
+        mobie_fixed_input_check = f"{log_dir}/mobie_project/{dataset_name}/images/ome-zarr/{fixed_name}_{raw_n5_key}.done",
+        mobie_moving_input_check = f"{log_dir}/mobie_project/{dataset_name}/images/ome-zarr/{moving_name}_{raw_n5_key}.done",
+        mobie_fixed_prealign_check = f"{log_dir}/mobie_project/{dataset_name}/images/ome-zarr/{fixed_name}_{prealignment_n5_key}.done",
+        mobie_moving_prealign_check = f"{log_dir}/mobie_project/{dataset_name}/images/ome-zarr/{moving_name}_{prealignment_n5_key}.done",
+        mobie_moving_rigid_align_check = f"{log_dir}/mobie_project/{dataset_name}/images/ome-zarr/{moving_name}_{rigid_alignment_n5_key}.done"
+
 
 """
 Convert whatever is the input image format (supporting only .tif at the moment) to the internal pipeline's format
@@ -103,7 +110,7 @@ rule rigid_alignment:
 
 
 """
-Create mobie project
+Create mobie project with raw data
 """
 rule create_mobie_project:
     input:
@@ -112,15 +119,63 @@ rule create_mobie_project:
         fixed_image_n5 = fixed_n5_path,
         moving_image_n5 = moving_n5_path
     output:
-        directory(f"{log_dir}/mobie_project")
+        fixed_check = f"{log_dir}/mobie_project/{dataset_name}/images/ome-zarr/{fixed_name}_{raw_n5_key}.done",
+        moving_check = f"{log_dir}/mobie_project/{dataset_name}/images/ome-zarr/{moving_name}_{raw_n5_key}.done"
     params:
         input_key = raw_n5_key
     log: f"{log_dir}/matchmaker.log"
     conda: "matchmaker_env"
     shell:
         f"python matchmaker/mobie_export.py --input_path {{input.fixed_image_n5}} --input_key {{params.input_key}} --input_type {fixed_type} --dataset_name {dataset_name} --output_dir {log_dir};"
+        f"touch {{output.fixed_check}};"
+        f"rm -rf ./tmp_{dataset_name}_{fixed_name}_{{params.input_key}};"
         f"python matchmaker/mobie_export.py --input_path {{input.moving_image_n5}} --input_key {{params.input_key}} --input_type {moving_type} --dataset_name {dataset_name} --output_dir {log_dir};"
-        # TODO: remove temporary mobie files
+        f"touch {{output.moving_check}};"
+        f"rm -rf ./tmp_{dataset_name}_{moving_name}_{{params.input_key}};"
+
+
+"""
+Add prealignment to mobie project
+"""
+rule add_prealignment_to_mobie:
+    input:
+        fixed_input_ds = f"{fixed_n5_path}/{prealignment_n5_key}",
+        moving_input_ds = f"{moving_n5_path}/{prealignment_n5_key}",
+        fixed_image_n5 = fixed_n5_path,
+        moving_image_n5 = moving_n5_path
+    output:
+        fixed_check = f"{log_dir}/mobie_project/{dataset_name}/images/ome-zarr/{fixed_name}_{prealignment_n5_key}.done",
+        moving_check = f"{log_dir}/mobie_project/{dataset_name}/images/ome-zarr/{moving_name}_{prealignment_n5_key}.done"
+    params:
+        input_key = prealignment_n5_key
+    log: f"{log_dir}/matchmaker.log"
+    conda: "matchmaker_env"
+    shell:
+        f"python matchmaker/mobie_export.py --input_path {{input.fixed_image_n5}} --input_key {{params.input_key}} --input_type {fixed_type} --dataset_name {dataset_name} --output_dir {log_dir};"
+        f"touch {{output.fixed_check}};"
+        f"rm -rf ./tmp_{dataset_name}_{fixed_name}_{{params.input_key}};"
+        f"python matchmaker/mobie_export.py --input_path {{input.moving_image_n5}} --input_key {{params.input_key}} --input_type {moving_type} --dataset_name {dataset_name} --output_dir {log_dir};"
+        f"touch {{output.moving_check}};"
+        f"rm -rf ./tmp_{dataset_name}_{moving_name}_{{params.input_key}};"
+
+
+"""
+Add rigid alignment to mobie project
+"""
+rule add_rigid_alignment_to_mobie:
+    input:
+        moving_input_ds = f"{moving_n5_path}/{rigid_alignment_n5_key}",
+        moving_image_n5 = moving_n5_path
+    output:
+        moving_check = f"{log_dir}/mobie_project/{dataset_name}/images/ome-zarr/{moving_name}_{rigid_alignment_n5_key}.done"
+    params:
+        input_key = rigid_alignment_n5_key
+    log: f"{log_dir}/matchmaker.log"
+    conda: "matchmaker_env"
+    shell:
+        f"python matchmaker/mobie_export.py --input_path {{input.moving_image_n5}} --input_key {{params.input_key}} --input_type {moving_type} --dataset_name {dataset_name} --output_dir {log_dir};"
+        f"touch {{output.moving_check}};"
+        f"rm -rf ./tmp_{dataset_name}_{moving_name}_{{params.input_key}};"
 
 
 
