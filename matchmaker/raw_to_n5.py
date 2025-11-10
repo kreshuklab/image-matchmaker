@@ -16,6 +16,9 @@ from matchmaker.utils import (write_volume, plot_three_slices)
 @click.option("--y_res", required=False, default=1, help="The image is interpreted as (C)ZYX")
 @click.option("--z_res", required=False, default=1, help="The image is interpreted as (C)ZYX")
 def main(input_path, output_path, output_key, log_dir, x_res, y_res, z_res):
+    log_dir = Path(log_dir)
+    log_dir.mkdir(parents=True, exist_ok=True)
+
     logging.basicConfig(
         level=logging.INFO,
         format="%(asctime)s [%(levelname)s] %(message)s",
@@ -25,8 +28,6 @@ def main(input_path, output_path, output_key, log_dir, x_res, y_res, z_res):
         ],
         datefmt="%Y-%m-%d %H:%M:%S",
     )
-
-    log_dir = Path(log_dir)
 
     logging.info(f"Reading input image from {input_path}, resolution {z_res}, {y_res}, {x_res}")
 

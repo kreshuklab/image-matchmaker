@@ -6,7 +6,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from matchmaker.data import create_point_cloud
-from matchmaker.utils import (get_transformation_matrix, rotate_img, read_volume, get_attrs, write_volume, 
+from matchmaker.utils import (get_transformation_matrix, rotate_img, read_volume, get_attrs, write_volume,
                                 write_transform_dict, plot_three_slices, plot_overlay)
 
 
@@ -302,6 +302,8 @@ def main(fixed_path, fixed_key, moving_path, moving_key, output_dir, output_key,
     Returns:
         None
     """
+    os.makedirs(output_dir, exist_ok=True)
+
     logging.basicConfig(
         level=logging.INFO,
         format="%(asctime)s [%(levelname)s] %(message)s",
