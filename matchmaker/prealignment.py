@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 
 from matchmaker.data import create_point_cloud
 from matchmaker.utils import (get_transformation_matrix, rotate_img, read_volume, get_attrs, write_volume,
-                                write_transform_dict, plot_three_slices, plot_overlay)
+                                write_transform_dict, plot_three_slices, plot_overlay, setup_logging)
 
 
 def get_SVD_transform(img, save_path=None):
@@ -303,17 +303,7 @@ def main(fixed_path, fixed_key, moving_path, moving_key, output_dir, output_key,
     Returns:
         None
     """
-    os.makedirs(output_dir, exist_ok=True)
-
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s [%(levelname)s] %(message)s",
-        handlers=[
-            logging.FileHandler(f"{output_dir}/prealignment.log", mode="w"),
-            logging.StreamHandler(sys.stdout),
-        ],
-        datefmt="%Y-%m-%d %H:%M:%S",
-    )
+    setup_logging(output_dir, "prealignment.log")
 
     logging.info("Reading fixed image")
     fixed_img = read_volume(fixed_path, fixed_key)

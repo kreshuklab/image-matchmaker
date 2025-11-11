@@ -6,7 +6,8 @@ import logging
 import numpy as np
 
 from matchmaker.utils import (read_volume, write_volume, get_attrs, plot_overlay, itk_scalar_img,
-                                run_registration, itk_to_np_order, apply_transform_chanwise)
+                                run_registration, itk_to_np_order, apply_transform_chanwise,
+                                setup_logging)
 from matchmaker.mobie_export import export_to_mobie
 
 
@@ -119,16 +120,7 @@ def run_rigid_alignment(
 @click.option("-ok", "--output_key", required=True, help="Output key (same in both n5)")
 @click.option("-tif", "--save_tif", is_flag=True, help="Whether to save tif or not")
 def main(fixed_path, fixed_key, moving_path, moving_key, output_dir, output_key, save_tif=False):
-    os.makedirs(output_dir, exist_ok=True)
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s [%(levelname)s] %(message)s",
-        handlers=[
-            logging.FileHandler(f"{output_dir}/rigid_alignment.log", mode="w"),
-            logging.StreamHandler(sys.stdout),
-        ],
-        datefmt="%Y-%m-%d %H:%M:%S",
-    )
+    setup_logging(output_dir, "rigid_alignment.log")
 
     logging.info("Reading fixed image")
     fixed_img = read_volume(fixed_path, fixed_key)

@@ -4,7 +4,7 @@ import logging
 import tifffile as tif
 from pathlib import Path
 
-from matchmaker.utils import (write_volume, plot_three_slices)
+from matchmaker.utils import (write_volume, plot_three_slices, setup_logging)
 
 
 @click.command()
@@ -17,17 +17,8 @@ from matchmaker.utils import (write_volume, plot_three_slices)
 @click.option("--z_res", required=False, default=1, help="The image is interpreted as (C)ZYX")
 def main(input_path, output_path, output_key, log_dir, x_res, y_res, z_res):
     log_dir = Path(log_dir)
-    log_dir.mkdir(parents=True, exist_ok=True)
 
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s [%(levelname)s] %(message)s",
-        handlers=[
-            logging.FileHandler(f"{log_dir}/raw_to_n5.log", mode="a"),
-            logging.StreamHandler(sys.stdout)
-        ],
-        datefmt="%Y-%m-%d %H:%M:%S",
-    )
+    setup_logging(log_dir, "raw_to_n5.log", mode="a")
 
     logging.info(f"Reading input image from {input_path}, resolution {z_res}, {y_res}, {x_res}")
 
@@ -36,8 +27,6 @@ def main(input_path, output_path, output_key, log_dir, x_res, y_res, z_res):
     logging.info(f"Value range: min={image.min()}, max={image.max()}")
 
     assert (image.ndim == 3) or (image.ndim == 4), "Currently pipeline only works with ZYX or CZYX images, input has {image.ndim} dimensions"
-
-
 
     logging.info(f"Writing output image to  {input_path}")
 
@@ -53,9 +42,7 @@ def main(input_path, output_path, output_key, log_dir, x_res, y_res, z_res):
         chunks = (128, 512, 512)
         plot_three_slices(image, log_dir / f"input_image_{Path(input_path).stem}.png")
 
-
     write_volume(output_path, image, output_key, chunks=chunks, attrs=attrs)
-
 
 
 if __name__ == "__main__":
