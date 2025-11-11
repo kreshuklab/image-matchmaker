@@ -284,7 +284,8 @@ def run_prealignment(
 @click.option("-o", "--output_dir", required=True, help="Output directory")
 @click.option("-ok", "--output_key", required=True, help="Output key (same in both n5)")
 @click.option("-trans", "--output_transform_path", required=True, help="Path to write the final transform")
-def main(fixed_path, fixed_key, moving_path, moving_key, output_dir, output_key, output_transform_path):
+@click.option("-tif", "--save_tif", is_flag=True, help="Whether to save tif or not")
+def main(fixed_path, fixed_key, moving_path, moving_key, output_dir, output_key, output_transform_path, save_tif=False):
     """
     Perform prealignment of moving image to fixed image.
 
@@ -345,6 +346,10 @@ def main(fixed_path, fixed_key, moving_path, moving_key, output_dir, output_key,
         key=output_key,
         attrs=moving_attributes
     )
+
+    if save_tif:
+        import tifffile as tiff
+        tiff.imwrite(f"{output_dir}/moving_prealigned.tif", moving_prealigned)
 
     logging.info("Save prealignment tranform")
 

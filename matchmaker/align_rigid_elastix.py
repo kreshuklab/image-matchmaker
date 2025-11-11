@@ -5,7 +5,7 @@ import click
 import logging
 import numpy as np
 
-from matchmaker.utils import (read_volume, write_volume, get_attrs, plot_overlay, itk_scalar_img, 
+from matchmaker.utils import (read_volume, write_volume, get_attrs, plot_overlay, itk_scalar_img,
                                 run_registration, itk_to_np_order, apply_transform_chanwise)
 from matchmaker.mobie_export import export_to_mobie
 
@@ -72,9 +72,9 @@ def run_rigid_alignment(
     """
     Perform rigid alignment of a moving image to a fixed image using Elastix.
 
-    This function reads the fixed and moving images from the specified paths, 
-    performs a rigid alignment using Elastix, and saves the aligned moving image 
-    to the output directory. If the MoBIE export flag is set, the aligned image 
+    This function reads the fixed and moving images from the specified paths,
+    performs a rigid alignment using Elastix, and saves the aligned moving image
+    to the output directory. If the MoBIE export flag is set, the aligned image
     is also exported to a MoBIE project.
 
     Args:
@@ -117,7 +117,8 @@ def run_rigid_alignment(
 @click.option("-mk", "--moving_key", required=True, help="Moving input key")
 @click.option("-o", "--output_dir", required=True, help="Output directory")
 @click.option("-ok", "--output_key", required=True, help="Output key (same in both n5)")
-def main(fixed_path, fixed_key, moving_path, moving_key, output_dir, output_key):
+@click.option("-tif", "--save_tif", is_flag=True, help="Whether to save tif or not")
+def main(fixed_path, fixed_key, moving_path, moving_key, output_dir, output_key, save_tif=False):
     os.makedirs(output_dir, exist_ok=True)
     logging.basicConfig(
         level=logging.INFO,
@@ -155,6 +156,10 @@ def main(fixed_path, fixed_key, moving_path, moving_key, output_dir, output_key)
         key=output_key,
         attrs=moving_attributes
     )
+
+    if save_tif:
+        import tifffile as tiff
+        tiff.imwrite(f"{output_dir}/moving_rigid_aligned.tif", moving_rigid_aligned)
 
 
 if __name__ == "__main__":
