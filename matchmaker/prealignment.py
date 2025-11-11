@@ -339,6 +339,7 @@ def main(fixed_path, fixed_key, moving_path, moving_key, output_dir, output_key,
 
     if save_tif:
         import tifffile as tiff
+        tiff.imwrite(f"{output_dir}/fixed_prealigned.tif", fixed_prealigned)
         tiff.imwrite(f"{output_dir}/moving_prealigned.tif", moving_prealigned)
 
     logging.info("Save prealignment tranform")

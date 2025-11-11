@@ -15,7 +15,7 @@ def write_transform_dict(transform_dict, json_path):
 def read_transform_dict(json_path):
     with open(json_path, "r") as f:
         transform_dict = json.load(f)
-         
+
     for key, val in transform_dict.items():
         val["matrix"] = np.array(val["matrix"])
 
@@ -48,6 +48,21 @@ def pad_img(img):
     print("New shape after padding:", padded.shape)
 
     return padded
+
+
+def pad_to_same_shape(arr1, arr2):
+    """Pad two arrays with zeros to the same shape at the end."""
+    D1, H1, W1 = arr1.shape
+    D2, H2, W2 = arr2.shape
+    max_D, max_H, max_W = max(D1, D2), max(H1, H2), max(W1, W2)
+
+    def pad_end(arr, target_shape, value=0):
+        pad_D = target_shape[0] - arr.shape[0]
+        pad_H = target_shape[1] - arr.shape[1]
+        pad_W = target_shape[2] - arr.shape[2]
+        return np.pad(arr, ((0, pad_D), (0, pad_H), (0, pad_W)), mode="constant", constant_values=value)
+
+    return pad_end(arr1, (max_D, max_H, max_W)), pad_end(arr2, (max_D, max_H, max_W))
 
 
 def crop_to_bbox(img):
