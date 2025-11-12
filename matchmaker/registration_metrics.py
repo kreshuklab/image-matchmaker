@@ -1,8 +1,7 @@
 import json
 import numpy as np
-import tifffile as tiff
 
-from matchmaker.utils import pad_to_same_shape
+from matchmaker.utils import (pad_to_same_shape, read_volume)
 
 
 def compute_centroids(mask, exclude_id=None):
@@ -201,11 +200,14 @@ def evaluate_registration(fixed, moving, save_path="metrics.json", exclude_id=No
 
 
 if __name__ == "__main__":
-    fixed_path = "data/test_registration/svd_prealignment/fixed_prealigned.tif"
-    moving_path = "data/test_registration/rigid_alignment/moving_rigid_aligned.tif"
+    fixed_path = "data/test_registration/fixed_image.n5"
+    moving_path = "data/test_registration/moving_image.n5"
     save_path="data/test_registration/metrics.json"
 
-    fixed_img = tiff.imread(fixed_path)
-    moving_img = tiff.imread(moving_path)
+    fixed_key = "svd_prealignment"
+    moving_key = "rigid_alignment"
+
+    fixed_img = read_volume(fixed_path, fixed_key)
+    moving_img = read_volume(moving_path, moving_key)
 
     evaluate_registration(fixed_img, moving_img, save_path=save_path, exclude_id=0)
