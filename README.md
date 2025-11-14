@@ -10,11 +10,31 @@ conda env create -f environment.yml
 
 ### Run tests
 
-After activating the environment, you can run the tests with:
+After activating the environment, you can run the tests as follows.
+
+#### Unit Tests
 
 ```bash
-pytest -v tests/test_raw_to_n5.py tests/test_prealignment.py tests/test_rigid_alignment.py
+pytest -v tests/test_raw_to_n5.py \
+         tests/test_prealignment.py \
+         tests/test_rigid_alignment.py \
+         tests/test_compare_results.py
 ```
+
+#### Integration Test (full pipeline)
+
+```bash
+pytest -s tests/test_workflow.py::test_full_pipeline
+```
+
+Optional: If you want to hide all warnings during tests, append:
+
+```bash
+-p no:warnings
+```
+
+
+
 
 ### 3 ways of interaction with the library
 
