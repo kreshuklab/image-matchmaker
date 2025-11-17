@@ -116,6 +116,7 @@ def export_to_mobie(input_path, input_key, mobie_folder, dataset_name, segmentat
         return
 
     if segmentation_name in metadata["sources"]:
+        logging.info(f"Segmentation already exists. Updating (delete and re-upload) segmentation: {segmentation_name}")
         update_in_mobie(input_path, input_key, mobie_folder, dataset_name, segmentation_name, menu_name)
     else:
         add_to_mobie(input_path, input_key, mobie_folder, dataset_name, segmentation_name, menu_name)
