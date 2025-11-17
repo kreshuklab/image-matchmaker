@@ -142,7 +142,9 @@ rule add_prealignment_to_mobie:
         fixed_input_ds = f"{fixed_n5_path}/{prealignment_n5_key}",
         moving_input_ds = f"{moving_n5_path}/{prealignment_n5_key}",
         fixed_image_n5 = fixed_n5_path,
-        moving_image_n5 = moving_n5_path
+        moving_image_n5 = moving_n5_path,
+        fixed_uploaded = f"{log_dir}/mobie_project/{dataset_name}/images/ome-zarr/{fixed_name}_{raw_n5_key}.done",
+        moving_uploaded = f"{log_dir}/mobie_project/{dataset_name}/images/ome-zarr/{moving_name}_{raw_n5_key}.done"
     output:
         fixed_check = f"{log_dir}/mobie_project/{dataset_name}/images/ome-zarr/{fixed_name}_{prealignment_n5_key}.done",
         moving_check = f"{log_dir}/mobie_project/{dataset_name}/images/ome-zarr/{moving_name}_{prealignment_n5_key}.done"
@@ -165,7 +167,9 @@ Add rigid alignment to mobie project
 rule add_rigid_alignment_to_mobie:
     input:
         moving_input_ds = f"{moving_n5_path}/{rigid_alignment_n5_key}",
-        moving_image_n5 = moving_n5_path
+        moving_image_n5 = moving_n5_path,
+        fixed_uploaded = f"{log_dir}/mobie_project/{dataset_name}/images/ome-zarr/{fixed_name}_{prealignment_n5_key}.done",
+        moving_uploaded = f"{log_dir}/mobie_project/{dataset_name}/images/ome-zarr/{moving_name}_{prealignment_n5_key}.done"
     output:
         moving_check = f"{log_dir}/mobie_project/{dataset_name}/images/ome-zarr/{moving_name}_{rigid_alignment_n5_key}.done"
     params:

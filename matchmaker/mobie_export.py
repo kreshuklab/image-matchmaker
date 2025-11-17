@@ -2,11 +2,19 @@ import os
 import logging
 import click
 import sys
+from shutil import rmtree
+import pandas as pd
+from elf.io import open_file
 import mobie
+from mobie import add_segmentation
+from mobie.import_data import import_segmentation
+from mobie.metadata import read_dataset_metadata
+from mobie.utils import get_data_key
+from mobie.tables import compute_default_table
 from matchmaker.utils import get_attrs
 
 
-def export_to_mobie(input_path, input_key, output_dir, dataset_name, segmentation_name, menu_name):
+def add_to_mobie(input_path, input_key, mobie_folder, dataset_name, segmentation_name, menu_name):
     """
     Export segmentation from n5 file to MoBIE project.
 
@@ -18,16 +26,13 @@ def export_to_mobie(input_path, input_key, output_dir, dataset_name, segmentatio
         segmentation_name (str): Name of the segmentation in the MoBIE project.
         menu_name (str): Name of the menu in the MoBIE project.
     """
-    if not os.path.exists(f"{output_dir}/mobie_project"):
-        os.makedirs(f"{output_dir}/mobie_project")
 
     # Set parameters for MOBIE
-    mobie_folder = f"{output_dir}/mobie_project"
     resolution = get_attrs(input_path, input_key)["resolution"]
     chunks = (64, 64, 64)
     scale_factors = 4 * [[2, 2, 2]]
 
-    mobie.add_segmentation(
+    add_segmentation(
         input_path=input_path,
         input_key=input_key,
         root=mobie_folder,
@@ -41,6 +46,80 @@ def export_to_mobie(input_path, input_key, output_dir, dataset_name, segmentatio
         is_default_dataset=True
     )
     logging.info(f"Added segmentation: {segmentation_name}")
+
+
+def check_consistency(table_path, seg_path, key):
+    tab = pd.read_csv(table_path, sep="\t")
+    tab_max_id = tab["label_id"].max().item()
+
+    with open_file(seg_path, "r") as f:
+        seg_max_id = f[key].attrs["maxId"]
+
+    assert tab_max_id == seg_max_id, f"{tab_max_id}, {seg_max_id}"
+    print("Done!")
+
+
+def update_in_mobie(input_path, input_key, mobie_folder, dataset_name, segmentation_name, menu_name):
+
+    ds_folder = os.path.join(mobie_folder, dataset_name)
+    metadata = read_dataset_metadata(ds_folder)
+    seg_path = metadata["sources"][segmentation_name]["segmentation"]["imageData"]["ome.zarr"][
+        "relativePath"
+    ]
+    seg_path = os.path.join(ds_folder, seg_path)
+    
+    # Set parameters for MOBIE
+    resolution = get_attrs(input_path, input_key)["resolution"]
+    chunks = (64, 64, 64)
+    scale_factors = 4 * [[2, 2, 2]]
+
+    rmtree(seg_path)
+
+    max_jobs = 8
+    tmp_folder = f"tmp_{dataset_name}_{segmentation_name}"
+
+    import_segmentation(
+        input_path,
+        input_key,
+        seg_path,
+        resolution,
+        scale_factors,
+        chunks,
+        tmp_folder=tmp_folder,
+        file_format="ome.zarr",
+        max_jobs=max_jobs,
+        target="local",
+    )
+
+    table_folder = os.path.join(ds_folder, "tables", segmentation_name)
+    table_path = os.path.join(table_folder, "default.tsv")
+    os.makedirs(table_folder, exist_ok=True)
+    key = get_data_key(file_format="ome.zarr", scale=0, path=seg_path)
+    compute_default_table(
+        seg_path,
+        key,
+        table_path,
+        resolution,
+        tmp_folder=tmp_folder,
+        target="local",
+        max_jobs=max_jobs,
+    )
+
+    check_consistency(table_path, seg_path, key)
+
+
+def export_to_mobie(input_path, input_key, mobie_folder, dataset_name, segmentation_name, menu_name):
+
+    metadata = mobie.metadata.read_dataset_metadata(os.path.join(mobie_folder, dataset_name))
+    if not metadata:
+        add_to_mobie(input_path, input_key, mobie_folder, dataset_name, segmentation_name, menu_name)
+        return
+
+    if segmentation_name in metadata["sources"]:
+        update_in_mobie(input_path, input_key, mobie_folder, dataset_name, segmentation_name, menu_name)
+    else:
+        add_to_mobie(input_path, input_key, mobie_folder, dataset_name, segmentation_name, menu_name)
+
 
 
 @click.command()
@@ -62,12 +141,16 @@ def main(input_path, input_key, input_type, dataset_name, output_dir):
     )
 
     file_name = os.path.splitext(os.path.basename(input_path))[0]
-    logging.info(f"Start uploading {file_name} to MoBIE ...")
+    logging.info(f"Start uploading {file_name}/{input_key} to MoBIE ...")
+
+    mobie_folder = f"{output_dir}/mobie_project"
+    if not os.path.exists(mobie_folder):
+        os.makedirs(mobie_folder)
 
     export_to_mobie(
         input_path,
         input_key,
-        output_dir,
+        mobie_folder,
         dataset_name=dataset_name,
         segmentation_name=f"{file_name}_{input_key}",
         menu_name=input_type,
