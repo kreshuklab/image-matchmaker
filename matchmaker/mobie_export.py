@@ -67,7 +67,7 @@ def update_in_mobie(input_path, input_key, mobie_folder, dataset_name, segmentat
         "relativePath"
     ]
     seg_path = os.path.join(ds_folder, seg_path)
-    
+
     # Set parameters for MOBIE
     resolution = get_attrs(input_path, input_key)["resolution"]
     chunks = (64, 64, 64)
