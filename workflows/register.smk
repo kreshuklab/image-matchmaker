@@ -9,15 +9,15 @@ configfile: "examples/register_config_test.yaml"
 print(config["fixed_image"])
 print(config["moving_image"])
 
-fixed_name = "fixed_image"
+fixed_name = config["fixed_name"] if "fixed_name" in config else "fixed_image"
 fixed_n5_path = f"{config['log_dir']}/{fixed_name}.n5"
-moving_name = "moving_image"
+moving_name = config["moving_name"] if "moving_name" in config else "moving_image"
 moving_n5_path = f"{config['log_dir']}/{moving_name}.n5"
 log_dir = config["log_dir"]
 final_transform = config["final_transform_path"]
 
 # define global variables for n5 keys
-raw_n5_key = "input"
+raw_n5_key = config["input_key"] if "input_key" in config else "input"
 prealignment_n5_key = "svd_prealignment"
 rigid_alignment_n5_key = "rigid_alignment"
 
