@@ -31,11 +31,11 @@ def preprocess_tif_input(input_path, output_path, output_key, log_dir, x_res, y_
     else:
         chunks = (128, 512, 512)
         plot_three_slices(image, log_dir / f"input_image_{Path(input_path).stem}.png")
-    breakpoint()
+
     write_volume(output_path, image, output_key, chunks=chunks, attrs=attrs)
 
 
-def preprocess_n5_input(input_path, input_key, log_dir, x_res, y_res, z_res):
+def preprocess_n5_input(input_path, input_key, output_path, output_key, log_dir, x_res, y_res, z_res):
     logging.info(f"Reading input image from {input_path}, resolution {z_res}, {y_res}, {x_res}")
     print(input_key)
     image = read_volume(input_path, input_key)
@@ -46,21 +46,22 @@ def preprocess_n5_input(input_path, input_key, log_dir, x_res, y_res, z_res):
         image.ndim == 4
     ), f"Currently pipeline only works with ZYX or CZYX images, input has {image.ndim} dimensions"
 
-    logging.info("Check if resolution attribute is present in .n5 file")
-    attrs = get_attrs(input_path, input_key)
-    print(attrs)
-    if "resolution" not in attrs:
-        set_attrs(input_path, input_key, {"resolution": [z_res, y_res, x_res]})
-        logging.info(f"Set resolution attribute to {z_res}, {y_res}, {x_res}")
-    else:
-        logging.info("Found resolution: " + str(attrs["resolution"]))
+    logging.info(f"Writing output image to {output_path}")
+
+    attrs = {"resolution": [z_res, y_res, x_res]}
 
     print(log_dir / f"input_image_{Path(input_path).stem}.png")
     if image.ndim == 4:
+        chunks = (1, 128, 512, 512)
         for chan in range(image.shape[0]):
             plot_three_slices(image[chan], log_dir / f"input_image_{Path(input_path).stem}_{chan}.png")
+
     else:
+        chunks = (128, 512, 512)
         plot_three_slices(image, log_dir / f"input_image_{Path(input_path).stem}.png")
+
+    write_volume(output_path, image, output_key, chunks=chunks, attrs=attrs)
+
 
 
 @click.command()
@@ -98,7 +99,7 @@ def main(input_path, input_key, output_path, output_key, log_dir, x_res, y_res, 
 
     if ext == ".n5":
         logging.info(f"Input image is in {ext} format, reading with z5py")
-        preprocess_n5_input(input_path, input_key, log_dir, x_res, y_res, z_res)
+        preprocess_n5_input(input_path, input_key, output_path, output_key, log_dir, x_res, y_res, z_res)
 
 
 if __name__ == "__main__":
