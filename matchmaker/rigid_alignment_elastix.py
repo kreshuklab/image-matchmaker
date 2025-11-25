@@ -4,10 +4,18 @@ import itk
 import click
 import logging
 import numpy as np
+from pathlib import Path
 
-from matchmaker.utils import (read_volume, write_volume, get_attrs, plot_overlay, itk_scalar_img, 
-                                run_registration, itk_to_np_order, apply_transform_chanwise)
-from matchmaker.mobie_export import export_to_mobie
+from matchmaker.utils import (
+    read_volume,
+    write_volume,
+    get_attrs,
+    plot_overlay,
+    itk_scalar_img,
+    run_registration,
+    itk_to_np_order,
+    apply_transform_chanwise
+)
 
 
 def elastix_segm_rigid_alignment(
@@ -32,9 +40,11 @@ def elastix_segm_rigid_alignment(
     logging.info("Moving image")
     logging.info(f"{moving_img}")
 
+    SCRIPT_DIR = Path(__file__).resolve().parent
     parameter_map_paths = [
-        "../ParameterMap_segm_rigid_registration_corr.txt"
+        f"{SCRIPT_DIR}/ParameterMap_segm_rigid_registration_corr.txt"
     ]
+
     logging.info("Run rigid registration with elastix")
     result_image, result_transform_parameters = run_registration(
         fixed_img,
@@ -52,7 +62,7 @@ def elastix_segm_rigid_alignment(
         result_img_np,
         f"{output_dir}/plots/overlay_after_rigid_alignment.png",
     )
-    # NOTE: difference between result_img_np before and after applying transform?
+
     logging.info("Apply transform to all channels")
     result_img_np = apply_transform_chanwise(
         result_transform_parameters, moving_img_np, moving_resolution
@@ -130,8 +140,8 @@ def main(fixed_path, fixed_key, moving_path, moving_key, output_dir, output_key)
     )
 
     logging.info("Reading fixed image")
-    fixed_resolution = fixed_img = read_volume(fixed_path, fixed_key)
-    get_attrs(fixed_path, fixed_key)["resolution"]
+    fixed_img = read_volume(fixed_path, fixed_key)
+    fixed_resolution = get_attrs(fixed_path, fixed_key)["resolution"]
     logging.info(f"Fixed image shape: {fixed_img.shape}, dtype {fixed_img.dtype}")
 
     logging.info("Reading moving image")
@@ -160,5 +170,4 @@ def main(fixed_path, fixed_key, moving_path, moving_key, output_dir, output_key)
 if __name__ == "__main__":
     main()
 
-# python align_rigid_elastix.py -fi ../examples/data/test/platy1_muscles_stardist_fixed_prealigned.n5 -fk seg
-# -mi ../examples/data/test/platy1_muscles_stardist_moving_prealigned.n5 -mk seg -o ../examples/data/test -m
+# python rigid_alignment_elastix.py -fi ../examples/data/test/platy1_muscles_stardist_fixed_prealigned.n5 -fk seg -mi ../examples/data/test/platy1_muscles_stardist_moving_prealigned.n5 -mk seg -o ../examples/data/test -ok rigid -trans ../examples/data/test/rigid_transform.json
