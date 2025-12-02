@@ -178,13 +178,6 @@ def run_prealignment(
     - The MoBIE export modifies the `dataset.json` to set the prealigned fixed
       volume as the default view.
     """
-    if fixed_img.dtype not in (np.uint16, np.float64):
-        logging.info(f"Converting fixed_img from {fixed_img.dtype} to uint16")
-        fixed_img = fixed_img.astype(np.uint16)  # TODO: check how to handle other dtypes
-
-    if moving_img.dtype not in (np.uint16, np.float64):
-        logging.info(f"Converting moving_img from {moving_img.dtype} to uint16")
-        moving_img = moving_img.astype(np.uint16)
 
     if not os.path.exists(f"{output_dir}/plots"):
         os.makedirs(f"{output_dir}/plots")

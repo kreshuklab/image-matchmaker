@@ -26,7 +26,7 @@ def plot_three_slices(
         cmap: _description_. Defaults to "Greys".
         max_pos: _description_. Defaults to False.
     """
-    img = img.astype(np.float32)
+    img = img.astype(np.uint16)
 
     assert img.ndim == 3
     if x_pos is None:
