@@ -116,12 +116,13 @@ def compute_segmentation_metrics(gt, pred, exclude_id=None, average="macro", eps
         minlength=(max_label + 1) ** 2
     ).reshape(max_label + 1, max_label + 1)
 
-    area_gt = hist.sum(axis=1)
-    area_pred = hist.sum(axis=0)
-    intersection = np.diag(hist)
+    gt_sum = hist.sum(axis=1)
+    pred_sum = hist.sum(axis=0)
+    inter = np.diag(hist)
+    union = gt_sum + pred_sum - inter
 
-    labels_gt = np.where(area_gt > 0)[0]
-    labels_pred = np.where(area_pred > 0)[0]
+    labels_gt = np.where(gt_sum > 0)[0]
+    labels_pred = np.where(pred_sum > 0)[0]
 
     if exclude_id is not None:
         labels_gt = labels_gt[labels_gt != exclude_id]
@@ -137,11 +138,6 @@ def compute_segmentation_metrics(gt, pred, exclude_id=None, average="macro", eps
             "missing_pred_instances": len(missing_in_pred), "mean_iou": 0.0,
             "mean_dice": 0.0, "mean_precision": 0.0, "mean_recall": 0.0, "mean_f1_score": 0.0,
         }
-
-    inter = intersection[common]
-    gt_sum = area_gt[common]
-    pred_sum = area_pred[common]
-    union = gt_sum + pred_sum - inter
 
     if average == "macro":
         iou_per_class = inter / (union + eps)
