@@ -100,7 +100,7 @@ def compute_centroid_distances(mask1, mask2, match1_idx, match2_idx,
             return {
                 "mean_centroid_distance": "NaN",
                 "median_centroid_distance": "NaN",
-                "max_centroid_dist": "NaN",
+                "max_centroid_distance": "NaN",
             }
 
         centroid_distances = np.array(centroid_distances)
@@ -108,7 +108,7 @@ def compute_centroid_distances(mask1, mask2, match1_idx, match2_idx,
     return {
         "mean_centroid_distance": np.mean(centroid_distances),
         "median_centroid_distance": np.median(centroid_distances),
-        "max_centroid_dist": np.max(centroid_distances),
+        "max_centroid_distance": np.max(centroid_distances),
     }
 
 
@@ -246,11 +246,11 @@ def compute_segmentation_metrics(gt, pred, exclude_id=None, matching=None, min_i
             "matched_instances": 0,
             "unmatched_gt_ids_instances": len(valid_gt),
             "unmatched_pred_ids_instances": len(valid_pred),
-            "mean_mIoU": 0.0,
-            "mean_mDice": 0.0,
-            "mean_mP": 0.0,
-            "mean_mR": 0.0,
-            "mean_mF1s_score": 0.0,
+            "mean_IoU": 0.0,
+            "mean_Dice": 0.0,
+            "mean_Precision": 0.0,
+            "mean_Recall": 0.0,
+            "mean_F1_score": 0.0,
         }, (None, None)
 
     inter, gt_sum, pred_sum, union = compute_segmentation_stats(gt, pred, matching=matching, eps=eps)
@@ -306,11 +306,11 @@ def compute_segmentation_metrics(gt, pred, exclude_id=None, matching=None, min_i
         "matched_instances": len(matched_gt_ids),
         "unmatched_gt_ids_instances": len(valid_gt) - len(matched_gt_ids),
         "unmatched_pred_ids_instances": len(valid_pred) - len(matched_pred_ids),
-        "mean_mIoU": float(IoUs.mean()),
-        "mean_mDice": float(Dices.mean()),
-        "mean_mP": float(Precisions.mean()),
-        "mean_mR": float(Recalls.mean()),
-        "mean_mF1s_score": float(F1s.mean()),
+        "mean_IoU": float(IoUs.mean()),
+        "mean_Dice": float(Dices.mean()),
+        "mean_Precision": float(Precisions.mean()),
+        "mean_Recall": float(Recalls.mean()),
+        "mean_F1_score": float(F1s.mean()),
     }, (row_ind, col_ind)
 
 
