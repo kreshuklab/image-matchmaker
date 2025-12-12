@@ -176,3 +176,44 @@ def rotate_img(img, rotation_matrix, output_shape=None, offset=None):
 
     print(f"Shape after rotation: {rotated_img.shape}")
     return rotated_img
+
+
+def to_dense_mask(mask, background=0, mapping=None):
+    """
+    Convert a sparse instance segmentation mask into a dense continuous mask.
+
+    Returns:
+        dense_mask : np.ndarray (same shape as input)
+        mapping    : dict {old_id: new_id}
+    """
+
+    mask = mask.astype(np.int64)
+    unique_ids = np.unique(mask)
+
+    if mapping is None:
+        new_mapping = {background: 0}
+        next_id = 1
+    else:
+        new_mapping = dict(mapping)
+        new_mapping[background] = 0
+        next_id = max(new_mapping.values()) + 1
+
+    known_ids = np.fromiter(new_mapping.keys(), dtype=np.int64)
+    missing_ids = np.setdiff1d(unique_ids, known_ids, assume_unique=False)
+    missing_ids = missing_ids[missing_ids != background]
+
+    if missing_ids.size > 0:
+        new_ids = np.arange(next_id, next_id + len(missing_ids), dtype=np.int64)
+        add_mapping = dict(zip(missing_ids, new_ids))
+        new_mapping.update(add_mapping)
+
+    all_old_ids = np.fromiter(new_mapping.keys(), dtype=np.int64)
+    all_new_ids = np.fromiter(new_mapping.values(), dtype=np.int64)
+
+    lut_size = all_old_ids.max() + 1
+    lut = np.zeros(lut_size, dtype=np.int64)
+    lut[all_old_ids] = all_new_ids
+
+    dense_mask = lut[mask]
+
+    return dense_mask, new_mapping
