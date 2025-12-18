@@ -1,7 +1,7 @@
 import os
 from click.testing import CliRunner
 
-from matchmaker.align_rigid_elastix import main
+from matchmaker.rigid_alignment_elastix import main
 from matchmaker.utils import load_test_config, get_n5_path, read_volume
 
 
