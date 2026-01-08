@@ -217,3 +217,136 @@ def to_dense_mask(mask, background=0, mapping=None):
     dense_mask = lut[mask]
 
     return dense_mask, new_mapping
+
+
+def to_pair(input):
+    """
+    Convert a scalar or length-2 sequence into a 2-element tuple.
+
+    Args:
+        input (int | float | list | tuple): A scalar value or a list/tuple of length 2.
+
+    Returns:
+        tuple: A 2-element tuple. Scalars are duplicated as (input, input).
+    """
+    if isinstance(input, (int, float)):
+        return (input, input)
+    elif isinstance(input, (list, tuple)):
+        if len(input) == 2:
+            return tuple(input)
+        else:
+            raise ValueError(f"Expected a list/tuple of length 2, got length {len(input)}")
+    else:
+        raise TypeError(f"Expected int/float or list/tuple, got {type(input).__name__}")
+
+
+def gaussian_kernel1d(kernel_size, sigma):
+    """
+    Create a 1D Gaussian kernel.
+
+    Args:
+        kernel_size (int): Kernel size.
+        sigma (float): Standard deviation of the Gaussian.
+
+    Returns:
+        np.ndarray: Normalized 1D Gaussian kernel of shape kernel_size.
+    """
+    mean = kernel_size // 2
+    x = np.arange(kernel_size, dtype=np.float32) - mean
+    if kernel_size % 2 == 0:
+        x = x + 0.5
+    gauss = np.exp(-(x**2) / (2 * sigma**2)).astype(np.float32)
+    gauss /= gauss.sum(keepdims=True)
+    return gauss
+
+
+def get_gaussian_kernel2d(kernel_size, sigma):
+    """
+    Create a separable 2D Gaussian kernel.
+
+    Args:
+        kernel_size (int | tuple[int, int]): Kernel size (ky, kx).
+        sigma (float | tuple[float, float]): Standard deviation (sy, sx).
+
+    Returns:
+        np.ndarray: Normalized 2D Gaussian kernel of shape kernel_size.
+    """
+    ky, kx = to_pair(kernel_size)
+    sigma_y, sigma_x = to_pair(sigma)
+
+    ky = gaussian_kernel1d(ky, sigma_y)
+    kx = gaussian_kernel1d(kx, sigma_x)
+    return np.outer(ky, kx).astype(np.float32)
+
+
+def grid_sample3d(volume, grid, align_corners=False, mode="trilinear"):
+    """
+    Sample a 3D volume using a normalized sampling grid.
+
+    Args:
+        volume (np.ndarray): Input volume of shape (D, H, W).
+        grid (np.ndarray): Normalized grid of shape (D, H, W, 3) in [-1, 1].
+        align_corners (bool): Whether to align grid corners.
+        mode (str): Interpolation mode, "nearest" or "trilinear".
+
+    Returns:
+        np.ndarray: Sampled volume of shape (D, H, W).
+    """
+    assert volume.ndim == 3
+    assert mode in ["trilinear", "nearest"]
+
+    D, H, W = volume.shape
+    spatial_shape = np.array([W, H, D], dtype=np.float32)
+
+    if align_corners:
+        coords = (grid + 1.0) * 0.5 * (spatial_shape - 1.0)
+    else:
+        coords = ((grid + 1.0) * spatial_shape - 1.0) / 2.0
+
+    if mode == "nearest":
+        idx = np.round(coords).astype(np.int32)
+
+        valid = (
+            (idx[..., 0] >= 0) & (idx[..., 0] < W) &
+            (idx[..., 1] >= 0) & (idx[..., 1] < H) &
+            (idx[..., 2] >= 0) & (idx[..., 2] < D)
+        )
+
+        out = np.zeros(coords.shape[:-1], dtype=volume.dtype)
+        out[valid] = volume[idx[..., 2][valid], idx[..., 1][valid], idx[..., 0][valid]]
+
+    elif mode == "trilinear":
+        c0 = np.floor(coords).astype(np.int32)   # (x0, y0, z0)
+        c1 = c0 + 1                              # (x1, y1, z1)
+
+        d = coords - c0
+        xd, yd, zd = d[..., 0], d[..., 1], d[..., 2]
+
+        wa = (1 - xd) * (1 - yd) * (1 - zd)
+        wb = (1 - xd) * (1 - yd) * zd
+        wc = (1 - xd) * yd * (1 - zd)
+        wd = (1 - xd) * yd * zd
+        we = xd * (1 - yd) * (1 - zd)
+        wf = xd * (1 - yd) * zd
+        wg = xd * yd * (1 - zd)
+        wh = xd * yd * zd
+
+        def safe_get(idx):
+            ix, iy, iz = idx[..., 0], idx[..., 1], idx[..., 2]
+            valid = ((ix >= 0) & (ix < W) & (iy >= 0) & (iy < H) & (iz >= 0) & (iz < D))
+            out = np.zeros(ix.shape, dtype=volume.dtype)
+            out[valid] = volume[iz[valid], iy[valid], ix[valid]]
+            return out
+
+        v000 = safe_get(c0)
+        v001 = safe_get(c0 + [0, 0, 1])
+        v010 = safe_get(c0 + [0, 1, 0])
+        v011 = safe_get(c0 + [0, 1, 1])
+        v100 = safe_get(c0 + [1, 0, 0])
+        v101 = safe_get(c0 + [1, 0, 1])
+        v110 = safe_get(c0 + [1, 1, 0])
+        v111 = safe_get(c0 + [1, 1, 1])
+
+        out = wa*v000 + wb*v001 + wc*v010 + wd*v011 + we*v100 + wf*v101 + wg*v110 + wh*v111
+
+    return out
