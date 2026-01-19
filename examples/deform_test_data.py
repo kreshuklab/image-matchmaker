@@ -2,10 +2,10 @@ import os
 import numpy as np
 import tifffile as tif
 import transforms3d as tf3d
+from skimage.filters import gaussian
 
 from matchmaker.utils import (get_transformation_matrix, rotate_img, write_volume,
-                                plot_three_slices, plot_overlay, to_pair, get_gaussian_kernel2d,
-                                grid_sample3d)
+                                plot_three_slices, plot_overlay, to_pair, grid_sample3d)
 
 
 def remove_instances(seg, prob=0.05, seed=None):
@@ -74,7 +74,6 @@ def elastic_deform(volume, noise=None, kernel_size=(63, 63), sigma=(32.0, 32.0),
     Returns:
         np.ndarray: Deformed volume of shape (D, H, W).
     """
-    import cv2
     assert volume.ndim == 3, "Input volume must be (D,H,W)"
     vol = volume.astype(np.float32)
     D, H, W = vol.shape
@@ -102,9 +101,10 @@ def elastic_deform(volume, noise=None, kernel_size=(63, 63), sigma=(32.0, 32.0),
     z_noise = np.random.randn(D).astype(np.float32)
     scale = 1. + z_variation * z_noise
 
-    kernel = get_gaussian_kernel2d(kernel_size, sigma)
-    disp_hw = np.stack([cv2.filter2D(noise[c], -1, kernel, borderType=cv2.BORDER_CONSTANT)
-                        for c in range(3)], axis=-1)
+    disp_hw = np.stack([
+        gaussian(noise[c], sigma=sigma, mode="constant", preserve_range=True,
+            truncate=((kernel_size[0] - 1) / 2) / sigma[0],)
+        for c in range(3)], axis=-1).astype(np.float32)
 
     disp_hw *= alpha_xyz
     disp = np.repeat(disp_hw[None, ...], D, axis=0)

@@ -240,45 +240,6 @@ def to_pair(input):
         raise TypeError(f"Expected int/float or list/tuple, got {type(input).__name__}")
 
 
-def gaussian_kernel1d(kernel_size, sigma):
-    """
-    Create a 1D Gaussian kernel.
-
-    Args:
-        kernel_size (int): Kernel size.
-        sigma (float): Standard deviation of the Gaussian.
-
-    Returns:
-        np.ndarray: Normalized 1D Gaussian kernel of shape kernel_size.
-    """
-    mean = kernel_size // 2
-    x = np.arange(kernel_size, dtype=np.float32) - mean
-    if kernel_size % 2 == 0:
-        x = x + 0.5
-    gauss = np.exp(-(x**2) / (2 * sigma**2)).astype(np.float32)
-    gauss /= gauss.sum(keepdims=True)
-    return gauss
-
-
-def get_gaussian_kernel2d(kernel_size, sigma):
-    """
-    Create a separable 2D Gaussian kernel.
-
-    Args:
-        kernel_size (int | tuple[int, int]): Kernel size (ky, kx).
-        sigma (float | tuple[float, float]): Standard deviation (sy, sx).
-
-    Returns:
-        np.ndarray: Normalized 2D Gaussian kernel of shape kernel_size.
-    """
-    ky, kx = to_pair(kernel_size)
-    sigma_y, sigma_x = to_pair(sigma)
-
-    ky = gaussian_kernel1d(ky, sigma_y)
-    kx = gaussian_kernel1d(kx, sigma_x)
-    return np.outer(ky, kx).astype(np.float32)
-
-
 def grid_sample3d(volume, grid, align_corners=False, mode="trilinear"):
     """
     Sample a 3D volume using a normalized sampling grid.
