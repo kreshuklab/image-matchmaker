@@ -219,27 +219,6 @@ def to_dense_mask(mask, background=0, mapping=None):
     return dense_mask, new_mapping
 
 
-def to_pair(input):
-    """
-    Convert a scalar or length-2 sequence into a 2-element tuple.
-
-    Args:
-        input (int | float | list | tuple): A scalar value or a list/tuple of length 2.
-
-    Returns:
-        tuple: A 2-element tuple. Scalars are duplicated as (input, input).
-    """
-    if isinstance(input, (int, float)):
-        return (input, input)
-    elif isinstance(input, (list, tuple)):
-        if len(input) == 2:
-            return tuple(input)
-        else:
-            raise ValueError(f"Expected a list/tuple of length 2, got length {len(input)}")
-    else:
-        raise TypeError(f"Expected int/float or list/tuple, got {type(input).__name__}")
-
-
 def grid_sample3d(volume, grid, align_corners=False, mode="trilinear"):
     """
     Sample a 3D volume using a normalized sampling grid.

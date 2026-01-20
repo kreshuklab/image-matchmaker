@@ -5,7 +5,7 @@ import transforms3d as tf3d
 from skimage.filters import gaussian
 
 from matchmaker.utils import (get_transformation_matrix, rotate_img, write_volume,
-                                plot_three_slices, plot_overlay, to_pair, grid_sample3d)
+                                plot_three_slices, plot_overlay, grid_sample3d)
 
 
 def remove_instances(seg, prob=0.05, seed=None):
@@ -54,22 +54,22 @@ def rigid_deform(fixed, angles):
     return moving
 
 
-def elastic_deform(volume, noise=None, kernel_size=(63, 63), sigma=(32.0, 32.0),
-                    alpha=(1.0,1.0,1.0), align_corners=False, mode="trilinear",
-                    seed=None, z_variation=0.05):
+def elastic_deform(volume, noise=None, sigma=32.0, alpha=(1.0,1.0,1.0),
+                        align_corners=False, mode="trilinear", seed=None,
+                        z_variation=0.05, isotropic=True,):
     """
     Apply elastic deformation to a 3D volume.
 
     Args:
         volume (np.ndarray): Input volume of shape (D, H, W).
         noise (np.ndarray): Noise field of shape (3, H, W).
-        kernel_size (tuple[int, int]): Gaussian kernel size.
-        sigma (tuple[float, float]): Gaussian smoothing std.
+        sigma (float): Gaussian smoothing std.
         alpha (tuple[float, float, float]): Displacement scaling factors.
         align_corners (bool): Grid sampling alignment flag.
         mode (str): Interpolation mode, "nearest" or "trilinear".
         seed (int | None): Random seed.
-        z_variation (float): Per-slice z-axis displacement scaling factor.
+        z_variation (float): Slice-wise z scaling (used only if isotropic=False).
+        isotropic (bool): Whether to use true 3D isotropic deformation.
 
     Returns:
         np.ndarray: Deformed volume of shape (D, H, W).
@@ -79,36 +79,43 @@ def elastic_deform(volume, noise=None, kernel_size=(63, 63), sigma=(32.0, 32.0),
     D, H, W = vol.shape
     assert D > 1
 
-    kernel_size, sigma = to_pair(kernel_size), to_pair(sigma)
+    if seed is not None:
+        np.random.seed(seed)
+
+    if isotropic:
+        sigma = (sigma, sigma, sigma)
+    else:
+        sigma = (sigma, sigma)
+
+    if noise is None:
+        if isotropic:
+            noise = np.random.randn(3, D, H, W).astype(np.float32)
+        else:
+            noise = np.random.randn(3, H, W).astype(np.float32)
+    else:
+        noise = np.asarray(noise, dtype=np.float32)
+        if isotropic:
+            assert noise.shape == (3, D, H, W)
+        else:
+            assert noise.shape == (3, H, W)
+
+    disp = np.stack([gaussian(noise[c], sigma=sigma, mode="constant", preserve_range=True,
+                                ) for c in range(3)], axis=-1)
 
     if isinstance(alpha, (int, float)):
-        alpha_xyz = np.array([alpha, alpha, alpha], dtype=np.float32)
+        alpha_xyz = np.array([alpha] * 3, dtype=np.float32)
     elif isinstance(alpha, (list, tuple)):
         assert len(alpha) == 3
         alpha_xyz = np.array(alpha, dtype=np.float32)
     else:
         raise ValueError
 
-    if seed is not None:
-        np.random.seed(seed)
+    disp *= alpha_xyz
 
-    if noise is None:
-        noise = np.random.randn(3, H, W).astype(np.float32)
-    else:
-        noise = np.asarray(noise, dtype=np.float32)
-        assert noise.shape == (3, H, W)
-
-    z_noise = np.random.randn(D).astype(np.float32)
-    scale = 1. + z_variation * z_noise
-
-    disp_hw = np.stack([
-        gaussian(noise[c], sigma=sigma, mode="constant", preserve_range=True,
-            truncate=((kernel_size[0] - 1) / 2) / sigma[0],)
-        for c in range(3)], axis=-1).astype(np.float32)
-
-    disp_hw *= alpha_xyz
-    disp = np.repeat(disp_hw[None, ...], D, axis=0)
-    disp *= scale[:, None, None, None]
+    if not isotropic:
+        disp = np.repeat(disp[None, ...], D, axis=0)
+        z_noise = np.random.randn(D).astype(np.float32)
+        disp *= (1.0 + z_variation * z_noise)[:, None, None, None]
 
     def normalize_axis(d):
         x = np.linspace(0, d - 1, d, dtype=np.float32)
@@ -125,8 +132,8 @@ def elastic_deform(volume, noise=None, kernel_size=(63, 63), sigma=(32.0, 32.0),
 
 
 def deform_test_data(apply_rigid=True, apply_elastic=True, remove_p=0.05,
-                        rotate_angles=[155,30,65], kernel_size=63, sigma=6, alpha=0.2,
-                        align_corners=False, mode="nearest", seed=42, visualize=True):
+                        rotate_angles=[155,30,65], sigma=6, alpha=0.2, align_corners=False,
+                        mode="nearest", seed=42, isotropic=False, visualize=True):
     assert apply_rigid or apply_elastic
 
     seg_fixed = tif.imread("data/platy1_muscles_stardist_fixed.tif")
@@ -137,8 +144,8 @@ def deform_test_data(apply_rigid=True, apply_elastic=True, remove_p=0.05,
         seg_moving = rigid_deform(seg_moving, angles=rotate_angles)
 
     if apply_elastic:
-        seg_moving = elastic_deform(seg_moving, kernel_size=kernel_size, sigma=sigma, alpha=alpha,
-                                        align_corners=align_corners, mode=mode, seed=seed)
+        seg_moving = elastic_deform(seg_moving, sigma=sigma, alpha=alpha, align_corners=align_corners,
+                                    mode=mode, seed=seed, isotropic=isotropic)
 
     seg_moving = remove_instances(seg_moving, prob=remove_p, seed=seed)
 
