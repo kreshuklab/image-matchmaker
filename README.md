@@ -8,29 +8,6 @@ Tool for segmentation-based deformable registration and object matching
 conda env create -f environment.yml
 ```
 
-### Run tests
-
-After activating the environment, run the full pipeline with Snakemake first.
-Once the workflow finishes successfully, you may validate the final results with pytest.
-
-```bash
-pytest -v tests/test_compare_results.py
-```
-
-Optional: If you want to hide all warnings during tests, append:
-
-```bash
--p no:warnings
-```
-
-This test compares the pipeline outputs against pre-computed reference results.
-
-The reference data will be downloaded automatically from this repo's release if available. If the download fails (e.g. the repository is private), manually download the reference data from [here](https://github.com/kreshuklab/matchmaker/releases) and place it under:
-
-```
-examples/data/
-```
-
 
 ### 3 ways of interaction with the library
 
@@ -53,6 +30,28 @@ mm.n5-utils.read_volume(...)
 ```
 
 
+### Run tests
+
+After activating the environment, run the full pipeline with Snakemake first.
+Once the workflow finishes successfully, you may validate the final results with pytest.
+
+```bash
+pytest -v tests/test_compare_results.py
+```
+
+Optional: If you want to hide all warnings during tests, append:
+
+```bash
+-p no:warnings
+```
+
+This test compares the pipeline outputs against pre-computed reference results.
+
+The reference data will be downloaded automatically from this repo's release if available. If the download fails (e.g. the repository is private), manually download the reference data from [here](https://github.com/kreshuklab/matchmaker/releases) and place it under:
+
+```
+examples/data/
+```
 
 
 ## Registration
