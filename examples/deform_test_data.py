@@ -34,6 +34,9 @@ def remove_instances(seg, prob=0.05, seed=None):
 def save_volume(path, array, key="seg", chunks=(128, 512, 512), attributes={"resolution":[1,1,1]},
                 save_tif=True):
     assert path.endswith(".n5")
+    dir = os.path.dirname(path)
+    os.makedirs(dir, exist_ok=True)
+
     write_volume(f=path, arr=array, key=key, chunks=chunks, attrs=attributes,)
 
     if save_tif:
