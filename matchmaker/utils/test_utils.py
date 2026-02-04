@@ -16,14 +16,6 @@ def load_test_config(config_path="examples/register_config_test.yaml"):
     return config
 
 
-def get_n5_path():
-    config = load_test_config()
-    fixed_path = f"{config['log_dir']}/{config['fixed_image']['output_name']}.n5"
-    moving_path = f"{config['log_dir']}/{config['moving_image']['output_name']}.n5"
-
-    return fixed_path, moving_path
-
-
 def download_file(path, url):
     if os.path.exists(path):
         print(f"✅ File already exists at {path}")
