@@ -6,7 +6,7 @@ fixed_image:
   z_res: 1
 
 moving_image:
-  path: "examples/data/platy1_muscles_stardist_moving.tif"
+  path: "examples/data/deformed_data/platy1_muscles_stardist_moving.tif"
   output_name: "moving_image"
   x_res: 1
   y_res: 1
@@ -14,7 +14,7 @@ moving_image:
   url: "https://github.com/kreshuklab/matchmaker/releases/download/test_data-v0.1/moving_rigid_aligned.tif"
 
 moving_elastic:
-  path: "examples/data/platy1_muscles_stardist_elastic.tif"
+  path: "examples/data/deformed_data/platy1_muscles_stardist_elastic.tif"
   output_name: "moving_elastic"
   x_res: 1
   y_res: 1
