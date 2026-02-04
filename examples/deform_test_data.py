@@ -1,7 +1,9 @@
 import os
+import yaml
 import numpy as np
 import tifffile as tif
 import transforms3d as tf3d
+from scipy.ndimage import zoom
 from skimage.filters import gaussian
 
 from matchmaker.utils import (get_transformation_matrix, rotate_img, write_volume,
@@ -54,22 +56,19 @@ def rigid_deform(fixed, angles):
     return moving
 
 
-def elastic_deform(volume, noise=None, sigma=32.0, alpha=(1.0,1.0,1.0),
-                        align_corners=False, mode="trilinear", seed=None,
-                        z_variation=0.05, isotropic=True,):
+def elastic_deform(volume, alpha=(1.,1.,1.), sigma=None, spacing=16, mode="nearest",
+                    align_corners=False, seed=None,):
     """
     Apply elastic deformation to a 3D volume.
 
     Args:
         volume (np.ndarray): Input volume of shape (D, H, W).
-        noise (np.ndarray): Noise field of shape (3, H, W).
+        alpha (tuple[float, float, float]): Displacement amplitude scaling factors.
         sigma (float): Gaussian smoothing std.
-        alpha (tuple[float, float, float]): Displacement scaling factors.
-        align_corners (bool): Grid sampling alignment flag.
+        spacing (int): Control point spacing (in voxels).
         mode (str): Interpolation mode, "nearest" or "trilinear".
+        align_corners (bool): Grid sampling alignment flag.
         seed (int | None): Random seed.
-        z_variation (float): Slice-wise z scaling (used only if isotropic=False).
-        isotropic (bool): Whether to use true 3D isotropic deformation.
 
     Returns:
         np.ndarray: Deformed volume of shape (D, H, W).
@@ -82,40 +81,33 @@ def elastic_deform(volume, noise=None, sigma=32.0, alpha=(1.0,1.0,1.0),
     if seed is not None:
         np.random.seed(seed)
 
-    if isotropic:
-        sigma = (sigma, sigma, sigma)
-    else:
-        sigma = (sigma, sigma)
-
-    if noise is None:
-        if isotropic:
-            noise = np.random.randn(3, D, H, W).astype(np.float32)
-        else:
-            noise = np.random.randn(3, H, W).astype(np.float32)
-    else:
-        noise = np.asarray(noise, dtype=np.float32)
-        if isotropic:
-            assert noise.shape == (3, D, H, W)
-        else:
-            assert noise.shape == (3, H, W)
-
-    disp = np.stack([gaussian(noise[c], sigma=sigma, mode="constant", preserve_range=True,
-                                ) for c in range(3)], axis=-1)
-
     if isinstance(alpha, (int, float)):
-        alpha_xyz = np.array([alpha] * 3, dtype=np.float32)
+        alpha = np.array([alpha] * 3, dtype=np.float32)
     elif isinstance(alpha, (list, tuple)):
         assert len(alpha) == 3
-        alpha_xyz = np.array(alpha, dtype=np.float32)
+        alpha = np.array(alpha, dtype=np.float32)
     else:
         raise ValueError
 
-    disp *= alpha_xyz
+    if sigma is None:
+        sigma = (spacing / 2, spacing / 2, spacing / 2)
+    elif isinstance(sigma, (int, float)):
+        sigma = (sigma, sigma, sigma)
+    elif isinstance(sigma, (list, tuple)):
+        assert len(sigma) == 3
+        sigma = tuple(sigma)
+    else:
+        raise ValueError
 
-    if not isotropic:
-        disp = np.repeat(disp[None, ...], D, axis=0)
-        z_noise = np.random.randn(D).astype(np.float32)
-        disp *= (1.0 + z_variation * z_noise)[:, None, None, None]
+    shape = (int(np.ceil(D/spacing)), int(np.ceil(H/spacing)), int(np.ceil(W/spacing)))
+    disp = np.random.randn(*shape, 3).astype(np.float32)
+
+    disp = gaussian(disp, sigma=(*sigma, 0), mode="constant", preserve_range=True,)
+    disp *= alpha
+
+    if spacing > 1:
+        zoom_factors = (D / shape[0], H / shape[1], W / shape[2], 1.,)
+        disp = zoom(disp, zoom_factors, order=1)
 
     def normalize_axis(d):
         x = np.linspace(0, d - 1, d, dtype=np.float32)
@@ -131,33 +123,42 @@ def elastic_deform(volume, noise=None, sigma=32.0, alpha=(1.0,1.0,1.0),
     return sampled
 
 
-def deform_test_data(apply_rigid=True, apply_elastic=True, remove_p=0.05,
-                        rotate_angles=[155,30,65], sigma=6, alpha=0.2, align_corners=False,
-                        mode="nearest", seed=42, isotropic=False, visualize=True):
-    assert apply_rigid or apply_elastic
+def deform_test_data(cfg_path="examples/register_config_test.yaml", alpha=0.9, sigma=2,
+                        spacing=16, rotate_angles=[155,30,65], remove_p=0.05, seed=42,
+                        visualize=True):
+    assert os.path.exists(cfg_path)
 
-    seg_fixed = tif.imread("data/platy1_muscles_stardist_fixed.tif")
+    with open(cfg_path) as f:
+        configs = yaml.safe_load(f)
+
+    seg_fixed = tif.imread(configs["fixed_image"]["path"])
     print("Cropped shape", seg_fixed.shape)
 
-    seg_moving = seg_fixed.copy()
-    if apply_rigid:
-        seg_moving = rigid_deform(seg_moving, angles=rotate_angles)
+    seg_elastic = seg_fixed.copy()
+    seg_rigid = seg_fixed.copy()
 
-    if apply_elastic:
-        seg_moving = elastic_deform(seg_moving, sigma=sigma, alpha=alpha, align_corners=align_corners,
-                                    mode=mode, seed=seed, isotropic=isotropic)
+    seg_elastic = elastic_deform(seg_elastic, alpha=alpha, sigma=sigma, spacing=spacing, seed=seed,)
 
-    seg_moving = remove_instances(seg_moving, prob=remove_p, seed=seed)
+    seg_elastic = rigid_deform(seg_elastic, angles=rotate_angles)
+    seg_rigid = rigid_deform(seg_rigid, angles=rotate_angles)
 
-    save_volume("./data/platy1_muscles_stardist_fixed.n5", seg_fixed, save_tif=False)
+    seg_elastic = remove_instances(seg_elastic, prob=remove_p, seed=seed)
+    seg_rigid = remove_instances(seg_rigid, prob=remove_p, seed=seed)
 
-    save_volume("./data/platy1_muscles_stardist_moving.n5", seg_moving)
+    save_volume(configs["fixed_image"]["path"].replace(".tif", ".n5"), seg_fixed, save_tif=False)
+
+    save_volume(configs["moving_elastic"]["path"].replace(".tif", ".n5"), seg_elastic)
+    save_volume(configs["moving_image"]["path"].replace(".tif", ".n5"), seg_rigid)
 
     if visualize:
         os.makedirs("./data/plots", exist_ok=True)
-        plot_three_slices(seg_moving, save_path="./data/plots/seg_moving.png")
         plot_three_slices(seg_fixed, save_path="./data/plots/seg_fixed.png")
-        plot_overlay(seg_fixed, seg_moving, save_path="./data/plots/seg_overlay.png")
+
+        plot_three_slices(seg_elastic, save_path="./data/plots/seg_elastic.png")
+        plot_overlay(seg_fixed, seg_elastic, save_path="./data/plots/elastic_overlay.png")
+
+        plot_three_slices(seg_rigid, save_path="./data/plots/seg_rigid.png")
+        plot_overlay(seg_fixed, seg_rigid, save_path="./data/plots/rigid_overlay.png")
 
 
 if __name__ == "__main__":
