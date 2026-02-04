@@ -9,6 +9,12 @@ conda env create -f environment.yml
 ```
 
 
+### Generate rigid and elastic deformed data
+```
+python examples/deform_test_data.py
+```
+
+
 ### 3 ways of interaction with the library
 
 - Running the full pipeline using workflow manager and a config file to set up registration parameters
@@ -50,7 +56,7 @@ This test compares the pipeline outputs against pre-computed reference results.
 The reference data will be downloaded automatically from this repo's release if available. If the download fails (e.g. the repository is private), manually download the reference data from [here](https://github.com/kreshuklab/matchmaker/releases) and place it under:
 
 ```
-examples/data/
+examples/data/test_data/
 ```
 
 
