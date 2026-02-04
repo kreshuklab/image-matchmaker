@@ -53,7 +53,7 @@ Optional: If you want to hide all warnings during tests, append:
 
 This test compares the pipeline outputs against pre-computed reference results.
 
-The reference data will be downloaded automatically from this repo's release if available. If the download fails (e.g. the repository is private), manually download the reference data from [here](https://github.com/kreshuklab/matchmaker/releases) and place it under:
+The reference data will be downloaded automatically from this repo's release if available. If the download fails (e.g. the repository is private), manually download the reference data from [here](https://github.com/kreshuklab/matchmaker/releases/tag/test_data-v0.2) and place it under:
 
 ```
 examples/data/test_data/
