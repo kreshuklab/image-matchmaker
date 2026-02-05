@@ -6,7 +6,7 @@ from matchmaker.utils import (load_test_config, read_volume, download_file)
 
 
 def test_compare_results():
-    config = load_test_config()
+    config = load_test_config("examples/register_config_test_rigid.yaml")
     output_key = config["keys"]["rigid_alignment"]
     moving_path = f"{config['log_dir']}/{config['moving_image']['output_name']}.n5"
     ref_path = config["moving_image"]["ref_path"]

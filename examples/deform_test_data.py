@@ -133,7 +133,7 @@ def elastic_deform(volume, alpha=(1.,1.,1.), sigma=None, spacing=16, mode="neare
     return sampled
 
 
-def deform_test_data(cfg_path="examples/register_config_test.yaml", alpha=0.9, sigma=2,
+def deform_test_data(cfg_path, enable_elastic=False, alpha=0.9, sigma=2,
                         spacing=16, rotate_angles=[155,30,65], remove_p=0.05, seed=42,
                         visualize=True):
     assert os.path.exists(cfg_path)
@@ -144,32 +144,26 @@ def deform_test_data(cfg_path="examples/register_config_test.yaml", alpha=0.9, s
     seg_fixed = tif.imread(configs["fixed_image"]["path"])
     print("Cropped shape", seg_fixed.shape)
 
-    seg_elastic = seg_fixed.copy()
-    seg_rigid = seg_fixed.copy()
+    seg_moving = seg_fixed.copy()
+    if enable_elastic:
+        seg_moving = elastic_deform(seg_moving, alpha=alpha, sigma=sigma, spacing=spacing, seed=seed,)
 
-    seg_elastic = elastic_deform(seg_elastic, alpha=alpha, sigma=sigma, spacing=spacing, seed=seed,)
-
-    seg_elastic = rigid_deform(seg_elastic, angles=rotate_angles)
-    seg_rigid = rigid_deform(seg_rigid, angles=rotate_angles)
-
-    seg_elastic = remove_instances(seg_elastic, prob=remove_p, seed=seed)
-    seg_rigid = remove_instances(seg_rigid, prob=remove_p, seed=seed)
+    seg_moving = rigid_deform(seg_moving, angles=rotate_angles)
+    seg_moving = remove_instances(seg_moving, prob=remove_p, seed=seed)
 
     save_volume(configs["fixed_image"]["path"].replace(".tif", ".n5"), seg_fixed, save_tif=False)
-
-    save_volume(configs["moving_elastic"]["path"].replace(".tif", ".n5"), seg_elastic)
-    save_volume(configs["moving_image"]["path"].replace(".tif", ".n5"), seg_rigid)
+    save_volume(configs["moving_image"]["path"].replace(".tif", ".n5"), seg_moving)
 
     if visualize:
         os.makedirs("./data/plots", exist_ok=True)
         plot_three_slices(seg_fixed, save_path="./data/plots/seg_fixed.png")
 
-        plot_three_slices(seg_elastic, save_path="./data/plots/seg_elastic.png")
-        plot_overlay(seg_fixed, seg_elastic, save_path="./data/plots/elastic_overlay.png")
-
-        plot_three_slices(seg_rigid, save_path="./data/plots/seg_rigid.png")
-        plot_overlay(seg_fixed, seg_rigid, save_path="./data/plots/rigid_overlay.png")
+        moving_name = "seg_elastic" if enable_elastic else "seg_rigid"
+        plot_three_slices(seg_moving, save_path=f"./data/plots/{moving_name}.png")
+        overlay_name = "elastic_overlay" if enable_elastic else "rigid_overlay"
+        plot_overlay(seg_fixed, seg_moving, save_path=f"./data/plots/{overlay_name}.png")
 
 
 if __name__ == "__main__":
-    deform_test_data()
+    deform_test_data("examples/register_config_test_rigid.yaml")
+    deform_test_data("examples/register_config_test_elastic.yaml", enable_elastic=True)

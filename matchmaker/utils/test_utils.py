@@ -3,7 +3,7 @@ import yaml
 import urllib.request
 
 
-def load_test_config(config_path="examples/register_config_test.yaml"):
+def load_test_config(config_path):
     assert os.path.exists(config_path)
 
     try:
