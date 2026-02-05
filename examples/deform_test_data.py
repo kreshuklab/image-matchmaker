@@ -68,7 +68,7 @@ def elastic_deform(volume, alpha=(1.,1.,1.), sigma=None, spacing=16, mode="neare
         volume (np.ndarray): Input volume of shape (D, H, W).
         alpha (tuple[float, float, float]): Displacement amplitude scaling factors.
         sigma (float): Gaussian smoothing std.
-        spacing (int): Control point spacing (in voxels).
+        spacing (int | tuple[int, int, int]): Control point spacing (in voxels).
         mode (str): Interpolation mode, "nearest" or "trilinear".
         align_corners (bool): Grid sampling alignment flag.
         seed (int | None): Random seed.
@@ -92,8 +92,15 @@ def elastic_deform(volume, alpha=(1.,1.,1.), sigma=None, spacing=16, mode="neare
     else:
         raise ValueError
 
+    if isinstance(spacing, int):
+        spacing = [spacing] * 3
+    elif isinstance(spacing, (list, tuple)):
+        assert len(spacing) == 3
+    else:
+        raise ValueError
+
     if sigma is None:
-        sigma = (spacing / 2, spacing / 2, spacing / 2)
+        sigma = (spacing[0] / 2, spacing[1] / 2, spacing[2] / 2)
     elif isinstance(sigma, (int, float)):
         sigma = (sigma, sigma, sigma)
     elif isinstance(sigma, (list, tuple)):
@@ -102,13 +109,13 @@ def elastic_deform(volume, alpha=(1.,1.,1.), sigma=None, spacing=16, mode="neare
     else:
         raise ValueError
 
-    shape = (int(np.ceil(D/spacing)), int(np.ceil(H/spacing)), int(np.ceil(W/spacing)))
+    shape = (int(np.ceil(D/spacing[0])), int(np.ceil(H/spacing[1])), int(np.ceil(W/spacing[2])))
     disp = np.random.randn(*shape, 3).astype(np.float32)
 
     disp = gaussian(disp, sigma=(*sigma, 0), mode="constant", preserve_range=True,)
     disp *= alpha
 
-    if spacing > 1:
+    if (spacing[0] > 1) or (spacing[1] > 1) or (spacing[2] > 1):
         zoom_factors = (D / shape[0], H / shape[1], W / shape[2], 1.,)
         disp = zoom(disp, zoom_factors, order=1)
 
