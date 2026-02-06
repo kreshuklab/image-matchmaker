@@ -133,25 +133,27 @@ def elastic_deform(volume, alpha=(1.,1.,1.), sigma=None, spacing=16, mode="neare
     return sampled
 
 
-def deform_test_data(cfg_path, enable_elastic=False, alpha=0.9, sigma=2,
-                        spacing=16, rotate_angles=[155,30,65], remove_p=0.05, seed=42,
-                        visualize=True):
+def deform_test_data(cfg_path, enable_elastic=False, alpha=0.9, sigma=2, spacing=16,
+                        rotate_angles_fixed=[20,345,30], rotate_angles_moving=[155,30,65],
+                        remove_p=0.05, seed=42, visualize=True):
     assert os.path.exists(cfg_path)
 
     with open(cfg_path) as f:
         configs = yaml.safe_load(f)
 
-    seg_fixed = tif.imread(configs["fixed_image"]["path"])
+    seg_fixed = tif.imread(configs["fixed_image"]["source_path"])
+
+    seg_fixed = rigid_deform(seg_fixed, angles=rotate_angles_fixed)
     print("Cropped shape", seg_fixed.shape)
 
     seg_moving = seg_fixed.copy()
     if enable_elastic:
         seg_moving = elastic_deform(seg_moving, alpha=alpha, sigma=sigma, spacing=spacing, seed=seed,)
 
-    seg_moving = rigid_deform(seg_moving, angles=rotate_angles)
+    seg_moving = rigid_deform(seg_moving, angles=rotate_angles_moving)
     seg_moving = remove_instances(seg_moving, prob=remove_p, seed=seed)
 
-    save_volume(configs["fixed_image"]["path"].replace(".tif", ".n5"), seg_fixed, save_tif=False)
+    save_volume(configs["fixed_image"]["path"].replace(".tif", ".n5"), seg_fixed)
     save_volume(configs["moving_image"]["path"].replace(".tif", ".n5"), seg_moving)
 
     if visualize:

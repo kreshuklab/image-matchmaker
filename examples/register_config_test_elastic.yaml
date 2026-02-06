@@ -1,5 +1,6 @@
 fixed_image:
-  path: "examples/data/platy1_muscles_stardist_fixed.tif"
+  source_path: "examples/data/platy1_muscles_stardist_fixed.tif"
+  path: "examples/data/deformed_data/platy1_muscles_stardist_fixed_rotated.tif"
   output_name: "fixed_image"
   x_res: 1
   y_res: 1
