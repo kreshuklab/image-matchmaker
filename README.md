@@ -37,6 +37,23 @@ examples/data/test_data/
 python examples/deform_test_data.py
 ```
 
+This script generates synthetic test datasets from the fixed segmentation mask stored in the repository.
+
+First, the original segmentation mask is rotated using a 3D rigid transformation.
+
+Two moving datasets are then generated:
+
+- Rigid case: applies a rigid 3D rotation to the fixed volume and removes a fraction of instances.
+- Elastic case: applies a control-grid based elastic deformation, followed by a rigid rotation and instance removal.
+
+The elastic deformation is generated from a smoothed random displacement field defined on a control grid and interpolated to full resolution.
+
+All generated deformed volumes (`.n5` and `.tif`) are saved under:
+
+```
+examples/data/deformed_data/
+```
+
 
 ### 3 ways of interaction with the library
 
