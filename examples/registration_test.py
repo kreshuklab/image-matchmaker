@@ -13,7 +13,7 @@ def main():
 
     #######################
     # prealign moving image
-    moving_input = "./data/platy1_muscles_stardist_moving.n5"
+    moving_input = "./data/deformed_data/platy1_muscles_stardist_moving.n5"
     with z5py.File(moving_input, "r") as f:
         seg_moving = f["seg"][:]
 
@@ -26,7 +26,7 @@ def main():
 
     #######################
     # prealign fixed image
-    fixed_input = "./data/platy1_muscles_stardist_fixed.n5"
+    fixed_input = "./data/deformed_data/platy1_muscles_stardist_fixed_rotated.n5"
     with z5py.File(fixed_input, "r") as f:
         seg_fixed = f["seg"][:]
 
