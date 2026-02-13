@@ -345,7 +345,7 @@ def main(fixed_path, fixed_key, moving_path, moving_key, output_dir, output_key,
         attrs=moving_attributes
     )
 
-    logging.info("Save prealignment tranform")
+    logging.info("Save prealignment transform")
 
     print(prealignment_transform)
 

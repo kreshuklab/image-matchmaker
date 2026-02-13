@@ -143,7 +143,7 @@ def export_to_mobie(input_path, input_key, mobie_folder, dataset_name, segmentat
 @click.option("-i", "--input_path", required=True, help="Input .n5 file")
 @click.option("-k", "--input_key", required=True, help="Input key")
 @click.option("-t", "--input_type", required=True, help="Fixed or moving image?")
-@click.option("-s", "--semantic_seg", required=False, help="semantic or instance?")
+@click.option("-s", "--semantic_seg", is_flag=True, default=False, help="semantic or instance?")
 @click.option("-d", "--dataset_name", required=True, help="Name of the MoBIE dataset")
 @click.option("-o", "--output_dir", required=True, help="Output directory")
 def main(input_path, input_key, input_type, semantic_seg, dataset_name, output_dir):
@@ -157,7 +157,7 @@ def main(input_path, input_key, input_type, semantic_seg, dataset_name, output_d
         ],
         datefmt="%Y-%m-%d %H:%M:%S",
     )
-
+    logging.info(f"MoBIE upload semantic segmentation: {semantic_seg}")
     if semantic_seg:
         output_key = f"{input_key}_binary"
         instance_to_semantic(input_path, input_key, output_key)
@@ -179,8 +179,6 @@ def main(input_path, input_key, input_type, semantic_seg, dataset_name, output_d
         menu_name=input_type,
     )
     logging.info(f"MoBIE project created/updated at {output_dir}/mobie_project")
-
-    # TODO: delete binary segmentation afterwards
 
 
 if __name__ == "__main__":
