@@ -28,7 +28,9 @@ def main(input_path, output_path, output_key, log_dir, x_res, y_res, z_res):
     logging.info(f"Value range: min={image.min()}, max={image.max()}")
 
     assert (image.ndim == 3) or (image.ndim == 4), "Currently pipeline only works with ZYX or CZYX images, input has {image.ndim} dimensions"
-    assert image.dtype == np.uint16, f"Expect input volume to be np.uint16, but got {image.dtype} instead"
+    if image.dtype != np.uint16:
+        logging.warning(f"input volume dtype is {image.dtype}, casting to uint16")
+        image = image.astype(np.uint16)
 
     logging.info(f"Writing output image to  {input_path}")
 
