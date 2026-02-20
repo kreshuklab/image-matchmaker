@@ -59,7 +59,7 @@ examples/data/deformed_data/
 
 - Running the full pipeline using workflow manager and a config file to set up registration parameters
 ```
-snakemake -s workflows/register.smk --cores 16
+snakemake -s workflows/rigid_registration.smk --configfile examples/register_config_test_rigid.yaml --cores 16
 ```
 - Running separate scripts
 ```
