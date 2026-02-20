@@ -1,6 +1,7 @@
 import sys
 import click
 import logging
+import numpy as np
 import tifffile as tif
 from pathlib import Path
 
@@ -27,6 +28,7 @@ def main(input_path, output_path, output_key, log_dir, x_res, y_res, z_res):
     logging.info(f"Value range: min={image.min()}, max={image.max()}")
 
     assert (image.ndim == 3) or (image.ndim == 4), "Currently pipeline only works with ZYX or CZYX images, input has {image.ndim} dimensions"
+    assert image.dtype == np.uint16, f"Expect input volume to be np.uint16, but got {image.dtype} instead"
 
     logging.info(f"Writing output image to  {input_path}")
 

@@ -130,7 +130,7 @@ def elastic_deform(volume, alpha=(1.,1.,1.), sigma=None, spacing=16, mode="neare
 
     sampled = grid_sample3d(vol, new_grid, align_corners=align_corners, mode=mode)
 
-    return sampled
+    return sampled.astype(volume.dtype)
 
 
 def deform_test_data(cfg_path, enable_elastic=False, alpha=0.9, sigma=2, spacing=16,
