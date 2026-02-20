@@ -189,3 +189,6 @@ data
 
 # Snakemake logs
 .snakemake/*
+
+# Ignore temporary files from mobie
+tmp*
