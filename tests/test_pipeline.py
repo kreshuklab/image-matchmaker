@@ -12,6 +12,7 @@ def run_pipline(config_path, snakefile, cores=8):
         [
             "snakemake",
             "--snakefile", snakefile,
+            "--configfile", config_path,
             "--cores", str(cores),
         ],
         check=True,
