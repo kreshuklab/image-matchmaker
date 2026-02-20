@@ -1,4 +1,3 @@
-import os
 import z5py
 import numpy as np
 
@@ -8,8 +7,7 @@ from matchmaker.utils import (rotate_img, plot_three_slices, plot_overlay)
 
 def main():
     output_dir = "./data/test"
-    if not os.path.exists(f"{output_dir}/plots"):
-        os.makedirs(f"{output_dir}/plots")
+    Path(f"{output_dir}/plots").mkdir(parents=True, exist_ok=True)
 
     #######################
     # prealign moving image

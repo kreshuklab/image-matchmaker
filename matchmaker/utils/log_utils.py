@@ -1,12 +1,12 @@
-import os
 import sys
 import logging
+from pathlib import Path
 
 
 def setup_logging(log_dir, log_filename, mode="w"):
-    os.makedirs(log_dir, exist_ok=True)
+    Path(log_dir).mkdir(parents=True, exist_ok=True)
 
-    log_path = os.path.join(log_dir, log_filename)
+    log_path = Path(log_dir) / log_filename
 
     logging.basicConfig(
         level=logging.INFO,

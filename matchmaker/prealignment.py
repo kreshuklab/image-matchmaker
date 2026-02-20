@@ -1,8 +1,8 @@
-import os
 import sys
 import click
 import logging
 import numpy as np
+from pathlib import Path
 import matplotlib.pyplot as plt
 
 from matchmaker.data import create_point_cloud
@@ -178,8 +178,7 @@ def run_prealignment(
     - The MoBIE export modifies the `dataset.json` to set the prealigned fixed
       volume as the default view.
     """
-    if not os.path.exists(f"{output_dir}/plots"):
-        os.makedirs(f"{output_dir}/plots")
+    Path(f"{output_dir}/plots").mkdir(parents=True, exist_ok=True)
 
     logging.info("Start prealignment")
     logging.info("Start prealignment of fixed image ...")

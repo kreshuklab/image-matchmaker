@@ -1,10 +1,10 @@
-import os
 import yaml
 import urllib.request
+from pathlib import Path
 
 
 def load_test_config(config_path):
-    assert os.path.exists(config_path)
+    assert Path(config_path).exists()
 
     try:
         with open(config_path, "r") as f:
@@ -17,7 +17,7 @@ def load_test_config(config_path):
 
 
 def download_file(path, url):
-    if os.path.exists(path):
+    if Path(path).exists():
         print(f"✅ File already exists at {path}")
         return
 

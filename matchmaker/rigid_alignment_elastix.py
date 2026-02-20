@@ -1,4 +1,3 @@
-import os
 import sys
 import itk
 import click
@@ -91,8 +90,7 @@ def run_rigid_alignment(
         np.ndarray: The rigidly aligned moving image.
     """
 
-    if not os.path.exists(f"{output_dir}/plots"):
-        os.makedirs(f"{output_dir}/plots")
+    Path(f"{output_dir}/plots").mkdir(parents=True, exist_ok=True)
 
     logging.info("Start rigid alignment")
 

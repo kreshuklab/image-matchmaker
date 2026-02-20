@@ -1,7 +1,7 @@
-import os
 import yaml
 import numpy as np
 import tifffile as tif
+from pathlib import Path
 import transforms3d as tf3d
 from scipy.ndimage import zoom
 from skimage.filters import gaussian
@@ -34,8 +34,8 @@ def remove_instances(seg, prob=0.05, seed=None):
 def save_volume(path, array, key="seg", chunks=(128, 512, 512), attributes={"resolution":[1,1,1]},
                 save_tif=True):
     assert path.endswith(".n5")
-    dir = os.path.dirname(path)
-    os.makedirs(dir, exist_ok=True)
+    dir = Path(path).parent
+    dir.mkdir(parents=True, exist_ok=True)
 
     write_volume(f=path, arr=array, key=key, chunks=chunks, attrs=attributes,)
 
@@ -136,7 +136,7 @@ def elastic_deform(volume, alpha=(1.,1.,1.), sigma=None, spacing=16, mode="neare
 def deform_test_data(cfg_path, enable_elastic=False, alpha=0.9, sigma=2, spacing=16,
                         rotate_angles_fixed=[20,345,30], rotate_angles_moving=[155,30,65],
                         remove_p=0.05, seed=42, visualize=True):
-    assert os.path.exists(cfg_path)
+    assert Path(cfg_path).exists()
 
     with open(cfg_path) as f:
         configs = yaml.safe_load(f)
@@ -157,7 +157,7 @@ def deform_test_data(cfg_path, enable_elastic=False, alpha=0.9, sigma=2, spacing
     save_volume(configs["moving_image"]["path"].replace(".tif", ".n5"), seg_moving)
 
     if visualize:
-        os.makedirs("./data/plots", exist_ok=True)
+        Path("./data/plots").mkdir(parents=True, exist_ok=True)
         plot_three_slices(seg_fixed, save_path="./data/plots/seg_fixed.png")
 
         moving_name = "seg_elastic" if enable_elastic else "seg_rigid"

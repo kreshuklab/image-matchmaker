@@ -1,6 +1,6 @@
-import os
 import numpy as np
 import tifffile as tiff
+from pathlib import Path
 
 from matchmaker.utils import (load_test_config, read_volume, download_file)
 
@@ -13,7 +13,7 @@ def compare_results(config_path):
 
     test_img = read_volume(moving_path, output_key)
 
-    if not os.path.exists(ref_path):
+    if not Path(ref_path).exists():
         ref_url = config["moving_image"]["ref_url"]
         download_file(ref_path, ref_url)
 
