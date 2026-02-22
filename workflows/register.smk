@@ -26,6 +26,12 @@ fixed_type = "fixed"
 moving_type = "moving"
 dataset_name = config["mobie_dataset_name"]
 
+# Coherent Point Drift parameters
+w = config["coherent_point_drift"]["w"]
+beta = config["coherent_point_drift"]["beta"]
+lmd = config["coherent_point_drift"]["lmd"]
+maxiter = config["coherent_point_drift"]["maxiter"]
+
 
 rule all:
     input:
@@ -225,7 +231,7 @@ rule cpd_nonrigid_registration:
         cpus_per_task=16,
         mem_mb="128GB"
     shell:
-        f"python matchmaker/cpd_nonrigid_registration.py --moving_path {{input.moving_image_n5}} --moving_key {{params.moving_key}} --fixed_path {{input.fixed_image_n5}} --fixed_key {{params.fixed_key}} -o {{params.log_dir}} --w 0.00001 --beta 100 --lmd 0.1 --maxiter 1;"
+        f"python matchmaker/cpd_nonrigid_registration.py --moving_path {{input.moving_image_n5}} --moving_key {{params.moving_key}} --fixed_path {{input.fixed_image_n5}} --fixed_key {{params.fixed_key}} -o {{params.log_dir}} --w {w} --beta {beta} --lmd {lmd} --maxiter {maxiter};"
 
 
 

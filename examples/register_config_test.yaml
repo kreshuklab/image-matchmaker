@@ -13,5 +13,12 @@ moving_image:
 log_dir: "data/test_registration"
 final_transform_path: "data/test_registration/final_transform.json"
 
+coherent_point_drift:
+  w: 0.00001
+  lmd: 0.1
+  beta: 100
+  maxiter: 10 # Low for debugging purpose, should be 100-150
+
+
 # mobie_export = true # NOTE: do we want that flag?
 mobie_dataset_name: "platy1_muscles_stardist"
