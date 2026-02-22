@@ -26,6 +26,12 @@ fixed_type = "fixed"
 moving_type = "moving"
 dataset_name = config["mobie_dataset_name"]
 
+# Coherent Point Drift parameters
+w = config["coherent_point_drift"]["w"]
+beta = config["coherent_point_drift"]["beta"]
+lmd = config["coherent_point_drift"]["lmd"]
+maxiter = config["coherent_point_drift"]["maxiter"]
+
 
 rule all:
     input:
@@ -35,11 +41,14 @@ rule all:
         svd_transform = f"{log_dir}/{prealignment_n5_key}/{prealignment_n5_key}_transform.json",
         rigid_alignment = f"{moving_n5_path}/{rigid_alignment_n5_key}",
         rigid_transform = f"{log_dir}/{rigid_alignment_n5_key}/TransformParameters.0.txt",
-        mobie_fixed_input_check = f"{log_dir}/mobie_project/{dataset_name}/images/ome-zarr/{fixed_name}_{raw_n5_key}.done",
-        mobie_moving_input_check = f"{log_dir}/mobie_project/{dataset_name}/images/ome-zarr/{moving_name}_{raw_n5_key}.done",
-        mobie_fixed_prealign_check = f"{log_dir}/mobie_project/{dataset_name}/images/ome-zarr/{fixed_name}_{prealignment_n5_key}.done",
-        mobie_moving_prealign_check = f"{log_dir}/mobie_project/{dataset_name}/images/ome-zarr/{moving_name}_{prealignment_n5_key}.done",
-        mobie_moving_rigid_align_check = f"{log_dir}/mobie_project/{dataset_name}/images/ome-zarr/{moving_name}_{rigid_alignment_n5_key}.done"
+        fixed_pcd = f"{log_dir}/cpd_nonrigid_registration/fixed_pcd.pcd",
+        registered_pcd = f"{log_dir}/cpd_nonrigid_registration/registered_pcd.pcd"
+        # match_path = f"{log_dir}/match_pointclouds/matched_pairs.csv"
+        # mobie_fixed_input_check = f"{log_dir}/mobie_project/{dataset_name}/images/ome-zarr/{fixed_name}_{raw_n5_key}.done",
+        # mobie_moving_input_check = f"{log_dir}/mobie_project/{dataset_name}/images/ome-zarr/{moving_name}_{raw_n5_key}.done",
+        # mobie_fixed_prealign_check = f"{log_dir}/mobie_project/{dataset_name}/images/ome-zarr/{fixed_name}_{prealignment_n5_key}.done",
+        # mobie_moving_prealign_check = f"{log_dir}/mobie_project/{dataset_name}/images/ome-zarr/{moving_name}_{prealignment_n5_key}.done",
+        # mobie_moving_rigid_align_check = f"{log_dir}/mobie_project/{dataset_name}/images/ome-zarr/{moving_name}_{rigid_alignment_n5_key}.done"
 
 
 """
@@ -180,6 +189,50 @@ rule add_rigid_alignment_to_mobie:
         f"python matchmaker/mobie_export.py --input_path {{input.moving_image_n5}} --input_key {{params.input_key}} --input_type {moving_type} --dataset_name {dataset_name} --output_dir {log_dir};"
         f"touch {{output.moving_check}};"
         f"rm -rf ./tmp_{dataset_name}_{moving_name}_{{params.input_key}};"
+
+# """
+# Create point clouds
+# """
+
+# rule create_point_clouds:
+#     input:
+#         f"{log_dir}/{{sample_name}}/em_registration_{{sample_name}}.n5/template_aligned_rigid/segmentation",
+#         gene_assignment = f"{log_dir}/{{sample_name}}/rigid_registration/gene_assignment_rigid.csv"
+#     output:
+#         f"{log_dir}/{{sample_name}}/rigid_registration/point_cloud_rigid.pcd"
+#     params:
+#         log_dir = f"{log_dir}/{{sample_name}}/create_pcd",
+#         n5_path = f"{log_dir}/{{sample_name}}/em_registration_{{sample_name}}.n5"
+#     log: f"{log_dir}/{{sample_name}}/logs/csv_to_pcd.log"
+#     conda: "open3d_env"
+#     resources:
+#         time="00:15:00",
+#     shell:
+#         f"python pipeline_steps/inter_sample_registration/csv_to_pcd.py {{params.n5_path}} template_aligned_rigid/segmentation {{input.gene_assignment}} {{output}} {{params.log_dir}} {{log}};"
+
+
+rule cpd_nonrigid_registration:
+    input:
+        fixed_input_ds = f"{fixed_n5_path}/{prealignment_n5_key}",
+        moving_input_ds = f"{moving_n5_path}/{rigid_alignment_n5_key}",
+        fixed_image_n5 = fixed_n5_path,
+        moving_image_n5 = moving_n5_path,
+    output:
+        fixed_pcd = f"{log_dir}/cpd_nonrigid_registration/fixed_pcd.pcd",
+        registered_pcd = f"{log_dir}/cpd_nonrigid_registration/registered_pcd.pcd"
+    params:
+        log_dir = f"{log_dir}/cpd_nonrigid_registration",
+        fixed_key = prealignment_n5_key,
+        moving_key = rigid_alignment_n5_key
+    log: f"{log_dir}/matchmaker.log"
+    conda: "cvxpy_cpd_env"
+    resources:
+        time="01:00:00",
+        cpus_per_task=16,
+        mem_mb="128GB"
+    shell:
+        f"python matchmaker/cpd_nonrigid_registration.py --moving_path {{input.moving_image_n5}} --moving_key {{params.moving_key}} --fixed_path {{input.fixed_image_n5}} --fixed_key {{params.fixed_key}} -o {{params.log_dir}} --w {w} --beta {beta} --lmd {lmd} --maxiter {maxiter};"
+
 
 
 
