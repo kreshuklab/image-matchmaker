@@ -42,8 +42,6 @@ def cpd_from_images(fixed_img, fixed_resolution, moving_img, moving_resolution, 
     o3d.t.io.write_point_cloud(str(output_dir / "moving_pcd.pcd"), moving_pcd, write_ascii=True)
     o3d.t.io.write_point_cloud(str(output_dir / "registered_pcd.pcd"), registered_pcd, write_ascii=True)
 
-    matched_pairs = pd.DataFrame(columns=["fixed", "moving"])
-    return matched_pairs
 
 
 @click.command()
@@ -52,10 +50,10 @@ def cpd_from_images(fixed_img, fixed_resolution, moving_img, moving_resolution, 
 @click.option("-mi", "--moving_path", required=True, help="Moving prealigned input .n5 file")
 @click.option("-mk", "--moving_key", required=True, help="Moving input key")
 @click.option("-o", "--output_dir", required=True, help="Output directory")
-@click.option("-w", "--w", required=True, type=float, help="Moving input key")
-@click.option("-beta", "--beta", required=True, type=float, help="Moving input key")
-@click.option("-lmd", "--lmd", required=True, type=float, help="Moving input key")
-@click.option("-maxiter", "--maxiter", required=True, type=int, help="Moving input key")
+@click.option("-w", "--w", required=True, type=float, help="Parameter of nonrigid CPD")
+@click.option("-beta", "--beta", required=True, type=float, help="Parameter of nonrigid CPD")
+@click.option("-lmd", "--lmd", required=True, type=float, help="Parameter of nonrigid CPD")
+@click.option("-maxiter", "--maxiter", required=True, type=int, help="Parameter of nonrigid CPD")
 def main(fixed_path, fixed_key, moving_path, moving_key, output_dir, w, beta, lmd, maxiter):
 
     logging.basicConfig(
@@ -79,7 +77,7 @@ def main(fixed_path, fixed_key, moving_path, moving_key, output_dir, w, beta, lm
     moving_resolution = get_attrs(moving_path, moving_key)["resolution"]
     logging.info(f"Moving image shape: {moving_img.shape}, dtype {moving_img.dtype}")
 
-    matched_pairs = cpd_from_images(
+    cpd_from_images(
         fixed_img,
         fixed_resolution,
         moving_img,
