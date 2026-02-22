@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import open3d as o3d
+import logging
 
 from matchmaker.preprocessing import percentile_norm
 
@@ -106,32 +107,51 @@ def plot_overlay(img1, img2, save_path=None, x_pos=None, y_pos=None, z_pos=None)
     plt.close()
 
 
-def plot_pcd(pcd: o3d.geometry.PointCloud, save_path=None):
-    coords = pcd.point.positions.numpy()
-    color = pcd.point.colors.numpy()
-    logging.info("Point coordinates of shape {coords.shape} and dtype {coords.dtype}")
-    # plt.scatter(coords[:, 0], coords[:, 1], s=0.2, c=color)
+
+def overlay_pcds(fixed_pcd: o3d.t.geometry.PointCloud, moving_pcd: o3d.t.geometry.PointCloud, fixed_col="cornflowerblue", moving_col="orangered", projection="xy", save_path=None, title=""):
+    """"
+    Overlay two point clouds. Parameters of plotting should be ok to visualize two full platy volumes
+    """
+    assert len(projection) == 2, f"Projection should be xy, yz or something like that of length 2, not {projection}"
+    axis_order = {"x": 0, "y": 1, "z": 2}
+    roi_x = np.s_[:, axis_order[projection[0]]]
+    roi_y = np.s_[:, axis_order[projection[1]]]
     
-    fig, axs = plt.subplots(2, 2, figsize=(15, 15))
+    plt.figure(figsize=(10, 10))
+    plt.cla()
+    plt.axis("equal")
+    fixed_np = fixed_pcd.point.positions.numpy()
+    moving_np = moving_pcd.point.positions.numpy()
+
+    plt.title(title)
+    plt.scatter(fixed_np[roi_x], fixed_np[roi_y], s=0.6, c=fixed_col, alpha=0.5, label="Fixed point cloud")
+    plt.scatter(moving_np[roi_x], moving_np[roi_y], s=0.6, c=moving_col, alpha=0.5, label="Moving point cloud")
+    plt.legend()
+    plt.xlabel(projection[0])
+    plt.ylabel(projection[1])
+    if save_path is None:
+        plt.show()
+    else:
+        plt.savefig(save_path, dpi=300)
+    plt.close()
+
+def visualize_displacement_field(moving_pcd: o3d.t.geometry.PointCloud, registered_pcd: o3d.t.geometry.PointCloud, save_path=None, projection="xy"):
+    assert len(projection) == 2, f"Projection should be xy, yz or something like that of length 2, not {projection}"
+    axis_order = {"x": 0, "y": 1, "z": 2}
+    roi_x = np.s_[:, axis_order[projection[0]]]
+    roi_y = np.s_[:, axis_order[projection[1]]]
     
-    red_cmap = sns.light_palette("crimson", as_cmap=True)
-    yellow_cmap = sns.light_palette("gold", as_cmap=True)
-    gene1_counts_red = [red_cmap(val) for val in percentile_norm(pcd.point.gene1_spots.numpy(), pmin=0, pmax=99)]
-    gene1_intensity_red = [red_cmap(val) for val in percentile_norm(pcd.point.gene1_mean.numpy(), pmin=0, pmax=98)]
-    gene2_counts_yellow = [yellow_cmap(val) for val in percentile_norm(pcd.point.gene2_spots.numpy(), pmin=0, pmax=99)]
+    moving_np = moving_pcd.point.positions.numpy()
+    registered_np = registered_pcd.point.positions.numpy()
+
+
+    for idx in range(len(moving_np)):
+        # if abs(pcd_in[idx, 2] - 112) < 4:
+        #     ax.plot([pcd_in[idx, 0] /res[2], pcd_out[idx, 0]/res[2]], [pcd_in[idx, 1]/ res[1], pcd_out[idx, 1]/ res[1]])
+
+        plt.plot([moving_np[roi_x][idx], registered_np[roi_x][idx]], [moving_np[roi_y][idx], registered_np[roi_y][idx]])
     
-    # print(percentile_norm(pcd.point.gene2_spots.numpy(), pmin=0, pmax=99))
-    gene2_intensity_yellow = [yellow_cmap(val) for val in percentile_norm(pcd.point.gene2_mean.numpy(), pmin=0, pmax=98)]
-        
-    axs[0, 0].scatter(coords[:, 0], coords[:, 1], s=1, c=gene1_intensity_red, label="Gene 1 intensity", alpha=0.5)
-    axs[0, 1].scatter(coords[:, 0], coords[:, 1], s=1, c=gene1_counts_red, label="Gene 1 counts", alpha=0.5)
-    axs[1, 0].scatter(coords[:, 0], coords[:, 1], s=1, c=gene2_intensity_yellow, label="Gene 2 intensity", alpha=0.5)
-    axs[1, 1].scatter(coords[:, 0], coords[:, 1], s=1, c=gene2_counts_yellow, label="Gene 2 counts", alpha=0.5)
-    
-    for ax in axs.flat:
-        ax.legend()
-        ax.set_facecolor("black")
-    
+    plt.axis("equal")
     if save_path is None:
         plt.show()
     else:

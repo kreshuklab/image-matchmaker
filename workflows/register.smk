@@ -35,7 +35,9 @@ rule all:
         svd_transform = f"{log_dir}/{prealignment_n5_key}/{prealignment_n5_key}_transform.json",
         rigid_alignment = f"{moving_n5_path}/{rigid_alignment_n5_key}",
         rigid_transform = f"{log_dir}/{rigid_alignment_n5_key}/TransformParameters.0.txt",
-        match_path = f"{log_dir}/match_pointclouds/matched_pairs.csv"
+        fixed_pcd = f"{log_dir}/cpd_nonrigid_registration/fixed_pcd.pcd",
+        registered_pcd = f"{log_dir}/cpd_nonrigid_registration/registered_pcd.pcd"
+        # match_path = f"{log_dir}/match_pointclouds/matched_pairs.csv"
         # mobie_fixed_input_check = f"{log_dir}/mobie_project/{dataset_name}/images/ome-zarr/{fixed_name}_{raw_n5_key}.done",
         # mobie_moving_input_check = f"{log_dir}/mobie_project/{dataset_name}/images/ome-zarr/{moving_name}_{raw_n5_key}.done",
         # mobie_fixed_prealign_check = f"{log_dir}/mobie_project/{dataset_name}/images/ome-zarr/{fixed_name}_{prealignment_n5_key}.done",
@@ -210,21 +212,20 @@ rule cpd_nonrigid_registration:
         fixed_image_n5 = fixed_n5_path,
         moving_image_n5 = moving_n5_path,
     output:
-        match_path = f"{log_dir}/match_pointclouds/matched_pairs.csv"
+        fixed_pcd = f"{log_dir}/cpd_nonrigid_registration/fixed_pcd.pcd",
+        registered_pcd = f"{log_dir}/cpd_nonrigid_registration/registered_pcd.pcd"
     params:
-        log_dir = f"{log_dir}/match_pointclouds",
+        log_dir = f"{log_dir}/cpd_nonrigid_registration",
         fixed_key = prealignment_n5_key,
         moving_key = rigid_alignment_n5_key
     log: f"{log_dir}/matchmaker.log"
     conda: "cvxpy_cpd_env"
     resources:
-        time="03:00:00",
+        time="01:00:00",
         cpus_per_task=16,
         mem_mb="128GB"
     shell:
-        f"if [ \"$HOSTNAME\" = kreshuk-gpu1.embl.de ]; then export CUDA_VISIBLE_DEVICES=4; fi;"
-        f"echo $CUDA_VISIBLE_DEVICES;"
-        f"python matchmaker/match_pointclouds.py --moving_path {{input.moving_image_n5}} --moving_key {{params.moving_key}} --fixed_path {{input.fixed_image_n5}} --fixed_key {{params.fixed_key}} -o {{params.log_dir}} -match {{output}};"
+        f"python matchmaker/cpd_nonrigid_registration.py --moving_path {{input.moving_image_n5}} --moving_key {{params.moving_key}} --fixed_path {{input.fixed_image_n5}} --fixed_key {{params.fixed_key}} -o {{params.log_dir}} --w 0.00001 --beta 100 --lmd 0.1 --maxiter 1;"
 
 
 
