@@ -15,7 +15,7 @@ dependencies:
     - scikit-image
     # - optuna
     # - proxsuite
-    # - cvxpy
+    - cvxpy
     - transforms3d
 
     - ipykernel

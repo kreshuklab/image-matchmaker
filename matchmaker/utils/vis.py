@@ -5,6 +5,8 @@ import logging
 
 from matchmaker.preprocessing import percentile_norm
 
+import seaborn as sns
+
 
 def plot_three_slices(
     img,
@@ -156,4 +158,35 @@ def visualize_displacement_field(moving_pcd: o3d.t.geometry.PointCloud, register
         plt.show()
     else:
         plt.savefig(save_path, dpi=300)
+    plt.close()
+
+
+def plot_matching_qc(pos_1, pos_2, fig_name, pairs=None, z_slice=None):
+    plt.figure()
+    d1 = 0
+    d2 = 1
+
+    if z_slice is not None:
+        pos_1_mask = (pos_1[:, 2] > z_slice[0]) &  (pos_1[:, 2] < z_slice[1])
+        pos_2_mask = (pos_2[:, 2] > z_slice[0]) &  (pos_2[:, 2] < z_slice[1])
+    else:
+        pos_1_mask = [True] * len(pos_1)
+        pos_2_mask = [True] * len(pos_2)
+        z_slice = (-np.inf, np.inf)
+
+    sns.scatterplot(x=pos_1[pos_1_mask, d1], y=pos_1[pos_1_mask, d2], alpha=0.8, label="fixed", c="mediumpurple")
+    sns.scatterplot(x=pos_2[pos_2_mask, d1], y=pos_2[pos_2_mask, d2], alpha=0.8, label="moving", c="lightseagreen")
+
+    if pairs is not None:
+        for idx_1, idx_2 in pairs:
+            p1 = pos_1[idx_1, :]
+            p2 = pos_2[idx_2, :]
+            if (p1[2] > z_slice[0]) & (p1[2] < z_slice[1]) & (p2[2] > z_slice[0]) & (p2[2] < z_slice[1]):
+                plt.plot([p1[d1], p2[d1]], [p1[d2], p2[d2]], c="green")
+
+
+
+    plt.legend()
+    
+    plt.savefig(fig_name, dpi=300)
     plt.close()
