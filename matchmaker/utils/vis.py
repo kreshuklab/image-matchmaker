@@ -109,6 +109,41 @@ def plot_overlay(img1, img2, save_path=None, x_pos=None, y_pos=None, z_pos=None)
     plt.close()
 
 
+def get_pcd_slice(pcd_np, max_points):
+    com = np.mean(pcd_np)
+    point_ratio = min(1, max_points / len(pcd_np))
+    centered_coord = np.abs(pcd_np - com)
+    slice_thickness = np.quantile(centered_coord, point_ratio)
+    return com - slice_thickness, com + slice_thickness
+
+
+def plot_projection(fixed_np, moving_np, projection, center_slice, max_points):
+    axis_order = {"x": 0, "y": 1, "z": 2}
+    roi_x = np.s_[:, axis_order[projection[0]]]
+    roi_y = np.s_[:, axis_order[projection[1]]]
+    if "z" not in projection:
+        orth_axis = axis_order["z"]
+    elif "x" not in projection:
+        orth_axis = axis_order["x"]
+    else:
+        orth_axis = axis_order["y"]
+
+    if center_slice:
+        min_range, max_range = get_pcd_slice(fixed_np, max_points)
+        fixed_mask = (fixed_np[:, orth_axis] > min_range) & (
+            fixed_np[:, orth_axis] < max_range
+        )
+        moving_mask = (moving_np[:, orth_axis] > min_range) & (
+            moving_np[:, orth_axis] < max_range
+        )
+
+    else:
+        fixed_mask = np.ones(len(fixed_np))
+        moving_mask = np.ones(len(moving_np))
+
+    return roi_x, roi_y, fixed_mask, moving_mask, min_range, max_range
+    
+
 def overlay_pcds(
     fixed_pcd: o3d.t.geometry.PointCloud,
     moving_pcd: o3d.t.geometry.PointCloud,
@@ -117,35 +152,38 @@ def overlay_pcds(
     projection="xy",
     save_path=None,
     title="",
+    center_slice=True,
+    max_points=1000,
 ):
-    """ "
-    Overlay two point clouds. Parameters of plotting should be ok to visualize two full platy volumes
+    """
+    Overlay two point clouds. Optionally only plot points around COM slice of the point cloud to make it easier to see/
     """
     assert (
         len(projection) == 2
     ), f"Projection should be xy, yz or something like that of length 2, not {projection}"
-    axis_order = {"x": 0, "y": 1, "z": 2}
-    roi_x = np.s_[:, axis_order[projection[0]]]
-    roi_y = np.s_[:, axis_order[projection[1]]]
+    
+
+    fixed_np = fixed_pcd.point.positions.numpy()
+    moving_np = moving_pcd.point.positions.numpy()
+
+    roi_x, roi_y, fixed_mask, moving_mask, min_range, max_range = plot_projection(fixed_np, moving_np, projection, center_slice, max_points)
 
     plt.figure(figsize=(10, 10))
     plt.cla()
     plt.axis("equal")
-    fixed_np = fixed_pcd.point.positions.numpy()
-    moving_np = moving_pcd.point.positions.numpy()
 
     plt.title(title)
     plt.scatter(
-        fixed_np[roi_x],
-        fixed_np[roi_y],
+        fixed_np[roi_x][fixed_mask],
+        fixed_np[roi_y][fixed_mask],
         s=0.6,
         c=fixed_col,
         alpha=0.5,
         label="Fixed point cloud",
     )
     plt.scatter(
-        moving_np[roi_x],
-        moving_np[roi_y],
+        moving_np[roi_x][moving_mask],
+        moving_np[roi_y][moving_mask],
         s=0.6,
         c=moving_col,
         alpha=0.5,
@@ -166,20 +204,19 @@ def visualize_displacement_field(
     registered_pcd: o3d.t.geometry.PointCloud,
     save_path=None,
     projection="xy",
+    center_slice=True,
+    max_points=1000,
 ):
     assert (
         len(projection) == 2
     ), f"Projection should be xy, yz or something like that of length 2, not {projection}"
-    axis_order = {"x": 0, "y": 1, "z": 2}
-    roi_x = np.s_[:, axis_order[projection[0]]]
-    roi_y = np.s_[:, axis_order[projection[1]]]
 
     moving_np = moving_pcd.point.positions.numpy()
     registered_np = registered_pcd.point.positions.numpy()
 
-    for idx in range(len(moving_np)):
-        # if abs(pcd_in[idx, 2] - 112) < 4:
-        #     ax.plot([pcd_in[idx, 0] /res[2], pcd_out[idx, 0]/res[2]], [pcd_in[idx, 1]/ res[1], pcd_out[idx, 1]/ res[1]])
+    roi_x, roi_y, moving_mask, registered_mask, min_range, max_range = plot_projection(moving_np, registered_np, projection, center_slice, max_points)
+
+    for idx in np.nonzero(moving_mask):
 
         plt.plot(
             [moving_np[roi_x][idx], registered_np[roi_x][idx]],
@@ -194,43 +231,48 @@ def visualize_displacement_field(
     plt.close()
 
 
-def plot_matching_qc(pos_1, pos_2, fig_name, pairs=None, z_slice=None):
+def plot_matching_qc(
+    fixed_np, moving_np, fig_name, pairs=None, projection="xz", center_slice=True, max_points=1000
+):
+    
+    axis_order = {"x": 0, "y": 1, "z": 2}
+    d1 = axis_order[projection[0]]
+    d2 = axis_order[projection[1]]
     plt.figure()
-    d1 = 0
-    d2 = 1
 
-    if z_slice is not None:
-        pos_1_mask = (pos_1[:, 2] > z_slice[0]) & (pos_1[:, 2] < z_slice[1])
-        pos_2_mask = (pos_2[:, 2] > z_slice[0]) & (pos_2[:, 2] < z_slice[1])
-    else:
-        pos_1_mask = [True] * len(pos_1)
-        pos_2_mask = [True] * len(pos_2)
-        z_slice = (-np.inf, np.inf)
+    roi_x, roi_y, fixed_mask, moving_mask, min_range, max_range = plot_projection(fixed_np, moving_np, projection, center_slice, max_points)
 
     sns.scatterplot(
-        x=pos_1[pos_1_mask, d1],
-        y=pos_1[pos_1_mask, d2],
+        x=fixed_np[fixed_mask, d1],
+        y=fixed_np[fixed_mask, d2],
         alpha=0.8,
         label="fixed",
         c="mediumpurple",
     )
     sns.scatterplot(
-        x=pos_2[pos_2_mask, d1],
-        y=pos_2[pos_2_mask, d2],
+        x=moving_np[moving_mask, d1],
+        y=moving_np[moving_mask, d2],
         alpha=0.8,
         label="moving",
         c="lightseagreen",
     )
 
+    if "z" not in projection:
+        orth_axis = axis_order["z"]
+    elif "x" not in projection:
+        orth_axis = axis_order["x"]
+    else:
+        orth_axis = axis_order["y"]
+
     if pairs is not None:
         for idx_1, idx_2 in pairs:
-            p1 = pos_1[idx_1, :]
-            p2 = pos_2[idx_2, :]
+            p1 = fixed_np[idx_1, :]
+            p2 = moving_np[idx_2, :]
             if (
-                (p1[2] > z_slice[0])
-                & (p1[2] < z_slice[1])
-                & (p2[2] > z_slice[0])
-                & (p2[2] < z_slice[1])
+                (p1[orth_axis] > min_range)
+                & (p1[orth_axis] < max_range)
+                & (p2[orth_axis] > min_range)
+                & (p2[orth_axis] < max_range)
             ):
                 plt.plot([p1[d1], p2[d1]], [p1[d2], p2[d2]], c="green")
 

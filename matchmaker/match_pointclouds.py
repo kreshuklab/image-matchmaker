@@ -41,14 +41,11 @@ def match_points(fixed_pcd, registered_pcd, output_dir):
         matched_pairs = [(p2, p1) for p1, p2 in matched_pairs]
 
 
-    z_mean = np.mean(pos_1[:, 2])
-    z_slice = (z_mean - 5, z_mean + 5)
-    
     if swap_order:
-        plot_matching_qc(pos_2, pos_1, output_dir / "point_matching.png", pairs=matched_pairs, z_slice=z_slice)
+        plot_matching_qc(pos_2, pos_1, output_dir / "point_matching.png", pairs=matched_pairs)
 
     else:
-        plot_matching_qc(pos_1, pos_2, output_dir / "point_matching.png", pairs=matched_pairs, z_slice=z_slice)
+        plot_matching_qc(pos_1, pos_2, output_dir / "point_matching.png", pairs=matched_pairs)
 
     return matched_pairs
 
