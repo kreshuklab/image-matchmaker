@@ -109,16 +109,25 @@ def plot_overlay(img1, img2, save_path=None, x_pos=None, y_pos=None, z_pos=None)
     plt.close()
 
 
-
-def overlay_pcds(fixed_pcd: o3d.t.geometry.PointCloud, moving_pcd: o3d.t.geometry.PointCloud, fixed_col="cornflowerblue", moving_col="orangered", projection="xy", save_path=None, title=""):
-    """"
+def overlay_pcds(
+    fixed_pcd: o3d.t.geometry.PointCloud,
+    moving_pcd: o3d.t.geometry.PointCloud,
+    fixed_col="cornflowerblue",
+    moving_col="orangered",
+    projection="xy",
+    save_path=None,
+    title="",
+):
+    """ "
     Overlay two point clouds. Parameters of plotting should be ok to visualize two full platy volumes
     """
-    assert len(projection) == 2, f"Projection should be xy, yz or something like that of length 2, not {projection}"
+    assert (
+        len(projection) == 2
+    ), f"Projection should be xy, yz or something like that of length 2, not {projection}"
     axis_order = {"x": 0, "y": 1, "z": 2}
     roi_x = np.s_[:, axis_order[projection[0]]]
     roi_y = np.s_[:, axis_order[projection[1]]]
-    
+
     plt.figure(figsize=(10, 10))
     plt.cla()
     plt.axis("equal")
@@ -126,8 +135,22 @@ def overlay_pcds(fixed_pcd: o3d.t.geometry.PointCloud, moving_pcd: o3d.t.geometr
     moving_np = moving_pcd.point.positions.numpy()
 
     plt.title(title)
-    plt.scatter(fixed_np[roi_x], fixed_np[roi_y], s=0.6, c=fixed_col, alpha=0.5, label="Fixed point cloud")
-    plt.scatter(moving_np[roi_x], moving_np[roi_y], s=0.6, c=moving_col, alpha=0.5, label="Moving point cloud")
+    plt.scatter(
+        fixed_np[roi_x],
+        fixed_np[roi_y],
+        s=0.6,
+        c=fixed_col,
+        alpha=0.5,
+        label="Fixed point cloud",
+    )
+    plt.scatter(
+        moving_np[roi_x],
+        moving_np[roi_y],
+        s=0.6,
+        c=moving_col,
+        alpha=0.5,
+        label="Moving point cloud",
+    )
     plt.legend()
     plt.xlabel(projection[0])
     plt.ylabel(projection[1])
@@ -137,22 +160,32 @@ def overlay_pcds(fixed_pcd: o3d.t.geometry.PointCloud, moving_pcd: o3d.t.geometr
         plt.savefig(save_path, dpi=300)
     plt.close()
 
-def visualize_displacement_field(moving_pcd: o3d.t.geometry.PointCloud, registered_pcd: o3d.t.geometry.PointCloud, save_path=None, projection="xy"):
-    assert len(projection) == 2, f"Projection should be xy, yz or something like that of length 2, not {projection}"
+
+def visualize_displacement_field(
+    moving_pcd: o3d.t.geometry.PointCloud,
+    registered_pcd: o3d.t.geometry.PointCloud,
+    save_path=None,
+    projection="xy",
+):
+    assert (
+        len(projection) == 2
+    ), f"Projection should be xy, yz or something like that of length 2, not {projection}"
     axis_order = {"x": 0, "y": 1, "z": 2}
     roi_x = np.s_[:, axis_order[projection[0]]]
     roi_y = np.s_[:, axis_order[projection[1]]]
-    
+
     moving_np = moving_pcd.point.positions.numpy()
     registered_np = registered_pcd.point.positions.numpy()
-
 
     for idx in range(len(moving_np)):
         # if abs(pcd_in[idx, 2] - 112) < 4:
         #     ax.plot([pcd_in[idx, 0] /res[2], pcd_out[idx, 0]/res[2]], [pcd_in[idx, 1]/ res[1], pcd_out[idx, 1]/ res[1]])
 
-        plt.plot([moving_np[roi_x][idx], registered_np[roi_x][idx]], [moving_np[roi_y][idx], registered_np[roi_y][idx]])
-    
+        plt.plot(
+            [moving_np[roi_x][idx], registered_np[roi_x][idx]],
+            [moving_np[roi_y][idx], registered_np[roi_y][idx]],
+        )
+
     plt.axis("equal")
     if save_path is None:
         plt.show()
@@ -167,26 +200,41 @@ def plot_matching_qc(pos_1, pos_2, fig_name, pairs=None, z_slice=None):
     d2 = 1
 
     if z_slice is not None:
-        pos_1_mask = (pos_1[:, 2] > z_slice[0]) &  (pos_1[:, 2] < z_slice[1])
-        pos_2_mask = (pos_2[:, 2] > z_slice[0]) &  (pos_2[:, 2] < z_slice[1])
+        pos_1_mask = (pos_1[:, 2] > z_slice[0]) & (pos_1[:, 2] < z_slice[1])
+        pos_2_mask = (pos_2[:, 2] > z_slice[0]) & (pos_2[:, 2] < z_slice[1])
     else:
         pos_1_mask = [True] * len(pos_1)
         pos_2_mask = [True] * len(pos_2)
         z_slice = (-np.inf, np.inf)
 
-    sns.scatterplot(x=pos_1[pos_1_mask, d1], y=pos_1[pos_1_mask, d2], alpha=0.8, label="fixed", c="mediumpurple")
-    sns.scatterplot(x=pos_2[pos_2_mask, d1], y=pos_2[pos_2_mask, d2], alpha=0.8, label="moving", c="lightseagreen")
+    sns.scatterplot(
+        x=pos_1[pos_1_mask, d1],
+        y=pos_1[pos_1_mask, d2],
+        alpha=0.8,
+        label="fixed",
+        c="mediumpurple",
+    )
+    sns.scatterplot(
+        x=pos_2[pos_2_mask, d1],
+        y=pos_2[pos_2_mask, d2],
+        alpha=0.8,
+        label="moving",
+        c="lightseagreen",
+    )
 
     if pairs is not None:
         for idx_1, idx_2 in pairs:
             p1 = pos_1[idx_1, :]
             p2 = pos_2[idx_2, :]
-            if (p1[2] > z_slice[0]) & (p1[2] < z_slice[1]) & (p2[2] > z_slice[0]) & (p2[2] < z_slice[1]):
+            if (
+                (p1[2] > z_slice[0])
+                & (p1[2] < z_slice[1])
+                & (p2[2] > z_slice[0])
+                & (p2[2] < z_slice[1])
+            ):
                 plt.plot([p1[d1], p2[d1]], [p1[d2], p2[d2]], c="green")
 
-
-
     plt.legend()
-    
+
     plt.savefig(fig_name, dpi=300)
     plt.close()

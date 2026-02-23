@@ -25,6 +25,7 @@ def match_points(fixed_pcd, registered_pcd, output_dir):
     logging.info(f"Number of points in fixed pcd: {len(fixed_pcd.point.positions)}")
     logging.info(f"Number of points in moving pcd: {len(registered_pcd.point.positions)}")
 
+    # Order matters for adding constraints in the optimization problem
     if len(fixed_pcd.point.positions) <= len(registered_pcd.point.positions):
         pos_1 = fixed_pcd.point.positions.numpy()
         pos_2 = registered_pcd.point.positions.numpy()
