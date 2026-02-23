@@ -22,8 +22,8 @@ from matchmaker.utils import overlay_pcds, visualize_displacement_field, extract
 
 def match_points(fixed_pcd, registered_pcd, output_dir):
 
-    logging.info("Number of points in fixed pcd:", len(fixed_pcd.point.positions))
-    logging.info("Number of points in moving pcd:", len(registered_pcd.point.positions))
+    logging.info(f"Number of points in fixed pcd: {len(fixed_pcd.point.positions)}")
+    logging.info(f"Number of points in moving pcd: {len(registered_pcd.point.positions)}")
 
     if len(fixed_pcd.point.positions) <= len(registered_pcd.point.positions):
         pos_1 = fixed_pcd.point.positions.numpy()
@@ -39,7 +39,6 @@ def match_points(fixed_pcd, registered_pcd, output_dir):
     if swap_order:
         matched_pairs = [(p2, p1) for p1, p2 in matched_pairs]
 
-    # matched_pairs = read_index_pairs(str(output_dir / "matched_pairs.txt"))
 
     z_mean = np.mean(pos_1[:, 2])
     z_slice = (z_mean - 5, z_mean + 5)
