@@ -34,8 +34,6 @@ def remove_instances(seg, prob=0.05, seed=None):
 def save_volume(path, array, key="seg", chunks=(128, 512, 512), attributes={"resolution":[1,1,1]},
                 save_tif=True):
     assert path.endswith(".n5")
-    dir = Path(path).parent
-    dir.mkdir(parents=True, exist_ok=True)
 
     write_volume(f=path, arr=array, key=key, chunks=chunks, attrs=attributes,)
 
@@ -141,6 +139,9 @@ def deform_test_data(cfg_path, enable_elastic=False, alpha=0.9, sigma=2, spacing
     with open(cfg_path) as f:
         configs = yaml.safe_load(f)
 
+    data_dir = Path(configs["fixed_image"]["path"]).parent
+    data_dir.mkdir(parents=True, exist_ok=True)
+
     seg_fixed = tif.imread(configs["fixed_image"]["source_path"])
 
     seg_fixed = rigid_deform(seg_fixed, angles=rotate_angles_fixed)
@@ -157,13 +158,14 @@ def deform_test_data(cfg_path, enable_elastic=False, alpha=0.9, sigma=2, spacing
     save_volume(configs["moving_image"]["path"].replace(".tif", ".n5"), seg_moving)
 
     if visualize:
-        Path("./data/plots").mkdir(parents=True, exist_ok=True)
-        plot_three_slices(seg_fixed, save_path="./data/plots/seg_fixed.png")
+        plot_dir = data_dir / "plots"
+        plot_dir.mkdir(parents=True, exist_ok=True)
+        plot_three_slices(seg_fixed, save_path=plot_dir/"seg_fixed.png")
 
         moving_name = "seg_elastic" if enable_elastic else "seg_rigid"
-        plot_three_slices(seg_moving, save_path=f"./data/plots/{moving_name}.png")
+        plot_three_slices(seg_moving, save_path=plot_dir/f"{moving_name}.png")
         overlay_name = "elastic_overlay" if enable_elastic else "rigid_overlay"
-        plot_overlay(seg_fixed, seg_moving, save_path=f"./data/plots/{overlay_name}.png")
+        plot_overlay(seg_fixed, seg_moving, save_path=plot_dir/f"{overlay_name}.png")
 
 
 if __name__ == "__main__":
