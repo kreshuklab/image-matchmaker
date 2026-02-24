@@ -290,3 +290,33 @@ def grid_sample3d(volume, grid, align_corners=False, mode="trilinear"):
         out = wa*v000 + wb*v001 + wc*v010 + wd*v011 + we*v100 + wf*v101 + wg*v110 + wh*v111
 
     return out
+
+
+def convert_to_int(arr):
+    """
+    Convert a numpy array to its corresponding int type based on range of values.
+    """
+    if not isinstance(arr, np.ndarray):
+        raise TypeError("Input must be a numpy array.")
+
+    dtype = arr.dtype
+    if dtype in [np.int8, np.int16, np.uint8, np.uint16]:
+        return arr
+
+    min_val, max_val = np.min(arr), np.max(arr)
+    if min_val >= 0:
+        if max_val <= 255:
+            print(f"{dtype} numpy array is converted to np.uint8")
+            return arr.astype(np.uint8)
+        elif max_val <= 65535:
+            print(f"{dtype} numpy array is converted to np.uint16")
+            return arr.astype(np.uint16)
+    else:
+        if min_val >= -128 and max_val <= 127:
+            print(f"{dtype} numpy array is converted to np.int8")
+            return arr.astype(np.int8)
+        elif min_val >= -32768 and max_val <= 32767:
+            print(f"{dtype} numpy array is converted to np.int16")
+            return arr.astype(np.int16)
+
+    raise ValueError(f"Array values out of range for int8/int16/uint8/uint16: min={min_val}, max={max_val}")
