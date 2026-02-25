@@ -1,4 +1,5 @@
 import subprocess
+import shutil
 import numpy as np
 import tifffile as tiff
 from pathlib import Path
@@ -8,7 +9,14 @@ from tests.compare_results import assert_arrays_equal
 from matchmaker.utils import (load_config, read_volume, download_file)
 
 
-def run_pipline(config_path, snakefile, cores=8):
+def run_pipline(config_path, snakefile, cores=8, test_dir="tmp_pytest"):
+    test_dir = Path(test_dir)
+    final_transform_path = test_dir / "final_transform.json"
+
+    if test_dir.exists() and test_dir.is_dir():
+        shutil.rmtree(test_dir)
+    test_dir.mkdir(parents=True)
+
     config = load_config(config_path)
 
     # Generate deformed data
@@ -20,6 +28,7 @@ def run_pipline(config_path, snakefile, cores=8):
             "snakemake",
             "--snakefile", snakefile,
             "--configfile", config_path,
+            "--config", f"log_dir={test_dir}", f"final_transform_path={final_transform_path}",
             "--cores", str(cores),
         ],
         check=True,
@@ -28,7 +37,7 @@ def run_pipline(config_path, snakefile, cores=8):
 
     # Compare results
     output_key = config["keys"]["rigid_alignment"]
-    moving_path = f"{config['log_dir']}/{config['moving_image']['output_name']}.n5"
+    moving_path = test_dir / f"{config['moving_image']['output_name']}.n5"
 
     test_img = read_volume(moving_path, output_key)
 
@@ -41,6 +50,7 @@ def run_pipline(config_path, snakefile, cores=8):
 
     assert_arrays_equal(test_img, ref_img)
     print("✅ compare_results finished.")
+    shutil.rmtree(test_dir)
 
 
 def test_workflow():
