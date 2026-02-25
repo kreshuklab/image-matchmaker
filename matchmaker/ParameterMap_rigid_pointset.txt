@@ -10,7 +10,7 @@
 (FixedImagePyramid "FixedSmoothingImagePyramid")
 (ImageSampler "RandomCoordinate")
 (Interpolator "LinearInterpolator")
-(MaximumNumberOfIterations 10000.000000)
+(MaximumNumberOfIterations 1000.000000)
 (MaximumNumberOfSamplingAttempts 8.000000)
 
 (Registration "MultiMetricMultiResolutionRegistration")

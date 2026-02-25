@@ -183,8 +183,8 @@ def elastix_deformable_pointset_alignment(
     SCRIPT_DIR = Path(__file__).resolve().parent
     parameter_map_paths = [
         f"{SCRIPT_DIR}/ParameterMap_rigid_pointset.txt",
-        # f"{SCRIPT_DIR}/ParameterMap_bspline_pointset_rough.txt",
-        # f"{SCRIPT_DIR}/ParameterMap_bspline_pointset_fine.txt",
+        f"{SCRIPT_DIR}/ParameterMap_bspline_pointset_rough.txt",
+        f"{SCRIPT_DIR}/ParameterMap_bspline_pointset_fine.txt",
     ]
 
     print("Start registration")
@@ -224,7 +224,7 @@ def elastix_deformable_pointset_alignment(
     grid_img_np[:, ::10, :] = 1
     grid_img_np[:, :, ::10] = 1
     transformed_grid_np = apply_transform_chanwise(
-        result_transform_parameters, grid_img_np, moving_resolution
+        result_transform_parameters, grid_img_np.astype(np.float32), moving_resolution
     )
     plot_overlay(fixed_img_np, grid_img_np, output_dir / f"grid_before.png")
     plot_overlay(fixed_img_np, transformed_grid_np, output_dir / f"grid_after.png")

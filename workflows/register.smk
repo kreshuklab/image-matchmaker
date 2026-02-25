@@ -237,7 +237,8 @@ rule elastix_deformable_pointset:
         fixed_input_ds = f"{fixed_n5_path}/{raw_n5_key}",
         moving_input_ds = f"{moving_n5_path}/{raw_n5_key}",
         fixed_image_n5 = fixed_n5_path,
-        moving_image_n5 = moving_n5_path
+        moving_image_n5 = moving_n5_path,
+        prealignment_transform = f"{log_dir}/{prealignment_n5_key}/{prealignment_n5_key}_transform.json"
     output:
         directory(f"{moving_n5_path}/{pointset_alignment_n5_key}"),
         directory(f"{moving_n5_path}/{pointset_alignment_input_space_n5_key}"),
@@ -246,25 +247,10 @@ rule elastix_deformable_pointset:
         f"{log_dir}/elastix_deformable_pointset_registration/TransformParameters.2.txt"
     params:
         input_key = raw_n5_key,
-        output_key = pointset_alignment_n5_key,
+        output_key = pointset_alignment_input_space_n5_key,
+        prealigned_output_key = pointset_alignment_n5_key,
         log_dir = f"{log_dir}/elastix_deformable_pointset_registration"
     log: f"{log_dir}//matchmaker.log"
     conda: "matchmaker_env"
     shell:
-        f"python matchmaker/elastix_deformable_pointset_registration.py --fixed_path {{input.fixed_image_n5}} --fixed_key {raw_n5_key} --moving_path {{input.moving_image_n5}} --moving_key {{params.input_key}} --output_dir {{params.log_dir}}  --output_key {pointset_alignment_n5_key} --match_path {{input.match_path}};"
-
-"""
-Combine transforms
-"""
-# rule SVD_prealignment_mobie:
-        # f"python matchmaker/mobie_add_segmentation.py fixed_prealigned ...;"
-        # f"python matchmaker/mobie_add_segmentation.py moving_prealigned ...;"
-
-
-
-"""
-Combine transforms to create one final transform
-"""
-# rule combine_transforms:
-# input:
-#     svd_trans = f"{log_dir}/svd_prealignment_transform.yaml",
+        f"python matchmaker/elastix_deformable_pointset_registration.py --fixed_path {{input.fixed_image_n5}} --fixed_key {{params.input_key}} --moving_path {{input.moving_image_n5}} --moving_key {{params.input_key}} --output_dir {{params.log_dir}}  --output_key {{params.output_key}} --match_path {{input.match_path}} --prealigned_output_key {{params.prealigned_output_key}} --prealignment_transform {{input.prealignment_transform}};"
