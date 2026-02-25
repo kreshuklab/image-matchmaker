@@ -1,12 +1,20 @@
 import subprocess
+import numpy as np
+import tifffile as tiff
+from pathlib import Path
 
 from examples.deform_test_data import deform_test_data
-from tests.compare_results import compare_results
+from tests.compare_results import assert_arrays_equal
+from matchmaker.utils import (load_config, read_volume, download_file)
 
 
 def run_pipline(config_path, snakefile, cores=8):
-    deform_test_data(config_path)
+    config = load_config(config_path)
 
+    # Generate deformed data
+    deform_test_data(config=config)
+
+    # Run snakemake
     result = subprocess.run(
         [
             "snakemake",
@@ -18,7 +26,21 @@ def run_pipline(config_path, snakefile, cores=8):
     )
     assert result.returncode == 0, result.stderr
 
-    compare_results(config_path)
+    # Compare results
+    output_key = config["keys"]["rigid_alignment"]
+    moving_path = f"{config['log_dir']}/{config['moving_image']['output_name']}.n5"
+
+    test_img = read_volume(moving_path, output_key)
+
+    ref_path = config["moving_image"]["ref_path"]
+    if not Path(ref_path).exists():
+        ref_url = config["moving_image"]["ref_url"]
+        download_file(ref_path, ref_url)
+
+    ref_img = tiff.imread(ref_path)
+
+    assert_arrays_equal(test_img, ref_img)
+    print("✅ compare_results finished.")
 
 
 def test_workflow():
