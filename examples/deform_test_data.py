@@ -7,7 +7,7 @@ from scipy.ndimage import zoom
 from skimage.filters import gaussian
 
 from matchmaker.utils import (get_transformation_matrix, rotate_img, write_volume,
-                                plot_three_slices, plot_overlay, grid_sample3d)
+                                plot_three_slices, plot_overlay, grid_sample3d, load_config)
 
 
 def remove_instances(seg, prob=0.05, seed=None):
@@ -131,18 +131,16 @@ def elastic_deform(volume, alpha=(1.,1.,1.), sigma=None, spacing=16, mode="neare
     return sampled.astype(volume.dtype)
 
 
-def deform_test_data(cfg_path, enable_elastic=False, alpha=0.9, sigma=2, spacing=16,
+def deform_test_data(cfg_path="", config=None, enable_elastic=False, alpha=0.9, sigma=2, spacing=16,
                         rotate_angles_fixed=[20,345,30], rotate_angles_moving=[155,30,65],
                         remove_p=0.05, seed=42, visualize=True):
-    assert Path(cfg_path).exists()
+    if config is None:
+        config = load_config(cfg_path)
 
-    with open(cfg_path) as f:
-        configs = yaml.safe_load(f)
-
-    data_dir = Path(configs["fixed_image"]["path"]).parent
+    data_dir = Path(config["fixed_image"]["path"]).parent
     data_dir.mkdir(parents=True, exist_ok=True)
 
-    seg_fixed = tif.imread(configs["fixed_image"]["source_path"])
+    seg_fixed = tif.imread(config["fixed_image"]["source_path"])
 
     seg_fixed = rigid_deform(seg_fixed, angles=rotate_angles_fixed)
     print("Cropped shape", seg_fixed.shape)
@@ -154,8 +152,8 @@ def deform_test_data(cfg_path, enable_elastic=False, alpha=0.9, sigma=2, spacing
     seg_moving = rigid_deform(seg_moving, angles=rotate_angles_moving)
     seg_moving = remove_instances(seg_moving, prob=remove_p, seed=seed)
 
-    save_volume(configs["fixed_image"]["path"].replace(".tif", ".n5"), seg_fixed)
-    save_volume(configs["moving_image"]["path"].replace(".tif", ".n5"), seg_moving)
+    save_volume(config["fixed_image"]["path"].replace(".tif", ".n5"), seg_fixed)
+    save_volume(config["moving_image"]["path"].replace(".tif", ".n5"), seg_moving)
 
     if visualize:
         plot_dir = data_dir / "plots"
@@ -169,5 +167,5 @@ def deform_test_data(cfg_path, enable_elastic=False, alpha=0.9, sigma=2, spacing
 
 
 if __name__ == "__main__":
-    deform_test_data("examples/register_config_test_rigid.yaml")
-    deform_test_data("examples/register_config_test_elastic.yaml", enable_elastic=True)
+    deform_test_data(cfg_path="examples/register_config_test_rigid.yaml")
+    deform_test_data(cfg_path="examples/register_config_test_elastic.yaml", enable_elastic=True)
