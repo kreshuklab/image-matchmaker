@@ -3,14 +3,15 @@ import urllib.request
 from pathlib import Path
 
 
-def load_test_config(config_path):
+def load_config(config_path):
+    assert config_path.endswith("yaml")
     assert Path(config_path).exists()
 
     try:
         with open(config_path, "r") as f:
             config = yaml.safe_load(f)
     except Exception as e:
-        print(f'Unable to load test config file due to: {e}')
+        print(f'Unable to load config file due to: {e}')
         raise e
 
     return config
