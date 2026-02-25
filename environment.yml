@@ -22,6 +22,7 @@ dependencies:
     - ipykernel
     - seaborn
     - matplotlib
+    - cupy
 
     - mobie_utils
 
@@ -37,4 +38,5 @@ dependencies:
         - pyyaml
         - itk
         - snakemake
+        - probreg
         - -e .
