@@ -9,21 +9,24 @@ import pandas as pd
 
 import open3d as o3d
 
+from matchmaker.utils import sparse_ilp_matching, write_index_pairs, plot_matching_qc
+
+
 from matchmaker.utils import (
-    sparse_ilp_matching,
-    write_index_pairs,
-    plot_matching_qc
+    overlay_pcds,
+    visualize_displacement_field,
+    extract_centroids,
+    run_cpd,
+    create_pcd,
 )
-
-
-from matchmaker.utils import overlay_pcds, visualize_displacement_field, extract_centroids, run_cpd, create_pcd
-
 
 
 def match_points(fixed_pcd, registered_pcd, output_dir):
 
     logging.info(f"Number of points in fixed pcd: {len(fixed_pcd.point.positions)}")
-    logging.info(f"Number of points in moving pcd: {len(registered_pcd.point.positions)}")
+    logging.info(
+        f"Number of points in moving pcd: {len(registered_pcd.point.positions)}"
+    )
 
     # Order matters for adding constraints in the optimization problem
     if len(fixed_pcd.point.positions) <= len(registered_pcd.point.positions):
@@ -40,23 +43,47 @@ def match_points(fixed_pcd, registered_pcd, output_dir):
     if swap_order:
         matched_idx_pairs = [(p2, p1) for p1, p2 in matched_idx_pairs]
 
-    matched_label_pairs = [(fixed_pcd.point.label.numpy()[idx1, 0], registered_pcd.point.label.numpy()[idx2, 0]) for idx1, idx2 in matched_idx_pairs]
+    matched_label_pairs = [
+        (
+            fixed_pcd.point.label.numpy()[idx1, 0],
+            registered_pcd.point.label.numpy()[idx2, 0],
+        )
+        for idx1, idx2 in matched_idx_pairs
+    ]
 
     if swap_order:
-        plot_matching_qc(pos_2, pos_1, output_dir / "point_matching.png", pairs=matched_idx_pairs)
+        plot_matching_qc(
+            pos_2, pos_1, output_dir / "point_matching.png", pairs=matched_idx_pairs
+        )
 
     else:
-        plot_matching_qc(pos_1, pos_2, output_dir / "point_matching.png", pairs=matched_idx_pairs)
+        plot_matching_qc(
+            pos_1, pos_2, output_dir / "point_matching.png", pairs=matched_idx_pairs
+        )
 
     return matched_idx_pairs, matched_label_pairs
 
 
 @click.command()
 @click.option("-fcd", "--fixed_pcd", required=True, help="Fixed point cloud")
-@click.option("-mpcd", "--moving_pcd", required=True, help="Registered moving point cloud")
+@click.option(
+    "-mpcd", "--moving_pcd", required=True, help="Registered moving point cloud"
+)
 @click.option("-o", "--output_dir", required=True, help="Output directory")
-@click.option("-min_knn", "--min_neighbours", required=True, type=int, help="Minimum number of neighbours to consider for matching")
-@click.option("-max_d", "--max_dist", required=True, type=float, help="Maximum distance between neighbours to consider for matching")
+@click.option(
+    "-min_knn",
+    "--min_neighbours",
+    required=True,
+    type=int,
+    help="Minimum number of neighbours to consider for matching",
+)
+@click.option(
+    "-max_d",
+    "--max_dist",
+    required=True,
+    type=float,
+    help="Maximum distance between neighbours to consider for matching",
+)
 def main(fixed_pcd, moving_pcd, output_dir, min_neighbours, max_dist):
 
     logging.basicConfig(
@@ -76,14 +103,22 @@ def main(fixed_pcd, moving_pcd, output_dir, min_neighbours, max_dist):
     logging.info("Reading moving point cloud")
     moving_pcd = o3d.t.io.read_point_cloud(moving_pcd)
 
-    matched_idx_pairs, matched_label_pairs = match_points(fixed_pcd, moving_pcd, output_dir)
+    matched_idx_pairs, matched_label_pairs = match_points(
+        fixed_pcd, moving_pcd, output_dir
+    )
 
     write_index_pairs(matched_idx_pairs, str(output_dir / "matched_idx_pairs.txt"))
 
     # Convert label paits to csv
-    fixed_pcd_labels = [fixed_label for fixed_label, moving_label in matched_label_pairs]
-    moving_pcd_labels = [moving_label for fixed_label, moving_label in matched_label_pairs]
-    matched_label_df = pd.DataFrame({"fixed_label_id": fixed_pcd_labels, "moving_label_id": moving_pcd_labels})
+    fixed_pcd_labels = [
+        fixed_label for fixed_label, moving_label in matched_label_pairs
+    ]
+    moving_pcd_labels = [
+        moving_label for fixed_label, moving_label in matched_label_pairs
+    ]
+    matched_label_df = pd.DataFrame(
+        {"fixed_label_id": fixed_pcd_labels, "moving_label_id": moving_pcd_labels}
+    )
     matched_label_df.to_csv(output_dir / "matched_labels.csv", index=False)
 
 

@@ -10,20 +10,12 @@ from pathlib import Path
 
 import open3d as o3d
 
-
-from matchmaker.data import create_point_cloud
 from matchmaker.utils import (
-    get_transformation_matrix,
     rotate_img,
     read_volume,
     get_attrs,
     write_volume,
-    write_transform_dict,
-    plot_three_slices,
     plot_overlay,
-)
-
-from matchmaker.utils import (
     read_volume,
     write_volume,
     get_attrs,
@@ -32,70 +24,13 @@ from matchmaker.utils import (
     itk_to_np_order,
     apply_transform_chanwise,
     create_parameter_object,
-)
-
-from matchmaker.utils import (
-    overlay_pcds,
-    visualize_displacement_field,
     extract_centroids,
-    run_cpd,
     create_pcd,
     read_transform_dict,
-    rotate_img
+    rotate_img,
+    pcd_to_elastix,
+    create_matched_pcds,
 )
-
-
-def pcd_to_elastix(pcd_path, elastix_path):
-    """_summary_
-
-    Args:
-        pcd_path: Point cloud in PCD format
-        elastix_path: Point cloud in Elastix format, for example:
-            point
-            5
-            2214.0 282.2 0.0
-            2445.0 2013.0 0.0
-            795.0 366.0 0.0
-            153.0 609.0
-            324.0 2322.0
-    """
-
-    pcd = o3d.t.io.read_point_cloud(pcd_path)
-    points = pcd.point.positions.numpy()
-    with open(elastix_path, "w") as f:
-        f.write("point\n")
-        f.write(f"{len(points)}\n")
-        for x, y, z in points:
-            f.write(f"{z} {x} {y}\n")
-
-
-def create_matched_pcds(
-    fixed_img_np, fixed_resolution, moving_img_np, moving_resolution, matched_label_df
-):
-
-    fixed_labels, fixed_center_coords = extract_centroids(
-        fixed_img_np, fixed_resolution
-    )
-    moving_labels, moving_center_coords = extract_centroids(
-        moving_img_np, moving_resolution
-    )
-
-    print(matched_label_df)
-    print(matched_label_df["fixed_label_id"])
-    fixed_df = pd.DataFrame(
-        data=fixed_center_coords, index=fixed_labels, columns=["x", "y", "z"]
-    )
-    fixed_df = fixed_df.loc[matched_label_df["fixed_label_id"], :]
-    print(fixed_df)
-    moving_df = pd.DataFrame(
-        data=moving_center_coords, index=moving_labels, columns=["x", "y", "z"]
-    )
-    moving_df = moving_df.loc[matched_label_df["moving_label_id"], :]
-    print(moving_df)
-
-    fixed_pcd = create_pcd(np.array(fixed_df), np.array(fixed_df.index))
-    moving_pcd = create_pcd(np.array(moving_df), np.array(moving_df.index))
-    return fixed_pcd, moving_pcd, fixed_df, moving_df
 
 
 def run_pointset_registration(
@@ -240,17 +175,40 @@ def elastix_deformable_pointset_alignment(
 @click.option("-mi", "--moving_path", required=True, help="Moving input .n5 file")
 @click.option("-mk", "--moving_key", required=True, help="Moving input key")
 @click.option("-o", "--output_dir", required=True, help="Output directory")
-@click.option("-ok", "--output_key", required=True, help="Output key for the regsitered moving image")
+@click.option(
+    "-ok",
+    "--output_key",
+    required=True,
+    help="Output key for the regsitered moving image",
+)
 @click.option(
     "-match",
     "--match_path",
     required=True,
     help="Path to the correspondence table between the instances in fixed and moving images",
 )
-@click.option("-pok", "--prealigned_output_key", required=True, help="Output key for the registered moving after applying prealignment transform")
-@click.option("-transform", "--prealignment_transform", required=True, help="Prealignment transform path")
+@click.option(
+    "-pok",
+    "--prealigned_output_key",
+    required=True,
+    help="Output key for the registered moving after applying prealignment transform",
+)
+@click.option(
+    "-transform",
+    "--prealignment_transform",
+    required=True,
+    help="Prealignment transform path",
+)
 def main(
-    fixed_path, fixed_key, moving_path, moving_key, output_dir, output_key, match_path, prealigned_output_key, prealignment_transform
+    fixed_path,
+    fixed_key,
+    moving_path,
+    moving_key,
+    output_dir,
+    output_key,
+    match_path,
+    prealigned_output_key,
+    prealignment_transform,
 ):
     """
     Perform alignment of segmentations based on matching instances.
@@ -310,11 +268,16 @@ def main(
     prealignment_transform = read_transform_dict(prealignment_transform)
     matrix = prealignment_transform["fixed_prealignment"]["matrix"]
     output_shape = prealignment_transform["fixed_prealignment"]["output_shape"]
-    prealigned_moving_aligned = rotate_img(moving_aligned, matrix, output_shape=output_shape)
+    prealigned_moving_aligned = rotate_img(
+        moving_aligned, matrix, output_shape=output_shape
+    )
     prealigned_fixed = rotate_img(fixed_img, matrix, output_shape=output_shape)
 
     write_volume(
-        f=moving_path, arr=prealigned_moving_aligned, key=prealigned_output_key, attrs=moving_attributes
+        f=moving_path,
+        arr=prealigned_moving_aligned,
+        key=prealigned_output_key,
+        attrs=moving_attributes,
     )
     plot_overlay(
         prealigned_fixed,
