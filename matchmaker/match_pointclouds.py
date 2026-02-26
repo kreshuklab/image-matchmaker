@@ -1,9 +1,6 @@
-import os
 import sys
-import itk
 import click
 import logging
-import numpy as np
 from pathlib import Path
 import pandas as pd
 
@@ -12,13 +9,6 @@ import open3d as o3d
 from matchmaker.utils import sparse_ilp_matching, write_index_pairs, plot_matching_qc
 
 
-from matchmaker.utils import (
-    overlay_pcds,
-    visualize_displacement_field,
-    extract_centroids,
-    run_cpd,
-    create_pcd,
-)
 
 
 def match_points(fixed_pcd, registered_pcd, output_dir):

@@ -1,11 +1,7 @@
-import os
 import sys
-import itk
 import click
 import logging
-import numpy as np
 from pathlib import Path
-import pandas as pd
 
 import open3d as o3d
 
