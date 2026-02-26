@@ -247,8 +247,8 @@ rule elastix_deformable_pointset:
         f"{log_dir}/elastix_deformable_pointset_registration/TransformParameters.2.txt"
     params:
         input_key = raw_n5_key,
-        output_key = pointset_alignment_input_space_n5_key,
-        prealigned_output_key = pointset_alignment_n5_key,
+        output_key = pointset_alignment_n5_key,
+        prealigned_output_key = pointset_alignment_input_space_n5_key,
         log_dir = f"{log_dir}/elastix_deformable_pointset_registration"
     log: f"{log_dir}//matchmaker.log"
     conda: "matchmaker_env"

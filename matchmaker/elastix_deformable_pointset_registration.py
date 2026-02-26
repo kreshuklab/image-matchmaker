@@ -40,6 +40,8 @@ from matchmaker.utils import (
     extract_centroids,
     run_cpd,
     create_pcd,
+    read_transform_dict,
+    rotate_img
 )
 
 
@@ -238,15 +240,17 @@ def elastix_deformable_pointset_alignment(
 @click.option("-mi", "--moving_path", required=True, help="Moving input .n5 file")
 @click.option("-mk", "--moving_key", required=True, help="Moving input key")
 @click.option("-o", "--output_dir", required=True, help="Output directory")
-@click.option("-ok", "--output_key", required=True, help="Output key (same in both n5)")
+@click.option("-ok", "--output_key", required=True, help="Output key for the regsitered moving image")
 @click.option(
     "-match",
     "--match_path",
     required=True,
     help="Path to the correspondence table between the instances in fixed and moving images",
 )
+@click.option("-pok", "--prealigned_output_key", required=True, help="Output key for the registered moving after applying prealignment transform")
+@click.option("-transform", "--prealignment_transform", required=True, help="Prealignment transform path")
 def main(
-    fixed_path, fixed_key, moving_path, moving_key, output_dir, output_key, match_path
+    fixed_path, fixed_key, moving_path, moving_key, output_dir, output_key, match_path, prealigned_output_key, prealignment_transform
 ):
     """
     Perform alignment of segmentations based on matching instances.
@@ -301,6 +305,21 @@ def main(
     moving_attributes = dict(get_attrs(moving_path, moving_key))
     write_volume(
         f=moving_path, arr=moving_aligned, key=output_key, attrs=moving_attributes
+    )
+
+    prealignment_transform = read_transform_dict(prealignment_transform)
+    matrix = prealignment_transform["fixed_prealignment"]["matrix"]
+    output_shape = prealignment_transform["fixed_prealignment"]["output_shape"]
+    prealigned_moving_aligned = rotate_img(moving_aligned, matrix, output_shape=output_shape)
+    prealigned_fixed = rotate_img(fixed_img, matrix, output_shape=output_shape)
+
+    write_volume(
+        f=moving_path, arr=prealigned_moving_aligned, key=prealigned_output_key, attrs=moving_attributes
+    )
+    plot_overlay(
+        prealigned_fixed,
+        prealigned_moving_aligned,
+        output_dir / f"deformable_pointset_alignment_prealigned.png",
     )
 
 
