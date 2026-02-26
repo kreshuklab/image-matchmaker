@@ -55,4 +55,4 @@ def run_pipline(config_path, snakefile, cores=8, test_dir="tmp_pytest"):
 
 def test_workflow():
 
-    run_pipline("examples/register_config_test_rigid.yaml", "workflows/rigid_registration.smk")
+    run_pipline("examples/register_config_test_rigid.yaml", "workflows/registration.smk")
