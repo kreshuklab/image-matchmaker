@@ -1,3 +1,4 @@
+import sys
 import subprocess
 import shutil
 import numpy as np
@@ -6,7 +7,8 @@ from pathlib import Path
 
 from examples.deform_test_data import deform_test_data
 from tests.compare_results import assert_arrays_equal
-from matchmaker.utils import (load_config, read_volume, download_file)
+from matchmaker.utils import (load_config, read_volume, download_file, check_no_new_ids,
+                            compute_centroid_distances,)
 
 
 def run_pipline(config_path, snakefile, cores=8, test_dir="tmp_pytest"):
@@ -48,7 +50,19 @@ def run_pipline(config_path, snakefile, cores=8, test_dir="tmp_pytest"):
 
     ref_img = tiff.imread(ref_path)
 
-    assert_arrays_equal(test_img, ref_img)
+    if sys.platform.startswith("linux"):
+        assert_arrays_equal(test_img, ref_img)
+    else:
+        # NOTE:
+        # scipy.ndimage.affine_transform is not bitwise deterministic across platforms.
+        # In practice, small voxel-level differences may occur between operating systems.
+        # These differences are geometrically negligible (≤ 1 voxel shift), so we
+        # validate structural consistency instead of strict array equality.
+        no_new_id, _ = check_no_new_ids(test_img, ref_img)
+        assert no_new_id
+
+        centroid_distances = compute_centroid_distances(test_img, ref_img, exclude_id=0)
+        assert np.max(centroid_distances) < 1
     print("✅ compare_results finished.")
     shutil.rmtree(test_dir)
 
