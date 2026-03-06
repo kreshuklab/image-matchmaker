@@ -7,13 +7,13 @@ def main():
     Reverse the deformation of a sample by applying the inverse transformation matrix.
     '''
     seg_moving = read_volume(
-        f="./data/platy1_muscles_stardist_moving.n5",
+        f="./data/deformed_data/platy1_muscles_stardist_moving.n5",
         key="seg",
     )
 
     # compare with original image
     seg_fixed = read_volume(
-        f="./data/platy1_muscles_stardist_fixed.n5",
+        f="./data/deformed_data/platy1_muscles_stardist_fixed_rotated.n5",
         key="seg",
     )
 

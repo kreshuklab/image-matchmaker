@@ -7,6 +7,7 @@ import pandas as pd
 import numpy as np
 from elf.io import open_file
 import mobie
+from matchmaker.utils import (get_attrs, setup_logging)
 from mobie import add_segmentation
 from mobie.import_data import import_segmentation
 from mobie.metadata import read_dataset_metadata

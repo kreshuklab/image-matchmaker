@@ -1,13 +1,13 @@
-import os
 import sys
 import click
 import logging
 import numpy as np
+from pathlib import Path
 import matplotlib.pyplot as plt
 
 from matchmaker.data import create_point_cloud
-from matchmaker.utils import (get_transformation_matrix, rotate_img, read_volume, get_attrs, write_volume, 
-                                write_transform_dict, plot_three_slices, plot_overlay)
+from matchmaker.utils import (get_transformation_matrix, rotate_img, read_volume, get_attrs, write_volume,
+                                write_transform_dict, plot_three_slices, plot_overlay, setup_logging)
 
 
 def get_SVD_transform(img, save_path=None):
@@ -178,9 +178,7 @@ def run_prealignment(
     - The MoBIE export modifies the `dataset.json` to set the prealigned fixed
       volume as the default view.
     """
-
-    if not os.path.exists(f"{output_dir}/plots"):
-        os.makedirs(f"{output_dir}/plots")
+    Path(f"{output_dir}/plots").mkdir(parents=True, exist_ok=True)
 
     logging.info("Start prealignment")
     logging.info("Start prealignment of fixed image ...")
@@ -285,7 +283,8 @@ def run_prealignment(
 @click.option("-o", "--output_dir", required=True, help="Output directory")
 @click.option("-ok", "--output_key", required=True, help="Output key (same in both n5)")
 @click.option("-trans", "--output_transform_path", required=True, help="Path to write the final transform")
-def main(fixed_path, fixed_key, moving_path, moving_key, output_dir, output_key, output_transform_path):
+@click.option("-tif", "--save_tif", is_flag=True, help="Whether to save tif or not")
+def main(fixed_path, fixed_key, moving_path, moving_key, output_dir, output_key, output_transform_path, save_tif=False):
     """
     Perform prealignment of moving image to fixed image.
 
@@ -303,15 +302,7 @@ def main(fixed_path, fixed_key, moving_path, moving_key, output_dir, output_key,
     Returns:
         None
     """
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s [%(levelname)s] %(message)s",
-        handlers=[
-            logging.FileHandler(f"{output_dir}/prealignment.log", mode="w"),
-            logging.StreamHandler(sys.stdout),
-        ],
-        datefmt="%Y-%m-%d %H:%M:%S",
-    )
+    setup_logging(output_dir, "prealignment.log")
 
     logging.info("Reading fixed image")
     fixed_img = read_volume(fixed_path, fixed_key)
@@ -345,7 +336,12 @@ def main(fixed_path, fixed_key, moving_path, moving_key, output_dir, output_key,
         attrs=moving_attributes
     )
 
-    logging.info("Save prealignment transform")
+    if save_tif:
+        import tifffile as tiff
+        tiff.imwrite(f"{output_dir}/fixed_prealigned.tif", fixed_prealigned)
+        tiff.imwrite(f"{output_dir}/moving_prealigned.tif", moving_prealigned)
+
+    logging.info("Save prealignment tranform")
 
     print(prealignment_transform)
 

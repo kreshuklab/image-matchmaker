@@ -1,4 +1,3 @@
-import os
 import sys
 import itk
 import click
@@ -6,16 +5,9 @@ import logging
 import numpy as np
 from pathlib import Path
 
-from matchmaker.utils import (
-    read_volume,
-    write_volume,
-    get_attrs,
-    plot_overlay,
-    itk_scalar_img,
-    run_registration,
-    itk_to_np_order,
-    apply_transform_chanwise
-)
+from matchmaker.utils import (read_volume, write_volume, get_attrs, plot_overlay, itk_scalar_img,
+                                run_registration, itk_to_np_order, apply_transform_chanwise,
+                                setup_logging)
 
 
 def elastix_segm_rigid_alignment(
@@ -82,9 +74,9 @@ def run_rigid_alignment(
     """
     Perform rigid alignment of a moving image to a fixed image using Elastix.
 
-    This function reads the fixed and moving images from the specified paths, 
-    performs a rigid alignment using Elastix, and saves the aligned moving image 
-    to the output directory. If the MoBIE export flag is set, the aligned image 
+    This function reads the fixed and moving images from the specified paths,
+    performs a rigid alignment using Elastix, and saves the aligned moving image
+    to the output directory. If the MoBIE export flag is set, the aligned image
     is also exported to a MoBIE project.
 
     Args:
@@ -98,8 +90,7 @@ def run_rigid_alignment(
         np.ndarray: The rigidly aligned moving image.
     """
 
-    if not os.path.exists(f"{output_dir}/plots"):
-        os.makedirs(f"{output_dir}/plots")
+    Path(f"{output_dir}/plots").mkdir(parents=True, exist_ok=True)
 
     logging.info("Start rigid alignment")
 
@@ -127,17 +118,9 @@ def run_rigid_alignment(
 @click.option("-mk", "--moving_key", required=True, help="Moving input key")
 @click.option("-o", "--output_dir", required=True, help="Output directory")
 @click.option("-ok", "--output_key", required=True, help="Output key (same in both n5)")
-def main(fixed_path, fixed_key, moving_path, moving_key, output_dir, output_key):
-
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s [%(levelname)s] %(message)s",
-        handlers=[
-            logging.FileHandler(f"{output_dir}/rigid_alignment.log", mode="w"),
-            logging.StreamHandler(sys.stdout),
-        ],
-        datefmt="%Y-%m-%d %H:%M:%S",
-    )
+@click.option("-tif", "--save_tif", is_flag=True, help="Whether to save tif or not")
+def main(fixed_path, fixed_key, moving_path, moving_key, output_dir, output_key, save_tif=False):
+    setup_logging(output_dir, "rigid_alignment.log")
 
     logging.info("Reading fixed image")
     fixed_img = read_volume(fixed_path, fixed_key)
@@ -165,6 +148,10 @@ def main(fixed_path, fixed_key, moving_path, moving_key, output_dir, output_key)
         key=output_key,
         attrs=moving_attributes
     )
+
+    if save_tif:
+        import tifffile as tiff
+        tiff.imwrite(f"{output_dir}/moving_rigid_aligned.tif", moving_rigid_aligned)
 
 
 if __name__ == "__main__":
