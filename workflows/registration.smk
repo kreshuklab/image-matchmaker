@@ -20,6 +20,8 @@ final_transform = config["final_transform_path"]
 raw_n5_key = "input"
 prealignment_n5_key = "svd_prealignment"
 rigid_alignment_n5_key = "rigid_alignment"
+pointset_alignment_n5_key = "pointset_alignment"
+pointset_alignment_input_space_n5_key = "pointset_alignment_input_space"
 
 # define global MoBIE variables
 fixed_type = "fixed"
@@ -32,6 +34,10 @@ beta = config["coherent_point_drift"]["beta"]
 lmd = config["coherent_point_drift"]["lmd"]
 maxiter = config["coherent_point_drift"]["maxiter"]
 
+# ILP matching parameters
+min_neighbours = config["ILP"]["min_neighbours"]
+max_dist = config["ILP"]["max_dist"]
+
 
 rule all:
     input:
@@ -42,8 +48,9 @@ rule all:
         rigid_alignment = f"{moving_n5_path}/{rigid_alignment_n5_key}",
         rigid_transform = f"{log_dir}/{rigid_alignment_n5_key}/TransformParameters.0.txt",
         fixed_pcd = f"{log_dir}/cpd_nonrigid_registration/fixed_pcd.pcd",
-        registered_pcd = f"{log_dir}/cpd_nonrigid_registration/registered_pcd.pcd"
-        # match_path = f"{log_dir}/match_pointclouds/matched_pairs.csv"
+        registered_pcd = f"{log_dir}/cpd_nonrigid_registration/registered_pcd.pcd",
+        match_path = f"{log_dir}/match_pointclouds/matched_labels.csv",
+        pointset_alignment = f"{moving_n5_path}/{pointset_alignment_input_space_n5_key}",
         # mobie_fixed_input_check = f"{log_dir}/mobie_project/{dataset_name}/images/ome-zarr/{fixed_name}_{raw_n5_key}.done",
         # mobie_moving_input_check = f"{log_dir}/mobie_project/{dataset_name}/images/ome-zarr/{moving_name}_{raw_n5_key}.done",
         # mobie_fixed_prealign_check = f"{log_dir}/mobie_project/{dataset_name}/images/ome-zarr/{fixed_name}_{prealignment_n5_key}.done",
@@ -190,26 +197,6 @@ rule add_rigid_alignment_to_mobie:
         f"touch {{output.moving_check}};"
         f"rm -rf ./tmp_{dataset_name}_{moving_name}_{{params.input_key}};"
 
-# """
-# Create point clouds
-# """
-
-# rule create_point_clouds:
-#     input:
-#         f"{log_dir}/{{sample_name}}/em_registration_{{sample_name}}.n5/template_aligned_rigid/segmentation",
-#         gene_assignment = f"{log_dir}/{{sample_name}}/rigid_registration/gene_assignment_rigid.csv"
-#     output:
-#         f"{log_dir}/{{sample_name}}/rigid_registration/point_cloud_rigid.pcd"
-#     params:
-#         log_dir = f"{log_dir}/{{sample_name}}/create_pcd",
-#         n5_path = f"{log_dir}/{{sample_name}}/em_registration_{{sample_name}}.n5"
-#     log: f"{log_dir}/{{sample_name}}/logs/csv_to_pcd.log"
-#     conda: "open3d_env"
-#     resources:
-#         time="00:15:00",
-#     shell:
-#         f"python pipeline_steps/inter_sample_registration/csv_to_pcd.py {{params.n5_path}} template_aligned_rigid/segmentation {{input.gene_assignment}} {{output}} {{params.log_dir}} {{log}};"
-
 
 rule cpd_nonrigid_registration:
     input:
@@ -225,29 +212,45 @@ rule cpd_nonrigid_registration:
         fixed_key = prealignment_n5_key,
         moving_key = rigid_alignment_n5_key
     log: f"{log_dir}/matchmaker.log"
-    conda: "cvxpy_cpd_env"
-    resources:
-        time="01:00:00",
-        cpus_per_task=16,
-        mem_mb="128GB"
+    conda: "matchmaker_env"
     shell:
         f"python matchmaker/cpd_nonrigid_registration.py --moving_path {{input.moving_image_n5}} --moving_key {{params.moving_key}} --fixed_path {{input.fixed_image_n5}} --fixed_key {{params.fixed_key}} -o {{params.log_dir}} --w {w} --beta {beta} --lmd {lmd} --maxiter {maxiter};"
 
 
+rule ilp_matching:
+    input:
+        fixed_pcd = f"{log_dir}/cpd_nonrigid_registration/fixed_pcd.pcd",
+        moving_pcd = f"{log_dir}/cpd_nonrigid_registration/registered_pcd.pcd"
+    output:
+        match_path = f"{log_dir}/match_pointclouds/matched_labels.csv"
+    params:
+        log_dir = f"{log_dir}/match_pointclouds"
+    log: f"{log_dir}/matchmaker.log"
+    conda: "matchmaker_env"
+    shell:
+        f"python matchmaker/match_pointclouds.py --fixed_pcd {{input.fixed_pcd}} --moving_pcd {{input.moving_pcd}} -o {{params.log_dir}} --min_neighbours {min_neighbours} --max_dist {max_dist};"
 
 
-"""
-Combine transforms
-"""
-# rule SVD_prealignment_mobie:
-        # f"python matchmaker/mobie_add_segmentation.py fixed_prealigned ...;"
-        # f"python matchmaker/mobie_add_segmentation.py moving_prealigned ...;"
-
-
-
-"""
-Combine transforms to create one final transform
-"""
-# rule combine_transforms:
-# input:
-#     svd_trans = f"{log_dir}/svd_prealignment_transform.yaml",
+rule elastix_deformable_pointset:
+    input:
+        match_path = f"{log_dir}/match_pointclouds/matched_labels.csv",
+        fixed_input_ds = f"{fixed_n5_path}/{raw_n5_key}",
+        moving_input_ds = f"{moving_n5_path}/{raw_n5_key}",
+        fixed_image_n5 = fixed_n5_path,
+        moving_image_n5 = moving_n5_path,
+        prealignment_transform = f"{log_dir}/{prealignment_n5_key}/{prealignment_n5_key}_transform.json"
+    output:
+        directory(f"{moving_n5_path}/{pointset_alignment_n5_key}"),
+        directory(f"{moving_n5_path}/{pointset_alignment_input_space_n5_key}"),
+        f"{log_dir}/elastix_deformable_pointset_registration/TransformParameters.0.txt",
+        f"{log_dir}/elastix_deformable_pointset_registration/TransformParameters.1.txt",
+        f"{log_dir}/elastix_deformable_pointset_registration/TransformParameters.2.txt"
+    params:
+        input_key = raw_n5_key,
+        output_key = pointset_alignment_n5_key,
+        prealigned_output_key = pointset_alignment_input_space_n5_key,
+        log_dir = f"{log_dir}/elastix_deformable_pointset_registration"
+    log: f"{log_dir}//matchmaker.log"
+    conda: "matchmaker_env"
+    shell:
+        f"python matchmaker/elastix_deformable_pointset_registration.py --fixed_path {{input.fixed_image_n5}} --fixed_key {{params.input_key}} --moving_path {{input.moving_image_n5}} --moving_key {{params.input_key}} --output_dir {{params.log_dir}}  --output_key {{params.output_key}} --match_path {{input.match_path}} --prealigned_output_key {{params.prealigned_output_key}} --prealignment_transform {{input.prealignment_transform}};"

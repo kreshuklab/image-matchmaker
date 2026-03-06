@@ -5,6 +5,8 @@ import logging
 
 from matchmaker.preprocessing import percentile_norm
 
+import seaborn as sns
+
 
 def plot_three_slices(
     img,
@@ -107,25 +109,86 @@ def plot_overlay(img1, img2, save_path=None, x_pos=None, y_pos=None, z_pos=None)
     plt.close()
 
 
+def get_pcd_slice(pcd_np, max_points):
+    com = np.mean(pcd_np)
+    point_ratio = min(1, max_points / len(pcd_np))
+    centered_coord = np.abs(pcd_np - com)
+    slice_thickness = np.quantile(centered_coord, point_ratio)
+    return com - slice_thickness, com + slice_thickness
 
-def overlay_pcds(fixed_pcd: o3d.t.geometry.PointCloud, moving_pcd: o3d.t.geometry.PointCloud, fixed_col="cornflowerblue", moving_col="orangered", projection="xy", save_path=None, title=""):
-    """"
-    Overlay two point clouds. Parameters of plotting should be ok to visualize two full platy volumes
-    """
-    assert len(projection) == 2, f"Projection should be xy, yz or something like that of length 2, not {projection}"
+
+def plot_projection(fixed_np, moving_np, projection, center_slice, max_points):
     axis_order = {"x": 0, "y": 1, "z": 2}
     roi_x = np.s_[:, axis_order[projection[0]]]
     roi_y = np.s_[:, axis_order[projection[1]]]
+    if "z" not in projection:
+        orth_axis = axis_order["z"]
+    elif "x" not in projection:
+        orth_axis = axis_order["x"]
+    else:
+        orth_axis = axis_order["y"]
+
+    if center_slice:
+        min_range, max_range = get_pcd_slice(fixed_np, max_points)
+        fixed_mask = (fixed_np[:, orth_axis] > min_range) & (
+            fixed_np[:, orth_axis] < max_range
+        )
+        moving_mask = (moving_np[:, orth_axis] > min_range) & (
+            moving_np[:, orth_axis] < max_range
+        )
+
+    else:
+        fixed_mask = np.ones(len(fixed_np))
+        moving_mask = np.ones(len(moving_np))
+
+    return roi_x, roi_y, fixed_mask, moving_mask, min_range, max_range
     
-    plt.figure(figsize=(10, 10))
-    plt.cla()
-    plt.axis("equal")
+
+def overlay_pcds(
+    fixed_pcd: o3d.t.geometry.PointCloud,
+    moving_pcd: o3d.t.geometry.PointCloud,
+    fixed_col="cornflowerblue",
+    moving_col="orangered",
+    projection="xy",
+    save_path=None,
+    title="",
+    center_slice=True,
+    max_points=1000,
+):
+    """
+    Overlay two point clouds. Optionally only plot points around COM slice of the point cloud to make it easier to see/
+    """
+    assert (
+        len(projection) == 2
+    ), f"Projection should be xy, yz or something like that of length 2, not {projection}"
+    
+
     fixed_np = fixed_pcd.point.positions.numpy()
     moving_np = moving_pcd.point.positions.numpy()
 
+    roi_x, roi_y, fixed_mask, moving_mask, min_range, max_range = plot_projection(fixed_np, moving_np, projection, center_slice, max_points)
+
+    plt.figure(figsize=(10, 10))
+    plt.cla()
+    plt.axis("equal")
+
     plt.title(title)
-    plt.scatter(fixed_np[roi_x], fixed_np[roi_y], s=0.6, c=fixed_col, alpha=0.5, label="Fixed point cloud")
-    plt.scatter(moving_np[roi_x], moving_np[roi_y], s=0.6, c=moving_col, alpha=0.5, label="Moving point cloud")
+    plt.scatter(
+        fixed_np[roi_x][fixed_mask],
+        fixed_np[roi_y][fixed_mask],
+        s=0.6,
+        c=fixed_col,
+        alpha=0.5,
+        label="Fixed point cloud",
+    )
+    plt.scatter(
+        moving_np[roi_x][moving_mask],
+        moving_np[roi_y][moving_mask],
+        s=0.6,
+        c=moving_col,
+        alpha=0.5,
+        label="Moving point cloud",
+    )
     plt.legend()
     plt.xlabel(projection[0])
     plt.ylabel(projection[1])
@@ -135,25 +198,85 @@ def overlay_pcds(fixed_pcd: o3d.t.geometry.PointCloud, moving_pcd: o3d.t.geometr
         plt.savefig(save_path, dpi=300)
     plt.close()
 
-def visualize_displacement_field(moving_pcd: o3d.t.geometry.PointCloud, registered_pcd: o3d.t.geometry.PointCloud, save_path=None, projection="xy"):
-    assert len(projection) == 2, f"Projection should be xy, yz or something like that of length 2, not {projection}"
-    axis_order = {"x": 0, "y": 1, "z": 2}
-    roi_x = np.s_[:, axis_order[projection[0]]]
-    roi_y = np.s_[:, axis_order[projection[1]]]
-    
+
+def visualize_displacement_field(
+    moving_pcd: o3d.t.geometry.PointCloud,
+    registered_pcd: o3d.t.geometry.PointCloud,
+    save_path=None,
+    projection="xy",
+    center_slice=True,
+    max_points=1000,
+):
+    assert (
+        len(projection) == 2
+    ), f"Projection should be xy, yz or something like that of length 2, not {projection}"
+
     moving_np = moving_pcd.point.positions.numpy()
     registered_np = registered_pcd.point.positions.numpy()
 
+    roi_x, roi_y, moving_mask, registered_mask, min_range, max_range = plot_projection(moving_np, registered_np, projection, center_slice, max_points)
 
-    for idx in range(len(moving_np)):
-        # if abs(pcd_in[idx, 2] - 112) < 4:
-        #     ax.plot([pcd_in[idx, 0] /res[2], pcd_out[idx, 0]/res[2]], [pcd_in[idx, 1]/ res[1], pcd_out[idx, 1]/ res[1]])
+    for idx in np.nonzero(moving_mask):
 
-        plt.plot([moving_np[roi_x][idx], registered_np[roi_x][idx]], [moving_np[roi_y][idx], registered_np[roi_y][idx]])
-    
+        plt.plot(
+            [moving_np[roi_x][idx], registered_np[roi_x][idx]],
+            [moving_np[roi_y][idx], registered_np[roi_y][idx]],
+        )
+
     plt.axis("equal")
     if save_path is None:
         plt.show()
     else:
         plt.savefig(save_path, dpi=300)
+    plt.close()
+
+
+def plot_matching_qc(
+    fixed_np, moving_np, fig_name, pairs=None, projection="xz", center_slice=True, max_points=1000
+):
+    
+    axis_order = {"x": 0, "y": 1, "z": 2}
+    d1 = axis_order[projection[0]]
+    d2 = axis_order[projection[1]]
+    plt.figure()
+
+    roi_x, roi_y, fixed_mask, moving_mask, min_range, max_range = plot_projection(fixed_np, moving_np, projection, center_slice, max_points)
+
+    sns.scatterplot(
+        x=fixed_np[fixed_mask, d1],
+        y=fixed_np[fixed_mask, d2],
+        alpha=0.8,
+        label="fixed",
+        c="mediumpurple",
+    )
+    sns.scatterplot(
+        x=moving_np[moving_mask, d1],
+        y=moving_np[moving_mask, d2],
+        alpha=0.8,
+        label="moving",
+        c="lightseagreen",
+    )
+
+    if "z" not in projection:
+        orth_axis = axis_order["z"]
+    elif "x" not in projection:
+        orth_axis = axis_order["x"]
+    else:
+        orth_axis = axis_order["y"]
+
+    if pairs is not None:
+        for idx_1, idx_2 in pairs:
+            p1 = fixed_np[idx_1, :]
+            p2 = moving_np[idx_2, :]
+            if (
+                (p1[orth_axis] > min_range)
+                & (p1[orth_axis] < max_range)
+                & (p2[orth_axis] > min_range)
+                & (p2[orth_axis] < max_range)
+            ):
+                plt.plot([p1[d1], p2[d1]], [p1[d2], p2[d2]], c="green")
+
+    plt.legend()
+
+    plt.savefig(fig_name, dpi=300)
     plt.close()

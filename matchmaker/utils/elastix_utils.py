@@ -180,7 +180,8 @@ def apply_transform_chanwise(transform_parameter_object, moving_img_np, resoluti
             result_img.append(output_img_np)
         result_img = np.array(result_img)
     else:
-        moving_img = itk_scalar_img(moving_img_np, resolution, 0)
+        moving_img = itk_scalar_img(moving_img_np[None, :], resolution, 0)
+        logging.info(moving_img)
         result_img = apply_transform(transformix_filter, moving_img)
 
     return result_img
