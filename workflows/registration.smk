@@ -4,7 +4,7 @@ from pathlib import Path
 root_dir = f"{Path(workflow.basedir).resolve().parent}/"
 print(f"working directory: {root_dir}")
 workdir: root_dir
-configfile: "examples/register_config_test.yaml"
+configfile: "examples/register_config_test_rigid.yaml"
 
 print(config["fixed_image"])
 print(config["moving_image"])
@@ -70,7 +70,7 @@ rule input_to_n5:
         directory(f"{moving_n5_path}/{raw_n5_key}/"),
         fixed_image_n5 = directory(fixed_n5_path),
         moving_image_n5 = directory(moving_n5_path),
-        
+
     params:
         output_key = raw_n5_key
     log: f"{log_dir}/matchmaker.log"

@@ -175,6 +175,8 @@ cython_debug/
 
 # test results
 examples/data/test/
+examples/data/deformed_data/
+examples/data/test_data/
 data
 
 # huge data
@@ -187,3 +189,6 @@ data
 
 # Snakemake logs
 .snakemake/*
+
+# Ignore temporary files from mobie
+tmp*
