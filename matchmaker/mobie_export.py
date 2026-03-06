@@ -6,12 +6,12 @@ from shutil import rmtree
 import pandas as pd
 from elf.io import open_file
 import mobie
+from matchmaker.utils import (get_attrs, setup_logging)
 from mobie import add_segmentation
 from mobie.import_data import import_segmentation
 from mobie.metadata import read_dataset_metadata
 from mobie.utils import get_data_key
 from mobie.tables import compute_default_table
-from matchmaker.utils import get_attrs
 
 
 def add_to_mobie(input_path, input_key, mobie_folder, dataset_name, segmentation_name, menu_name):
@@ -131,15 +131,7 @@ def export_to_mobie(input_path, input_key, mobie_folder, dataset_name, segmentat
 @click.option("-o", "--output_dir", required=True, help="Output directory")
 def main(input_path, input_key, input_type, dataset_name, output_dir):
 
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s [%(levelname)s] %(message)s",
-        handlers=[
-            logging.FileHandler(f"{output_dir}/mobie_export.log", mode="w"),
-            logging.StreamHandler(sys.stdout),
-        ],
-        datefmt="%Y-%m-%d %H:%M:%S",
-    )
+    setup_logging(output_dir, "mobie_export.log")
 
     file_name = os.path.splitext(os.path.basename(input_path))[0]
     logging.info(f"Start uploading {file_name}/{input_key} to MoBIE ...")

@@ -84,7 +84,7 @@ def run_registration(
     elastix_object.SetParameterObject(parameter_object)
     if set_threads:
         elastix_object.SetNumberOfThreads(32)
-    elastix_object.SetLogToConsole(True)
+    elastix_object.SetLogToConsole(False)
     elastix_object.SetLogToFile(True)
     elastix_object.SetOutputDirectory(log_dir)
     elastix_object.SetLogFileName(log_name)
@@ -118,7 +118,7 @@ def run_pointset_registration(
     elastix_object.SetParameterObject(parameter_object)
     if set_threads:
         elastix_object.SetNumberOfThreads(32)
-    elastix_object.SetLogToConsole(True)
+    elastix_object.SetLogToConsole(False)
     elastix_object.SetLogToFile(True)
     elastix_object.SetOutputDirectory(log_dir)
     elastix_object.SetLogFileName(log_name)

@@ -8,11 +8,58 @@ Tool for segmentation-based deformable registration and object matching
 conda env create -f environment.yml
 ```
 
+
+### Run tests
+
+After activating the environment, generate the deformed test data, run the Snakemake workflow, and validate the final results with pytest:
+
+```bash
+pytest -s
+```
+
+Optional: If you want to hide all warnings during tests, append:
+
+```bash
+-p no:warnings
+```
+
+This test generates deformed test data, runs the Snakemake workflow, and compares the final outputs against pre-computed reference results.
+
+The reference data will be downloaded automatically from this repo's release if available. If the download fails (e.g. the repository is private), manually download the reference data from [here](https://github.com/kreshuklab/matchmaker/releases/tag/test_data-v0.2) and place it under:
+
+```
+examples/data/test_data/
+```
+
+
+### Generate rigid and elastic deformed test data
+```
+python examples/deform_test_data.py
+```
+
+This script generates synthetic test datasets from the fixed segmentation mask stored in the repository.
+
+First, the original segmentation mask is rotated using a 3D rigid transformation.
+
+Two moving datasets are then generated:
+
+- Rigid case: applies a rigid 3D rotation to the fixed volume and removes a fraction of instances.
+- Elastic case: applies a control-grid based elastic deformation, followed by a rigid rotation and instance removal.
+
+The elastic deformation is generated from a smoothed random displacement field defined on a control grid and interpolated to full resolution.
+
+All generated deformed volumes (`.n5` and `.tif`) are saved under:
+
+```
+examples/data/deformed_data/
+```
+
+
 ### 3 ways of interaction with the library
 
 - Running the full pipeline using workflow manager and a config file to set up registration parameters
 ```
-snakemake workflows/register.smk --configfile registration_config.yml --cores 16
+snakemake -s workflows/registration.smk --configfile examples/register_config_test_rigid.yaml --cores 16
 ```
 - Running separate scripts
 ```
@@ -27,7 +74,6 @@ import matchmaker as mm
 
 mm.n5-utils.read_volume(...)
 ```
-
 
 
 

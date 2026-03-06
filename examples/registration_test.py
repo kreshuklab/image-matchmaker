@@ -1,4 +1,3 @@
-import os
 import z5py
 import numpy as np
 
@@ -8,12 +7,11 @@ from matchmaker.utils import (rotate_img, plot_three_slices, plot_overlay)
 
 def main():
     output_dir = "./data/test"
-    if not os.path.exists(f"{output_dir}/plots"):
-        os.makedirs(f"{output_dir}/plots")
+    Path(f"{output_dir}/plots").mkdir(parents=True, exist_ok=True)
 
     #######################
     # prealign moving image
-    moving_input = "./data/platy1_muscles_stardist_moving.n5"
+    moving_input = "./data/deformed_data/platy1_muscles_stardist_moving.n5"
     with z5py.File(moving_input, "r") as f:
         seg_moving = f["seg"][:]
 
@@ -26,7 +24,7 @@ def main():
 
     #######################
     # prealign fixed image
-    fixed_input = "./data/platy1_muscles_stardist_fixed.n5"
+    fixed_input = "./data/deformed_data/platy1_muscles_stardist_fixed_rotated.n5"
     with z5py.File(fixed_input, "r") as f:
         seg_fixed = f["seg"][:]
 
