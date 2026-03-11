@@ -7,7 +7,8 @@ from scipy.ndimage import zoom
 from skimage.filters import gaussian
 
 from matchmaker.utils import (get_transformation_matrix, rotate_img, write_volume,
-                                plot_three_slices, plot_overlay, grid_sample3d, load_config)
+                                plot_three_slices, plot_overlay, grid_sample3d, load_config,
+                                crop_to_bbox)
 
 
 def remove_instances(seg, prob=0.05, seed=None):
@@ -143,7 +144,8 @@ def deform_test_data(cfg_path="", config=None, enable_elastic=False, alpha=0.9, 
     seg_fixed = tif.imread(config["fixed_image"]["source_path"])
 
     seg_fixed = rigid_deform(seg_fixed, angles=rotate_angles_fixed)
-    print("Cropped shape", seg_fixed.shape)
+    seg_fixed = crop_to_bbox(seg_fixed)
+    print("Fixed volume shape", seg_fixed.shape)
 
     seg_moving = seg_fixed.copy()
     if enable_elastic:
@@ -151,6 +153,8 @@ def deform_test_data(cfg_path="", config=None, enable_elastic=False, alpha=0.9, 
 
     seg_moving = rigid_deform(seg_moving, angles=rotate_angles_moving)
     seg_moving = remove_instances(seg_moving, prob=remove_p, seed=seed)
+    seg_moving = crop_to_bbox(seg_moving)
+    print("Moving volume shape", seg_moving.shape)
 
     save_volume(config["fixed_image"]["path"].replace(".tif", ".n5"), seg_fixed)
     save_volume(config["moving_image"]["path"].replace(".tif", ".n5"), seg_moving)
