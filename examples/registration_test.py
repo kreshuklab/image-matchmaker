@@ -22,7 +22,10 @@ def main():
     plot_three_slices(seg_moving, save_path=f"{output_dir}/plots/moving.png")
     #######################
 
-    seg_fixed_prealigned, seg_moving_prealigned, T, _ = prealign_samples(seg_fixed, seg_moving)
+    prealigned_results = prealign_samples(seg_fixed, seg_moving)
+
+    seg_fixed_prealigned, T, _, _, _ = prealigned_results["fixed"]
+    seg_moving_prealigned, _, _, _, _ = prealigned_results["moving"]
 
     with z5py.File(f"{output_dir}/fixed_prealigned.n5", "w") as f:
         f.create_dataset("seg", data=seg_fixed_prealigned, compression="gzip")
