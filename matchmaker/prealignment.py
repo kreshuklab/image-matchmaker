@@ -134,7 +134,8 @@ def prealign_samples(fixed_img, moving_img):
     if np.linalg.det(Vt_moving.T) < 0:
         moving_rot, T_moving = mirror_img(moving_rot, T_moving)
 
-    return fixed_rot, moving_rot, T_fixed, T_moving
+    return {"fixed": [fixed_rot, T_fixed, gc_fixed, Vt_fixed, fixed_shape],
+            "moving": [moving_rot, T_moving, gc_moving, Vt_moving, moving_shape],}
 
 
 def run_prealignment(
@@ -195,25 +196,36 @@ def run_prealignment(
 
     logging.info("Start prealignment")
 
+    logging.info("Start prealignment of fixed and moving images ...")
+
+    prealigned_results = prealign_samples(fixed_img, moving_img)
+
+    fixed_prealigned, T_fixed, gc_fixed, Vt_fixed, fixed_shape = prealigned_results["fixed"]
+    moving_prealigned, T_moving, gc_moving, Vt_moving, _ = prealigned_results["moving"]
+
     plot_three_slices(
         fixed_img,
-        save_path=f"{output_dir}/plots/fixed_input.png"
+        save_path=f"{output_dir}/plots/fixed_input.png",
+        gc=gc_fixed,
+        Vt=Vt_fixed,
     )
 
     plot_three_slices(
         moving_img,
-        save_path=f"{output_dir}/plots/moving_input.png"
+        save_path=f"{output_dir}/plots/moving_input.png",
+        gc=gc_moving,
+        Vt=Vt_moving,
     )
 
     plot_overlay(
         fixed_img,
         moving_img,
         save_path=f"{output_dir}/plots/overlay_input.png",
+        gc1=gc_fixed,
+        Vt1=Vt_fixed,
+        gc2=gc_moving,
+        Vt2=Vt_moving,
     )
-
-    logging.info("Start prealignment of fixed and moving images ...")
-
-    fixed_prealigned, moving_prealigned, T_fixed, T_moving = prealign_samples(fixed_img, moving_img)
 
     # check orientation (if moving fits to fixed)
     logging.info("Check axis orientation ...")
@@ -268,18 +280,26 @@ def run_prealignment(
 
     plot_three_slices(
         fixed_prealigned,
-        save_path=f"{output_dir}/plots/fixed_prealigned.png"
+        save_path=f"{output_dir}/plots/fixed_prealigned.png",
+        gc = T_fixed[:3,:3].T @ (gc_fixed - T_fixed[:3, 3]),
+        Vt = Vt_fixed @ T_fixed[:3, :3],
     )
 
     plot_three_slices(
         moving_prealigned,
-        save_path=f"{output_dir}/plots/moving_prealigned.png"
+        save_path=f"{output_dir}/plots/moving_prealigned.png",
+        gc = T_moving[:3,:3].T @ (gc_moving - T_moving[:3,3]),
+        Vt = Vt_moving @ T_moving[:3, :3],
     )
 
     plot_overlay(
         fixed_prealigned,
         moving_prealigned,
         save_path=f"{output_dir}/plots/overlay_after_prealignment.png",
+        gc1=T_fixed[:3,:3].T @ (gc_fixed - T_fixed[:3, 3]),
+        Vt1=Vt_fixed @ T_fixed[:3, :3],
+        gc2=T_moving[:3,:3].T @ (gc_moving - T_moving[:3,3]),
+        Vt2=Vt_moving @ T_moving[:3, :3],
     )
 
     return fixed_prealigned, moving_prealigned, prealignment_transform
