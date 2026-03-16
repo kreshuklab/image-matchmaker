@@ -1,12 +1,18 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import open3d as o3d
+import seaborn as sns
 import logging
 import matplotlib.colors as mcolors
 
 from matchmaker.preprocessing import percentile_norm
 
-import seaborn as sns
+
+def _slice_gc_coords(gc, axis):
+    cz, cy, cx = gc
+    if axis==0: return cx, cy
+    if axis==1: return cx, cz
+    if axis==2: return cy, cz
 
 
 def get_pink_cmap():
@@ -49,27 +55,45 @@ PINK = get_pink_cmap()
 CYAN = get_cyan_cmap()
 
 
-def plot_three_slices(
-    img,
-    save_path=None,
-    x_pos=None,
-    y_pos=None,
-    z_pos=None,
-    cmap="Greys_r",
-    max_pos=False,
-    alpha=False,
-):
+def _draw_axes(px, py, Vt, shape, axis):
+    if Vt is None:
+        return
+
+    L = max(shape) * 0.15
+    colors = ["r", "g", "b"]
+
+    for i, v in enumerate(Vt):
+        if axis == 0:
+            dx, dy = v[2]*L, v[1]*L
+        elif axis == 1:
+            dx, dy = v[2]*L, v[0]*L
+        else:
+            dx, dy = v[1]*L, v[0]*L
+
+        x0 = px - dx
+        x1 = px + dx
+        y0 = py - dy
+        y1 = py + dy
+
+        plt.plot([x0, x1], [y0, y1], color=colors[i], linewidth=2)
+
+
+def plot_three_slices(img, save_path=None, x_pos=None, y_pos=None, z_pos=None,
+                      cmap="Greys_r", max_pos=False, alpha=False, gc=None, Vt=None):
     """
     Plot slices of a 3D image along each axis.
 
     Args:
-        img: _description_
-        save_path: _description_
-        x_pos: _description_. Defaults to None.
-        y_pos: _description_. Defaults to None.
-        z_pos: _description_. Defaults to None.
-        cmap: _description_. Defaults to "Greys".
-        max_pos: _description_. Defaults to False.
+        img: 3D image
+        save_path: path to save figure
+        x_pos: x slice index
+        y_pos: y slice index
+        z_pos: z slice index
+        cmap: colormap
+        max_pos: use max voxel position
+        alpha: show only foreground
+        gc: center of mass (z,y,x)
+        Vt: PCA axes (3x3)
     """
     img = img.astype(np.uint16)
 
@@ -80,76 +104,90 @@ def plot_three_slices(
         y_pos = int(img.shape[1] // 2)
     if z_pos is None:
         z_pos = int(img.shape[0] // 2)
+    assert img.ndim==3
 
     if max_pos:
         z_pos, y_pos, x_pos = np.unravel_index(np.argmax(img), img.shape)
-
-    if alpha:
-        alpha = (img > 0).astype(np.float32)
     else:
-        alpha = np.ones_like(img)
-    plt.figure(figsize=(15, 5))
-    plt.subplot(1, 3, 1)
-    plt.title(f"z slice at {z_pos}")
-    plt.imshow(img[z_pos, :, :], cmap=cmap, alpha=alpha[z_pos, :, :])
-    plt.subplot(1, 3, 2)
-    plt.title(f"y slice at {y_pos}")
-    plt.imshow(img[:, y_pos, :], cmap=cmap, alpha=alpha[:, y_pos, :])
-    plt.subplot(1, 3, 3)
-    plt.title(f"x slice at {x_pos}")
-    plt.imshow(img[:, :, x_pos], cmap=cmap, alpha=alpha[:, :, x_pos])
+        if x_pos is None:
+            x_pos=img.shape[2]//2
+        if y_pos is None:
+            y_pos=img.shape[1]//2
+        if z_pos is None:
+            z_pos=img.shape[0]//2
+
+    alpha=(img>0).astype(np.float32) if alpha else np.ones_like(img)
+
+    plt.figure(figsize=(15,5))
+
+    slices=[
+        (0, z_pos, img[z_pos,:,:], alpha[z_pos,:,:]),
+        (1, y_pos, img[:,y_pos,:], alpha[:,y_pos,:]),
+        (2, x_pos, img[:,:,x_pos], alpha[:,:,x_pos])
+    ]
+
+    for i, (axis, pos, s, a) in enumerate(slices, 1):
+        plt.subplot(1,3,i)
+        plt.title(f"{'zyx'[axis]} slice at {pos}")
+        plt.imshow(s, cmap=cmap, alpha=a)
+
+        if gc is not None:
+            px, py = _slice_gc_coords(gc, axis)
+            plt.scatter(px, py, c="yellow", s=40)
+            _draw_axes(px, py, Vt, img.shape, axis)
 
     if save_path is None:
         plt.show()
     else:
         plt.savefig(save_path, dpi=300)
+
     plt.close()
 
 
-def plot_overlay(img1, img2, save_path=None, x_pos=None, y_pos=None, z_pos=None):
+def plot_overlay(img1, img2, save_path=None, x_pos=None, y_pos=None, z_pos=None,
+                 gc1=None, Vt1=None, gc2=None, Vt2=None):
     """
     Plot slices of two 3D images along each axis.
-
-    Args:
-        img1: (fixed, pink) _description_target_shape = (25, 22, 29)
-        img2: (moving, cyan) _description_target_shape = (25, 22, 29)
-        save_path: _description_. Defaults to None.
-        x_pos: _description_. Defaults to None.
-        y_pos: _description_. Defaults to None.
-        z_pos: _description_. Defaults to None.
     """
-    assert img1.ndim == 3
-    assert img2.ndim == 3
+    assert img1.ndim==3 and img2.ndim==3
 
-    if x_pos is None:
-        x_pos = min(int(img1.shape[2] // 2), int(img2.shape[2] // 2))
-    if y_pos is None:
-        y_pos = min(int(img1.shape[1] // 2), int(img2.shape[1] // 2))
-    if z_pos is None:
-        z_pos = min(int(img1.shape[0] // 2), int(img2.shape[0] // 2))
+    if x_pos is None: x_pos=min(img1.shape[2]//2, img2.shape[2]//2)
+    if y_pos is None: y_pos=min(img1.shape[1]//2, img2.shape[1]//2)
+    if z_pos is None: z_pos=min(img1.shape[0]//2, img2.shape[0]//2)
 
-    plt.figure(figsize=(30, 10), dpi=300)
-    plt.subplot(1, 3, 1)
-    plt.title(f"z slice at {z_pos}")
-    img1_alpha = (percentile_norm(img1, 0, 100) > 0) * 0.5
-    img2_alpha = (percentile_norm(img2, 0, 100) > 0) * 0.5
-    plt.imshow(img1[z_pos, :, :], cmap=PINK, alpha=img1_alpha[z_pos, :, :])
-    plt.imshow(img2[z_pos, :, :], cmap=CYAN, alpha=img2_alpha[z_pos, :, :])
+    plt.figure(figsize=(30,10), dpi=300)
 
-    plt.subplot(1, 3, 2)
-    plt.title(f"y slice at {y_pos}")
-    plt.imshow(img1[:, y_pos, :], cmap=PINK, alpha=img1_alpha[:, y_pos, :])
-    plt.imshow(img2[:, y_pos, :], cmap=CYAN, alpha=img2_alpha[:, y_pos, :])
+    img1_alpha = (percentile_norm(img1,0,100) > 0) * 0.5
+    img2_alpha = (percentile_norm(img2,0,100) > 0) * 0.5
 
-    plt.subplot(1, 3, 3)
-    plt.title(f"x slice at {x_pos}")
-    plt.imshow(img1[:, :, x_pos], cmap=PINK, alpha=img1_alpha[:, :, x_pos])
-    plt.imshow(img2[:, :, x_pos], cmap=CYAN, alpha=img2_alpha[:, :, x_pos])
+    slices = [
+        (0,z_pos,img1[z_pos,:,:],img2[z_pos,:,:],img1_alpha[z_pos,:,:],img2_alpha[z_pos,:,:]),
+        (1,y_pos,img1[:,y_pos,:],img2[:,y_pos,:],img1_alpha[:,y_pos,:],img2_alpha[:,y_pos,:]),
+        (2,x_pos,img1[:,:,x_pos],img2[:,:,x_pos],img1_alpha[:,:,x_pos],img2_alpha[:,:,x_pos])
+    ]
+
+    for i, (axis, pos, s1, s2, a1, a2) in enumerate(slices, 1):
+        plt.subplot(1,3,i)
+        plt.title(f"{'zyx'[axis]} slice at {pos}")
+
+        plt.imshow(s1, cmap=PINK, alpha=a1)
+        plt.imshow(s2, cmap=CYAN, alpha=a2)
+
+        if gc1 is not None:
+            px, py = _slice_gc_coords(gc1, axis)
+            plt.scatter(px, py, c="red", s=40)
+            _draw_axes(px, py, Vt1, img1.shape, axis)
+
+        if gc2 is not None:
+            px, py = _slice_gc_coords(gc2, axis)
+            plt.scatter(px, py, c="blue", s=40)
+            _draw_axes(px, py, Vt2, img2.shape, axis)
 
     if save_path is None:
         plt.show()
     else:
         plt.savefig(save_path, dpi=300)
+
     plt.close()
 
 
@@ -186,7 +224,7 @@ def plot_projection(fixed_np, moving_np, projection, center_slice, max_points):
         moving_mask = np.ones(len(moving_np))
 
     return roi_x, roi_y, fixed_mask, moving_mask, min_range, max_range
-    
+
 
 def overlay_pcds(
     fixed_pcd: o3d.t.geometry.PointCloud,
@@ -205,7 +243,7 @@ def overlay_pcds(
     assert (
         len(projection) == 2
     ), f"Projection should be xy, yz or something like that of length 2, not {projection}"
-    
+
 
     fixed_np = fixed_pcd.point.positions.numpy()
     moving_np = moving_pcd.point.positions.numpy()
@@ -278,7 +316,7 @@ def visualize_displacement_field(
 def plot_matching_qc(
     fixed_np, moving_np, fig_name, pairs=None, projection="xz", center_slice=True, max_points=1000
 ):
-    
+
     axis_order = {"x": 0, "y": 1, "z": 2}
     d1 = axis_order[projection[0]]
     d2 = axis_order[projection[1]]

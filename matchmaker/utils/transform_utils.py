@@ -104,7 +104,7 @@ def get_rotated_shape(img, rotation_matrix):
     # Step 4: Calculate the new shape
     new_shape = (np.ceil(max_coords - min_coords).astype(int))
 
-    return new_shape
+    return new_shape, min_coords, max_coords
 
 
 def get_translation_matrix(translation):
@@ -124,19 +124,25 @@ def get_rotation_matrix(R):
     return M
 
 
-def get_transformation_matrix(img, gc, Vt):
+def get_transformation_matrix(img, gc, Vt, img_ref=None, Vt_ref=None):
     # 1. center image on origin
     center_to_origin = get_translation_matrix(gc)
     # 2. rotate image
     rot = get_rotation_matrix(Vt.T)
     # 3. get new shape
-    new_shape = get_rotated_shape(img, rot)
+    new_shape, min_coords, max_coords = get_rotated_shape(img, rot)
+    if img_ref is not None:
+        assert Vt_ref is not None
+        rot_ref = get_rotation_matrix(Vt_ref.T)
+        _, min_coords_ref, max_coords_ref = get_rotated_shape(img_ref, rot_ref)
+        union_min = np.minimum(min_coords, min_coords_ref)
+        union_max = np.maximum(max_coords, max_coords_ref)
+        new_shape = np.ceil(union_max - union_min).astype(int)
     # 4. center image on new shape
     new_shape_center = np.array(new_shape) // 2
     center_to_new_shape = get_translation_matrix(-new_shape_center)
     # 5. combine all transforms: get transformation matrix
     T = center_to_origin @ rot @ center_to_new_shape
-
 
     return T, new_shape
 

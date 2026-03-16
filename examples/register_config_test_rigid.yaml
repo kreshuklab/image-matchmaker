@@ -28,10 +28,6 @@ ILP:
   min_neighbours: 10
   max_dist: 30
 
-keys:
-  n5: "input"
-  prealignment: "svd_prealignment"
-  rigid_alignment: "rigid_alignment"
-mobie_export: False
+mobie_export: True
 semantic_seg: True
 mobie_dataset_name: "platy1_muscles_stardist"
