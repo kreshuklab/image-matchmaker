@@ -53,6 +53,9 @@ if config["mobie_export"]:
         f"{log_dir}/mobie_project/{dataset_name}/images/ome-zarr/{moving_name}_{rigid_alignment_n5_key}.done",
         f"{log_dir}/mobie_project/{dataset_name}/images/ome-zarr/{moving_name}_{pointset_alignment_input_space_n5_key}.done"
     ]
+else:
+    mobie_outputs = []
+
 
 
 rule all:
