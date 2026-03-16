@@ -44,6 +44,16 @@ maxiter = config["coherent_point_drift"]["maxiter"]
 min_neighbours = config["ILP"]["min_neighbours"]
 max_dist = config["ILP"]["max_dist"]
 
+if config["mobie_export"]:
+    mobie_outputs = [
+        f"{log_dir}/mobie_project/{dataset_name}/images/ome-zarr/{fixed_name}_{raw_n5_key}.done",
+        f"{log_dir}/mobie_project/{dataset_name}/images/ome-zarr/{moving_name}_{raw_n5_key}.done",
+        f"{log_dir}/mobie_project/{dataset_name}/images/ome-zarr/{fixed_name}_{prealignment_n5_key}.done",
+        f"{log_dir}/mobie_project/{dataset_name}/images/ome-zarr/{moving_name}_{prealignment_n5_key}.done",
+        f"{log_dir}/mobie_project/{dataset_name}/images/ome-zarr/{moving_name}_{rigid_alignment_n5_key}.done",
+        f"{log_dir}/mobie_project/{dataset_name}/images/ome-zarr/{moving_name}_{pointset_alignment_input_space_n5_key}.done"
+    ]
+
 
 rule all:
     input:
@@ -57,11 +67,7 @@ rule all:
         registered_pcd = f"{log_dir}/cpd_nonrigid_registration/registered_pcd.pcd",
         match_path = f"{log_dir}/match_pointclouds/matched_labels.csv",
         pointset_alignment = f"{moving_n5_path}/{pointset_alignment_input_space_n5_key}",
-        mobie_fixed_input_check = f"{log_dir}/mobie_project/{dataset_name}/images/ome-zarr/{fixed_name}_{raw_n5_key}.done",
-        mobie_moving_input_check = f"{log_dir}/mobie_project/{dataset_name}/images/ome-zarr/{moving_name}_{raw_n5_key}.done",
-        mobie_fixed_prealign_check = f"{log_dir}/mobie_project/{dataset_name}/images/ome-zarr/{fixed_name}_{prealignment_n5_key}.done",
-        mobie_moving_prealign_check = f"{log_dir}/mobie_project/{dataset_name}/images/ome-zarr/{moving_name}_{prealignment_n5_key}.done",
-        mobie_moving_rigid_align_check = f"{log_dir}/mobie_project/{dataset_name}/images/ome-zarr/{moving_name}_{rigid_alignment_n5_key}.done"
+        mobie_outputs = mobie_outputs
 
 
 """
@@ -146,25 +152,15 @@ rule create_mobie_project:
         input_key = raw_n5_key
     log: f"{log_dir}/matchmaker.log"
     conda: "matchmaker_env"
-    run:
-        if not config.get("mobie_export", False):
-            with open(output.fixed_check, "w") as f:
-                f.write("Skipped: mobie_export is False in config\n")
-            with open(output.moving_check, "w") as f:
-                f.write("Skipped: mobie_export is False in config\n")
-            return  # Exit early — rule is "done"
-
-        # Only proceed if mobie_export is True
-        shell(
-            f"python matchmaker/mobie_export.py --input_path {{input.fixed_image_n5}} --input_key {{params.input_key}} --input_type {fixed_type} {'--semantic_seg' if semantic_seg else ''} --dataset_name {dataset_name} --output_dir {log_dir};"
-            f"touch {{output.fixed_check}};"
-            f"rm -rf ./tmp_{dataset_name}_{fixed_name}_{{params.input_key}};"
-            f"rm -rf ./tmp_{dataset_name}_{fixed_name}_{{params.input_key}}_binary;"
-            f"python matchmaker/mobie_export.py --input_path {{input.moving_image_n5}} --input_key {{params.input_key}} --input_type {moving_type} {'--semantic_seg' if semantic_seg else ''} --dataset_name {dataset_name} --output_dir {log_dir};"
-            f"touch {{output.moving_check}};"
-            f"rm -rf ./tmp_{dataset_name}_{moving_name}_{{params.input_key}};"
-            f"rm -rf ./tmp_{dataset_name}_{moving_name}_{{params.input_key}}_binary;"
-        )
+    shell:
+        f"python matchmaker/mobie_export.py --input_path {{input.fixed_image_n5}} --input_key {{params.input_key}} --input_type {fixed_type} {'--semantic_seg' if semantic_seg else ''} --dataset_name {dataset_name} --output_dir {log_dir};"
+        f"touch {{output.fixed_check}};"
+        f"rm -rf ./tmp_{dataset_name}_{fixed_name}_{{params.input_key}};"
+        f"rm -rf ./tmp_{dataset_name}_{fixed_name}_{{params.input_key}}_binary;"
+        f"python matchmaker/mobie_export.py --input_path {{input.moving_image_n5}} --input_key {{params.input_key}} --input_type {moving_type} {'--semantic_seg' if semantic_seg else ''} --dataset_name {dataset_name} --output_dir {log_dir};"
+        f"touch {{output.moving_check}};"
+        f"rm -rf ./tmp_{dataset_name}_{moving_name}_{{params.input_key}};"
+        f"rm -rf ./tmp_{dataset_name}_{moving_name}_{{params.input_key}}_binary;"
 
 
 """
@@ -185,23 +181,15 @@ rule add_prealignment_to_mobie:
         input_key = prealignment_n5_key
     log: f"{log_dir}/matchmaker.log"
     conda: "matchmaker_env"
-    run:
-        if not config.get("mobie_export", False):
-            with open(output.fixed_check, "w") as f:
-                f.write("Skipped: mobie_export is False in config\n")
-            with open(output.moving_check, "w") as f:
-                f.write("Skipped: mobie_export is False in config\n")
-            return  # Exit early — rule is "done"
-        shell(
-            f"python matchmaker/mobie_export.py --input_path {{input.fixed_image_n5}} --input_key {{params.input_key}} --input_type {fixed_type} {'--semantic_seg' if semantic_seg else ''} --dataset_name {dataset_name} --output_dir {log_dir};"
-            f"touch {{output.fixed_check}};"
-            f"rm -rf ./tmp_{dataset_name}_{fixed_name}_{{params.input_key}};"
-            f"rm -rf ./tmp_{dataset_name}_{fixed_name}_{{params.input_key}}_binary;"
-            f"python matchmaker/mobie_export.py --input_path {{input.moving_image_n5}} --input_key {{params.input_key}} --input_type {moving_type} {'--semantic_seg' if semantic_seg else ''} --dataset_name {dataset_name} --output_dir {log_dir};"
-            f"touch {{output.moving_check}};"
-            f"rm -rf ./tmp_{dataset_name}_{moving_name}_{{params.input_key}};"
-            f"rm -rf ./tmp_{dataset_name}_{moving_name}_{{params.input_key}}_binary;"
-        )
+    shell:
+        f"python matchmaker/mobie_export.py --input_path {{input.fixed_image_n5}} --input_key {{params.input_key}} --input_type {fixed_type} {'--semantic_seg' if semantic_seg else ''} --dataset_name {dataset_name} --output_dir {log_dir};"
+        f"touch {{output.fixed_check}};"
+        f"rm -rf ./tmp_{dataset_name}_{fixed_name}_{{params.input_key}};"
+        f"rm -rf ./tmp_{dataset_name}_{fixed_name}_{{params.input_key}}_binary;"
+        f"python matchmaker/mobie_export.py --input_path {{input.moving_image_n5}} --input_key {{params.input_key}} --input_type {moving_type} {'--semantic_seg' if semantic_seg else ''} --dataset_name {dataset_name} --output_dir {log_dir};"
+        f"touch {{output.moving_check}};"
+        f"rm -rf ./tmp_{dataset_name}_{moving_name}_{{params.input_key}};"
+        f"rm -rf ./tmp_{dataset_name}_{moving_name}_{{params.input_key}}_binary;"
 
 
 """
@@ -219,17 +207,11 @@ rule add_rigid_alignment_to_mobie:
         input_key = rigid_alignment_n5_key
     log: f"{log_dir}/matchmaker.log"
     conda: "matchmaker_env"
-    run:
-        if not config.get("mobie_export", False):
-            with open(output.moving_check, "w") as f:
-                f.write("Skipped: mobie_export is False in config\n")
-            return  # Exit early — rule is "done"
-        shell(
-            f"python matchmaker/mobie_export.py --input_path {{input.moving_image_n5}} --input_key {{params.input_key}} --input_type {moving_type} {'--semantic_seg' if semantic_seg else ''} --dataset_name {dataset_name} --output_dir {log_dir};"
-            f"touch {{output.moving_check}};"
-            f"rm -rf ./tmp_{dataset_name}_{moving_name}_{{params.input_key}};"
-            f"rm -rf ./tmp_{dataset_name}_{moving_name}_{{params.input_key}}_binary;"
-        )
+    shell:
+        f"python matchmaker/mobie_export.py --input_path {{input.moving_image_n5}} --input_key {{params.input_key}} --input_type {moving_type} {'--semantic_seg' if semantic_seg else ''} --dataset_name {dataset_name} --output_dir {log_dir};"
+        f"touch {{output.moving_check}};"
+        f"rm -rf ./tmp_{dataset_name}_{moving_name}_{{params.input_key}};"
+        f"rm -rf ./tmp_{dataset_name}_{moving_name}_{{params.input_key}}_binary;"
 
 
 rule cpd_nonrigid_registration:
@@ -284,7 +266,25 @@ rule elastix_deformable_pointset:
         output_key = pointset_alignment_n5_key,
         prealigned_output_key = pointset_alignment_input_space_n5_key,
         log_dir = f"{log_dir}/elastix_deformable_pointset_registration"
-    log: f"{log_dir}//matchmaker.log"
+    log: f"{log_dir}/matchmaker.log"
     conda: "matchmaker_env"
     shell:
         f"python matchmaker/elastix_deformable_pointset_registration.py --fixed_path {{input.fixed_image_n5}} --fixed_key {{params.input_key}} --moving_path {{input.moving_image_n5}} --moving_key {{params.input_key}} --output_dir {{params.log_dir}}  --output_key {{params.output_key}} --match_path {{input.match_path}} --prealigned_output_key {{params.prealigned_output_key}} --prealignment_transform {{input.prealignment_transform}};"
+
+
+rule add_elastix_deformable_pointset_to_mobie:
+    input:
+        moving_input_ds = f"{moving_n5_path}/{pointset_alignment_input_space_n5_key}",
+        moving_image_n5 = moving_n5_path,
+        moving_uploaded = f"{log_dir}/mobie_project/{dataset_name}/images/ome-zarr/{moving_name}_{rigid_alignment_n5_key}.done"
+    output:
+        moving_check = f"{log_dir}/mobie_project/{dataset_name}/images/ome-zarr/{moving_name}_{pointset_alignment_input_space_n5_key}.done"
+    params:
+        input_key = pointset_alignment_input_space_n5_key
+    log: f"{log_dir}/matchmaker.log"
+    conda: "matchmaker_env"
+    shell:
+        f"python matchmaker/mobie_export.py --input_path {{input.moving_image_n5}} --input_key {{params.input_key}} --input_type {moving_type} {'--semantic_seg' if semantic_seg else ''} --dataset_name {dataset_name} --output_dir {log_dir};"
+        f"touch {{output.moving_check}};"
+        f"rm -rf ./tmp_{dataset_name}_{moving_name}_{{params.input_key}};"
+        f"rm -rf ./tmp_{dataset_name}_{moving_name}_{{params.input_key}}_binary;"
