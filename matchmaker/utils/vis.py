@@ -54,6 +54,15 @@ def plot_three_slices(img, save_path=None, x_pos=None, y_pos=None, z_pos=None,
         gc: center of mass (z,y,x)
         Vt: PCA axes (3x3)
     """
+    img = img.astype(np.uint16)
+
+    assert img.ndim == 3
+    if x_pos is None:
+        x_pos = int(img.shape[2] // 2)
+    if y_pos is None:
+        y_pos = int(img.shape[1] // 2)
+    if z_pos is None:
+        z_pos = int(img.shape[0] // 2)
     assert img.ndim==3
 
     if max_pos:

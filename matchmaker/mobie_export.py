@@ -4,6 +4,7 @@ import click
 import sys
 from shutil import rmtree
 import pandas as pd
+import numpy as np
 from elf.io import open_file
 import mobie
 from matchmaker.utils import (get_attrs, setup_logging)
@@ -12,6 +13,22 @@ from mobie.import_data import import_segmentation
 from mobie.metadata import read_dataset_metadata
 from mobie.utils import get_data_key
 from mobie.tables import compute_default_table
+from matchmaker.utils import read_volume, write_volume, get_attrs
+
+
+def instance_to_semantic(
+    input_path, input_key, output_key
+):
+    """
+    Convert instance segmentation (.n5) to semantic segmentation (.n5).
+    """
+
+    instance_seg = read_volume(input_path, input_key)
+    semantic_seg = (instance_seg > 0).astype(np.uint8)
+
+    attrs = get_attrs(input_path, input_key)
+
+    write_volume(input_path, semantic_seg, output_key, chunks=(128, 512, 512), attrs=attrs)
 
 
 def add_to_mobie(input_path, input_key, mobie_folder, dataset_name, segmentation_name, menu_name):
@@ -127,11 +144,25 @@ def export_to_mobie(input_path, input_key, mobie_folder, dataset_name, segmentat
 @click.option("-i", "--input_path", required=True, help="Input .n5 file")
 @click.option("-k", "--input_key", required=True, help="Input key")
 @click.option("-t", "--input_type", required=True, help="Fixed or moving image?")
+@click.option("-s", "--semantic_seg", is_flag=True, default=False, help="semantic or instance?")
 @click.option("-d", "--dataset_name", required=True, help="Name of the MoBIE dataset")
 @click.option("-o", "--output_dir", required=True, help="Output directory")
-def main(input_path, input_key, input_type, dataset_name, output_dir):
+def main(input_path, input_key, input_type, semantic_seg, dataset_name, output_dir):
 
-    setup_logging(output_dir, "mobie_export.log")
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s [%(levelname)s] %(message)s",
+        handlers=[
+            logging.FileHandler(f"{output_dir}/mobie_export.log", mode="w"),
+            logging.StreamHandler(sys.stdout),
+        ],
+        datefmt="%Y-%m-%d %H:%M:%S",
+    )
+    logging.info(f"MoBIE upload semantic segmentation: {semantic_seg}")
+    if semantic_seg:
+        output_key = f"{input_key}_binary"
+        instance_to_semantic(input_path, input_key, output_key)
+        input_key = output_key
 
     file_name = os.path.splitext(os.path.basename(input_path))[0]
     logging.info(f"Start uploading {file_name}/{input_key} to MoBIE ...")
