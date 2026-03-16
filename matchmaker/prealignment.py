@@ -23,7 +23,6 @@ def get_SVD_transform(img, save_path=None):
 
     pos, _ = create_point_cloud(img)
     gc = pos.mean(axis=0)
-    gc = np.array(img.shape) // 2
     pos_c = pos - gc
     logging.info(f"Point cloud shape {pos.shape}")
     logging.info(f"Point cloud center {gc}")
@@ -91,37 +90,52 @@ def orient_axis(img, axis, save_path=None):
         return True
 
 
-def prealign_sample(img):
+def prealign_samples(fixed_img, moving_img):
     """
-    Pre-align a sample segmentation with its principal components.
+    Pre-align two segmentation volumes using PCA.
 
     Args:
-        img: Segmentation volume
-        file_name: Name of the sample
-        save_path: Folder to save results
+        fixed_img: fixed segmentation volume
+        moving_img: moving segmentation volume
 
     Returns:
-        Pre-aligned segmentation volume.
+        fixed_rot, moving_rot, T_fixed, T_moving
     """
-    gc, Vt = get_SVD_transform(img)
-    T, new_shape = get_transformation_matrix(img, gc, Vt)
-    img_rotated = rotate_img(img, T, output_shape=new_shape)
+    gc_fixed, Vt_fixed = get_SVD_transform(fixed_img)
+    gc_moving, Vt_moving = get_SVD_transform(moving_img)
 
-    if np.linalg.det(Vt.T) < 0:
+    T_fixed, fixed_shape = get_transformation_matrix(fixed_img, gc_fixed, Vt_fixed,
+                                                        img_ref=moving_img, Vt_ref=Vt_moving)
+    T_moving, moving_shape = get_transformation_matrix(moving_img, gc_moving, Vt_moving,
+                                                        img_ref=fixed_img, Vt_ref=Vt_fixed)
+    assert np.array_equal(fixed_shape, moving_shape)
+
+    fixed_rot = rotate_img(fixed_img, T_fixed, output_shape=fixed_shape)
+    moving_rot = rotate_img(moving_img, T_moving, output_shape=fixed_shape)
+
+    def mirror_img(img, T):
         logging.warning("V includes a reflection (mirroring)")
         R_3x3 = np.array([[1, 0, 0], [0, 1, 0], [0, 0, -1]])
         logging.info("Mirror back...")
-        img_center = 0.5 * (np.array(img_rotated.shape)-1)
+        img_center = 0.5 * (np.array(img.shape)-1)
         offset = img_center - R_3x3 @ img_center
         R = np.eye(4)
         R[:3, :3] = R_3x3
         R[:3, 3] = offset
-        img_rotated = rotate_img(img_rotated, R, output_shape=img_rotated.shape)
+        img_rotated = rotate_img(img, R, output_shape=img.shape)
 
         # update transformation matrix
         T = T @ R
+        return img_rotated, T
 
-    return img_rotated, T
+    if np.linalg.det(Vt_fixed.T) < 0:
+        fixed_rot, T_fixed = mirror_img(fixed_rot, T_fixed)
+
+    if np.linalg.det(Vt_moving.T) < 0:
+        moving_rot, T_moving = mirror_img(moving_rot, T_moving)
+
+    return {"fixed": [fixed_rot, T_fixed, gc_fixed, Vt_fixed, fixed_shape],
+            "moving": [moving_rot, T_moving, gc_moving, Vt_moving, moving_shape],}
 
 
 def run_prealignment(
@@ -181,29 +195,37 @@ def run_prealignment(
     Path(f"{output_dir}/plots").mkdir(parents=True, exist_ok=True)
 
     logging.info("Start prealignment")
-    logging.info("Start prealignment of fixed image ...")
+
+    logging.info("Start prealignment of fixed and moving images ...")
+
+    prealigned_results = prealign_samples(fixed_img, moving_img)
+
+    fixed_prealigned, T_fixed, gc_fixed, Vt_fixed, fixed_shape = prealigned_results["fixed"]
+    moving_prealigned, T_moving, gc_moving, Vt_moving, _ = prealigned_results["moving"]
 
     plot_three_slices(
         fixed_img,
-        save_path=f"{output_dir}/plots/fixed_input.png"
+        save_path=f"{output_dir}/plots/fixed_input.png",
+        gc=gc_fixed,
+        Vt=Vt_fixed,
     )
-
-    fixed_prealigned, T_fixed = prealign_sample(fixed_img)
-
-    logging.info("Start prealignment of moving image ...")
 
     plot_three_slices(
         moving_img,
-        save_path=f"{output_dir}/plots/moving_input.png"
+        save_path=f"{output_dir}/plots/moving_input.png",
+        gc=gc_moving,
+        Vt=Vt_moving,
     )
 
     plot_overlay(
         fixed_img,
         moving_img,
         save_path=f"{output_dir}/plots/overlay_input.png",
+        gc1=gc_fixed,
+        Vt1=Vt_fixed,
+        gc2=gc_moving,
+        Vt2=Vt_moving,
     )
-
-    moving_prealigned, T_moving = prealign_sample(moving_img)
 
     # check orientation (if moving fits to fixed)
     logging.info("Check axis orientation ...")
@@ -258,18 +280,26 @@ def run_prealignment(
 
     plot_three_slices(
         fixed_prealigned,
-        save_path=f"{output_dir}/plots/fixed_prealigned.png"
+        save_path=f"{output_dir}/plots/fixed_prealigned.png",
+        gc = T_fixed[:3,:3].T @ (gc_fixed - T_fixed[:3, 3]),
+        Vt = Vt_fixed @ T_fixed[:3, :3],
     )
 
     plot_three_slices(
         moving_prealigned,
-        save_path=f"{output_dir}/plots/moving_prealigned.png"
+        save_path=f"{output_dir}/plots/moving_prealigned.png",
+        gc = T_moving[:3,:3].T @ (gc_moving - T_moving[:3,3]),
+        Vt = Vt_moving @ T_moving[:3, :3],
     )
 
     plot_overlay(
         fixed_prealigned,
         moving_prealigned,
         save_path=f"{output_dir}/plots/overlay_after_prealignment.png",
+        gc1=T_fixed[:3,:3].T @ (gc_fixed - T_fixed[:3, 3]),
+        Vt1=Vt_fixed @ T_fixed[:3, :3],
+        gc2=T_moving[:3,:3].T @ (gc_moving - T_moving[:3,3]),
+        Vt2=Vt_moving @ T_moving[:3, :3],
     )
 
     return fixed_prealigned, moving_prealigned, prealignment_transform
