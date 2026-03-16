@@ -9,6 +9,8 @@ from matchmaker.data import create_point_cloud
 from matchmaker.utils import (get_transformation_matrix, rotate_img, read_volume, get_attrs, write_volume,
                                 write_transform_dict, plot_three_slices, plot_overlay, setup_logging)
 
+from matchmaker.utils.vis import PINK, CYAN
+
 
 def get_SVD_transform(img, save_path=None):
     """Convert image to point cloud by thresholding, then run SVD on resulting point cloud.
@@ -185,7 +187,8 @@ def run_prealignment(
 
     plot_three_slices(
         fixed_img,
-        save_path=f"{output_dir}/plots/fixed_input.png"
+        save_path=f"{output_dir}/plots/fixed_input.pdf",
+        cmap=PINK
     )
 
     fixed_prealigned, T_fixed = prealign_sample(fixed_img)
@@ -194,13 +197,14 @@ def run_prealignment(
 
     plot_three_slices(
         moving_img,
-        save_path=f"{output_dir}/plots/moving_input.png"
+        save_path=f"{output_dir}/plots/moving_input.pdf",
+        cmap=CYAN
     )
 
     plot_overlay(
         fixed_img,
         moving_img,
-        save_path=f"{output_dir}/plots/overlay_input.png",
+        save_path=f"{output_dir}/plots/overlay_input.pdf",
     )
 
     moving_prealigned, T_moving = prealign_sample(moving_img)
@@ -258,18 +262,20 @@ def run_prealignment(
 
     plot_three_slices(
         fixed_prealigned,
-        save_path=f"{output_dir}/plots/fixed_prealigned.png"
+        save_path=f"{output_dir}/plots/fixed_prealigned.pdf",
+        cmap=PINK
     )
 
     plot_three_slices(
         moving_prealigned,
-        save_path=f"{output_dir}/plots/moving_prealigned.png"
+        save_path=f"{output_dir}/plots/moving_prealigned.pdf",
+        cmap=CYAN
     )
 
     plot_overlay(
         fixed_prealigned,
         moving_prealigned,
-        save_path=f"{output_dir}/plots/overlay_after_prealignment.png",
+        save_path=f"{output_dir}/plots/overlay_after_prealignment.pdf",
     )
 
     return fixed_prealigned, moving_prealigned, prealignment_transform

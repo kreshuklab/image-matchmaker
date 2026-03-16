@@ -2,10 +2,51 @@ import numpy as np
 import matplotlib.pyplot as plt
 import open3d as o3d
 import logging
+import matplotlib.colors as mcolors
 
 from matchmaker.preprocessing import percentile_norm
 
 import seaborn as sns
+
+
+def get_pink_cmap():
+    pink_colors = [
+        '#FFFFFF',  # White (for 0)
+        '#FFD1DC',  # Light Pink
+        '#FFB6C1',  # Light Pink
+        '#FF69B4',  # Hot Pink
+        '#FF1493',  # Deep Pink
+        '#C71585',  # Medium Violet Red
+        '#9B30FF',  # Very Deep Pink / Purple-Pink (optional)
+    ]
+
+    # Create the colormap
+    custom_pink_cmap = mcolors.LinearSegmentedColormap.from_list(
+        "custom_pink", pink_colors, N=256
+    )
+
+    return custom_pink_cmap
+
+
+def get_cyan_cmap():
+    cyan_colors = [
+        '#FFFFFF',  # White (for 0)
+        '#E0FFFF',  # Light Cyan
+        '#B0E0E6',  # Powder Blue
+        '#87CEFA',  # Sky Blue
+        '#00CED1',  # Dark Turquoise
+        '#008B8B',  # Dark Cyan
+        '#006666',  # Deep Cyan (almost teal)
+    ]
+
+    # Create the colormap
+    custom_cyan_cmap = mcolors.LinearSegmentedColormap.from_list(
+        "custom_cyan", cyan_colors, N=256
+    )
+    return custom_cyan_cmap
+
+PINK = get_pink_cmap()
+CYAN = get_cyan_cmap()
 
 
 def plot_three_slices(
@@ -57,6 +98,7 @@ def plot_three_slices(
     plt.subplot(1, 3, 3)
     plt.title(f"x slice at {x_pos}")
     plt.imshow(img[:, :, x_pos], cmap=cmap, alpha=alpha[:, :, x_pos])
+
     if save_path is None:
         plt.show()
     else:
@@ -69,8 +111,8 @@ def plot_overlay(img1, img2, save_path=None, x_pos=None, y_pos=None, z_pos=None)
     Plot slices of two 3D images along each axis.
 
     Args:
-        img1: _description_target_shape = (25, 22, 29)
-        img2: _description_
+        img1: (fixed, pink) _description_target_shape = (25, 22, 29)
+        img2: (moving, cyan) _description_target_shape = (25, 22, 29)
         save_path: _description_. Defaults to None.
         x_pos: _description_. Defaults to None.
         y_pos: _description_. Defaults to None.
@@ -91,18 +133,18 @@ def plot_overlay(img1, img2, save_path=None, x_pos=None, y_pos=None, z_pos=None)
     plt.title(f"z slice at {z_pos}")
     img1_alpha = (percentile_norm(img1, 0, 100) > 0) * 0.5
     img2_alpha = (percentile_norm(img2, 0, 100) > 0) * 0.5
-    plt.imshow(img1[z_pos, :, :], cmap="Reds", alpha=img1_alpha[z_pos, :, :])
-    plt.imshow(img2[z_pos, :, :], cmap="Blues", alpha=img2_alpha[z_pos, :, :])
+    plt.imshow(img1[z_pos, :, :], cmap=PINK, alpha=img1_alpha[z_pos, :, :])
+    plt.imshow(img2[z_pos, :, :], cmap=CYAN, alpha=img2_alpha[z_pos, :, :])
 
     plt.subplot(1, 3, 2)
     plt.title(f"y slice at {y_pos}")
-    plt.imshow(img1[:, y_pos, :], cmap="Reds", alpha=img1_alpha[:, y_pos, :])
-    plt.imshow(img2[:, y_pos, :], cmap="Blues", alpha=img2_alpha[:, y_pos, :])
+    plt.imshow(img1[:, y_pos, :], cmap=PINK, alpha=img1_alpha[:, y_pos, :])
+    plt.imshow(img2[:, y_pos, :], cmap=CYAN, alpha=img2_alpha[:, y_pos, :])
 
     plt.subplot(1, 3, 3)
     plt.title(f"x slice at {x_pos}")
-    plt.imshow(img1[:, :, x_pos], cmap="Reds", alpha=img1_alpha[:, :, x_pos])
-    plt.imshow(img2[:, :, x_pos], cmap="Blues", alpha=img2_alpha[:, :, x_pos])
+    plt.imshow(img1[:, :, x_pos], cmap=PINK, alpha=img1_alpha[:, :, x_pos])
+    plt.imshow(img2[:, :, x_pos], cmap=CYAN, alpha=img2_alpha[:, :, x_pos])
 
     if save_path is None:
         plt.show()
@@ -282,3 +324,5 @@ def plot_matching_qc(
 
     plt.savefig(fig_name, dpi=300)
     plt.close()
+
+
