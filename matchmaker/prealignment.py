@@ -207,7 +207,7 @@ def run_prealignment(
 
     plot_three_slices(
         fixed_img,
-        save_path=f"{output_dir}/plots/fixed_input.png",
+        save_path=f"{output_dir}/plots/fixed_input.pdf",
         gc=gc_fixed,
         Vt=Vt_fixed,
         cmap=PINK
@@ -215,7 +215,7 @@ def run_prealignment(
 
     plot_three_slices(
         moving_img,
-        save_path=f"{output_dir}/plots/moving_input.png",
+        save_path=f"{output_dir}/plots/moving_input.pdf",
         gc=gc_moving,
         Vt=Vt_moving,
         cmap=CYAN
@@ -224,7 +224,7 @@ def run_prealignment(
     plot_overlay(
         fixed_img,
         moving_img,
-        save_path=f"{output_dir}/plots/overlay_input.png",
+        save_path=f"{output_dir}/plots/overlay_input.pdf",
         gc1=gc_fixed,
         Vt1=Vt_fixed,
         gc2=gc_moving,
@@ -239,12 +239,12 @@ def run_prealignment(
         rotate_axis_fixed = orient_axis(
             fixed_prealigned,
             axis=axis,
-            save_path=f"{output_dir}/plots/fixed_prealigned_intensity_profile_{axis}.png",
+            save_path=f"{output_dir}/plots/fixed_prealigned_intensity_profile_{axis}.pdf",
         )
         rotate_axis_moving = orient_axis(
             moving_prealigned,
             axis=axis,
-            save_path=f"{output_dir}/plots/moving_prealigned_intensity_profile_{axis}.png",
+            save_path=f"{output_dir}/plots/moving_prealigned_intensity_profile_{axis}.pdf",
         )
 
         if rotate_axis_fixed or rotate_axis_moving:
@@ -284,7 +284,7 @@ def run_prealignment(
 
     plot_three_slices(
         fixed_prealigned,
-        save_path=f"{output_dir}/plots/fixed_prealigned.png",
+        save_path=f"{output_dir}/plots/fixed_prealigned.pdf",
         gc = T_fixed[:3,:3].T @ (gc_fixed - T_fixed[:3, 3]),
         Vt = Vt_fixed @ T_fixed[:3, :3],
         cmap=PINK
@@ -292,7 +292,7 @@ def run_prealignment(
 
     plot_three_slices(
         moving_prealigned,
-        save_path=f"{output_dir}/plots/moving_prealigned.png",
+        save_path=f"{output_dir}/plots/moving_prealigned.pdf",
         gc = T_moving[:3,:3].T @ (gc_moving - T_moving[:3,3]),
         Vt = Vt_moving @ T_moving[:3, :3],
         cmap=CYAN
@@ -301,7 +301,7 @@ def run_prealignment(
     plot_overlay(
         fixed_prealigned,
         moving_prealigned,
-        save_path=f"{output_dir}/plots/overlay_after_prealignment.png",
+        save_path=f"{output_dir}/plots/overlay_after_prealignment.pdf",
         gc1=T_fixed[:3,:3].T @ (gc_fixed - T_fixed[:3, 3]),
         Vt1=Vt_fixed @ T_fixed[:3, :3],
         gc2=T_moving[:3,:3].T @ (gc_moving - T_moving[:3,3]),

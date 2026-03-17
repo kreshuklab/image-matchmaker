@@ -43,12 +43,12 @@ def match_points(fixed_pcd, registered_pcd, output_dir):
 
     if swap_order:
         plot_matching_qc(
-            pos_2, pos_1, output_dir / "point_matching.png", pairs=matched_idx_pairs
+            pos_2, pos_1, output_dir / "point_matching.pdf", pairs=matched_idx_pairs
         )
 
     else:
         plot_matching_qc(
-            pos_1, pos_2, output_dir / "point_matching.png", pairs=matched_idx_pairs
+            pos_1, pos_2, output_dir / "point_matching.pdf", pairs=matched_idx_pairs
         )
 
     return matched_idx_pairs, matched_label_pairs

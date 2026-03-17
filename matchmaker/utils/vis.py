@@ -281,7 +281,7 @@ def overlay_pcds(
     plt.close()
 
 
-def visualize_displacement_field(
+def visualize_displacement_field(  # TODO: change thickness of bars
     moving_pcd: o3d.t.geometry.PointCloud,
     registered_pcd: o3d.t.geometry.PointCloud,
     save_path=None,
@@ -313,7 +313,7 @@ def visualize_displacement_field(
     plt.close()
 
 
-def plot_matching_qc(
+def plot_matching_qc(  # TODO: change thickness of bars
     fixed_np, moving_np, fig_name, pairs=None, projection="xz", center_slice=True, max_points=1000
 ):
 
