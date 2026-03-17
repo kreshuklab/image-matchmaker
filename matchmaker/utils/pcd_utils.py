@@ -29,6 +29,25 @@ else:
         return x
 
 
+class PrintIterationsCallback(object):
+    """Print iteration number.
+
+    Args:
+        source (numpy.ndarray): Source point cloud data.
+        target (numpy.ndarray): Target point cloud data.
+        save (bool, optional): If this flag is True,
+            each iteration image is saved in a sequential number.
+    """
+
+    def __init__(self):
+        self._cnt = 0
+
+
+    def __call__(self, transformation: Transformation) -> None:
+        logging.info(f"Iteration {self._cnt}")        
+        self._cnt += 1
+
+
 def create_matched_pcds(
     fixed_img_np, fixed_resolution, moving_img_np, moving_resolution, matched_label_df
 ):
@@ -106,12 +125,14 @@ def run_cpd(fixed_pcd, moving_pcd, w, beta, lmd, maxiter):
     source_pt = cp.asarray(moving_pcd.point.positions.numpy(), dtype=cp.float32)
     target_pt = cp.asarray(fixed_pcd.point.positions.numpy(), dtype=cp.float32)
 
+    cbs = [PrintIterationsCallback()]
     start = time.time()
 
     tf_param, _, _ = cpd.registration_cpd(
         source_pt,
         target_pt,
         use_cuda=use_cuda,
+        callbacks=cbs,
         maxiter=maxiter,
         tf_type_name="nonrigid",
         w=w,
