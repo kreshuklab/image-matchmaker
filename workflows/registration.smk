@@ -111,11 +111,12 @@ rule SVD_prealignment:
         output_transform = f"{log_dir}/{prealignment_n5_key}/{prealignment_n5_key}_transform.json"
     params:
         input_key = raw_n5_key,
-        output_key = prealignment_n5_key
+        output_key = prealignment_n5_key,
+        axis_orientation = config["prealignment"]["axis_orientation"]
     log: f"{log_dir}/matchmaker.log"
     conda: "matchmaker_env"
     shell:
-        f"python matchmaker/prealignment.py --fixed_path {{input.fixed_image_n5}} --fixed_key {{params.input_key}} --moving_path {{input.moving_image_n5}} --moving_key {{params.input_key}} --output_dir {log_dir}/{{params.output_key}}  --output_key {{params.output_key}} --output_transform_path {{output.output_transform}};"
+        f"python matchmaker/prealignment.py --fixed_path {{input.fixed_image_n5}} --fixed_key {{params.input_key}} --moving_path {{input.moving_image_n5}} --moving_key {{params.input_key}} --output_dir {log_dir}/{{params.output_key}}  --output_key {{params.output_key}} --output_transform_path {{output.output_transform}} --axis_orientation {{params.axis_orientation}};"
 
 
 """
