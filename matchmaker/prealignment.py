@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 
 from matchmaker.data import create_point_cloud
 from matchmaker.utils import (get_transformation_matrix, rotate_img, read_volume, get_attrs, write_volume,
-                                write_transform_dict, plot_three_slices, plot_overlay, setup_logging)
+                                write_transform_dict, plot_three_slices, plot_overlay, setup_logging, get_axis_orient_matrix)
 
 
 def get_SVD_transform(img, save_path=None):
@@ -52,42 +52,137 @@ def get_SVD_transform(img, save_path=None):
     return gc, Vt
 
 
-def orient_axis(img, axis, save_path=None):
-    """
-    Plot the sum intensity along the given axis and return True if the maximum is closer to the
-    upper boundary than the lower boundary, False otherwise.
+def orient_axis(fixed_prealigned, moving_prealigned, output_dir):
+        int_prof_z = np.sum(moving_prealigned > 0, axis=(1, 2)) / np.sum(moving_prealigned > 0)
+        asymm_coeff_z = np.corrcoef(int_prof_z, int_prof_z)[0, 1] - np.corrcoef(int_prof_z, int_prof_z[::-1])[0, 1]
+        int_prof_y = np.sum(moving_prealigned > 0, axis=(0, 2)) / np.sum(moving_prealigned > 0)
+        asymm_coeff_y = np.corrcoef(int_prof_y, int_prof_y)[0, 1] - np.corrcoef(int_prof_y, int_prof_y[::-1])[0, 1]
+        int_prof_x = np.sum(moving_prealigned > 0, axis=(1, 0)) / np.sum(moving_prealigned > 0)
+        asymm_coeff_x = np.corrcoef(int_prof_x, int_prof_x)[0, 1] - np.corrcoef(int_prof_x, int_prof_x[::-1])[0, 1]
 
-    Args:
-        img: 3D image
-        axis: Axis to sum along
-        save_path: Path to save the plot to. If None, show the plot instead.
+        logging.info(f"Asymmetry coefficients in moving image:")
+        logging.info(f"Z: {asymm_coeff_z}")
+        logging.info(f"Y: {asymm_coeff_y}")
+        logging.info(f"X: {asymm_coeff_x}")
 
-    Returns:
-        True if the maximum is closer to the upper boundary than the lower boundary, False otherwise.
-    """
-    assert img.ndim == 3, f"Input image should have 3 dimensions, has {img.ndim}"
-    if axis == 0:
-        int_profile = np.sum(img, axis=(1, 2))  # profile along z
-    if axis == 1:
-        int_profile = np.sum(img, axis=(0, 2))  # profile along y
-    if axis == 2:
-        int_profile = np.sum(img, axis=(0, 1))  # profile along x
+        int_prof_z_fixed = np.sum(fixed_prealigned > 0, axis=(1, 2)) / np.sum(fixed_prealigned > 0)
+        int_prof_y_fixed = np.sum(fixed_prealigned > 0, axis=(0, 2)) / np.sum(fixed_prealigned > 0)
+        int_prof_x_fixed = np.sum(fixed_prealigned > 0, axis=(1, 0)) / np.sum(fixed_prealigned > 0)
 
-    plt.figure()
-    plt.plot(int_profile)
-    plt.xlabel(f"Axis {axis} Coordinate")
-    plt.ylabel(f"Sum intensity along axis = {axis}")
-    if save_path is not None:
-        plt.savefig(save_path, dpi=300)
-    else:
-        plt.show()
+        plt.figure()
+        plt.plot(int_prof_z, label="moving")
+        plt.plot(int_prof_z_fixed, label="fixed")
+        plt.xlabel(f"Axis Z Coordinate")
+        plt.ylabel(f"Sum intensity along axis = Z")
+        plt.legend()
+        plt.savefig(f"{output_dir}/plots/axis_int_profile_Z.png", dpi=300)
 
-    max_pos = int_profile.argmax()
-    logging.info(f"Max position is {max_pos}, dimension shape is {img.shape[axis]}")
-    if max_pos < img.shape[axis] // 2:
-        return False
-    else:
-        return True
+        plt.figure()
+        plt.plot(int_prof_y, label="moving")
+        plt.plot(int_prof_y_fixed, label="fixed")
+        plt.xlabel(f"Axis Y Coordinate")
+        plt.ylabel(f"Sum intensity along axis = Y")
+        plt.legend()
+        plt.savefig(f"{output_dir}/plots/axis_int_profile_Y.png", dpi=300)
+
+        plt.figure()
+        plt.plot(int_prof_x, label="moving")
+        plt.plot(int_prof_x_fixed, label="fixed")
+        plt.xlabel(f"Axis X Coordinate")
+        plt.ylabel(f"Sum intensity along axis = X")
+        plt.legend()
+        plt.savefig(f"{output_dir}/plots/axis_int_profile_X.png", dpi=300)
+
+        if np.corrcoef(int_prof_z, int_prof_z_fixed)[0, 1] > np.corrcoef(int_prof_z[::-1], int_prof_z_fixed)[0, 1]:
+            z_correct = True
+        else:
+            z_correct = False
+
+        if np.corrcoef(int_prof_y, int_prof_y_fixed)[0, 1] > np.corrcoef(int_prof_y[::-1], int_prof_y_fixed)[0, 1]:
+            y_correct = True
+        else:
+            y_correct = False
+
+        if np.corrcoef(int_prof_x, int_prof_x_fixed)[0, 1] > np.corrcoef(int_prof_x[::-1], int_prof_x_fixed)[0, 1]:
+            x_correct = True
+        else:
+            x_correct = False
+
+        logging.info(f"Orientations are correct: Z - {z_correct}, Y - {y_correct}, X - {x_correct}")
+
+        if (asymm_coeff_x < asymm_coeff_y) and (asymm_coeff_x < asymm_coeff_z):
+            logging.info(f"Using axes Y and Z for determining orientation")
+            if z_correct and y_correct:
+                logging.info(f"Orientation along both axes is correct")
+                R = np.eye(4, 4)
+            elif z_correct and not y_correct:
+                logging.info(f"Rotate 180 degrees around Z axis")
+                R = get_axis_orient_matrix(moving_prealigned, "xyz")
+            else:
+                logging.info(f"Rotate 180 degrees around X axis")
+                R = get_axis_orient_matrix(moving_prealigned, "zyx")
+
+        elif (asymm_coeff_y < asymm_coeff_x) and (asymm_coeff_y < asymm_coeff_z):
+            logging.info(f"Using axes X and Z for determining orientation")
+            if z_correct and x_correct:
+                logging.info(f"Orientation along both axes is correct")
+                R = np.eye(4, 4)
+            elif z_correct and not x_correct:
+                logging.info(f"Rotate 180 degrees around Z axis")
+                R = get_axis_orient_matrix(moving_prealigned, "xyz")
+            else:
+                logging.info(f"Rotate 180 degrees around Y axis")
+                R = get_axis_orient_matrix(moving_prealigned, "yzx")
+
+        else:
+            logging.info(f"Using axes X and Y for determining orientation")
+            if x_correct and y_correct:
+                logging.info(f"Orientation along both axes is correct")
+                R = np.eye(4, 4)
+            elif x_correct and not y_correct:
+                logging.info(f"Rotate 180 degrees around X axis")
+                R = get_axis_orient_matrix(moving_prealigned, "zyx")
+            else:
+                logging.info(f"Rotate 180 degrees around Y axis")
+                R = get_axis_orient_matrix(moving_prealigned, "yzx")
+
+        return R
+
+
+def generate_rotation_overlays(fixed_prealigned, moving_prealigned, output_dir):
+    plot_dir = Path(f"{output_dir}/manual_prealignment_options/")
+    plot_dir.mkdir(exist_ok=True)
+
+    plot_overlay(
+        fixed_prealigned,
+        moving_prealigned,
+        save_path=f"{output_dir}/manual_prealignment_options/IDENTITY.png"
+    )
+
+    R = get_axis_orient_matrix(moving_prealigned, "zyx")
+    moving_rotated = rotate_img(moving_prealigned, R, output_shape=moving_prealigned.shape)
+    plot_overlay(
+        fixed_prealigned,
+        moving_rotated,
+        save_path=f"{output_dir}/manual_prealignment_options/X.png"
+    )
+
+    R = get_axis_orient_matrix(moving_prealigned, "yzx")
+    moving_rotated = rotate_img(moving_prealigned, R, output_shape=moving_prealigned.shape)
+    plot_overlay(
+        fixed_prealigned,
+        moving_rotated,
+        save_path=f"{output_dir}/manual_prealignment_options/Y.png"
+    )
+
+    R = get_axis_orient_matrix(moving_prealigned, "xyz")
+    moving_rotated = rotate_img(moving_prealigned, R, output_shape=moving_prealigned.shape)
+    plot_overlay(
+        fixed_prealigned,
+        moving_rotated,
+        save_path=f"{output_dir}/manual_prealignment_options/Z.png"
+    )
+
 
 
 def prealign_samples(fixed_img, moving_img):
@@ -141,7 +236,8 @@ def prealign_samples(fixed_img, moving_img):
 def run_prealignment(
     fixed_img,
     moving_img,
-    output_dir
+    output_dir,
+    axis_orientation
 ):
     """
     Run prealignment of a fixed and moving 3D image volume.
@@ -227,43 +323,56 @@ def run_prealignment(
         Vt2=Vt_moving,
     )
 
+    plot_overlay(
+        fixed_prealigned,
+        moving_prealigned,
+        save_path=f"{output_dir}/plots/overlay_after_prealignment_before_axis_orient.png",
+        gc1=T_fixed[:3,:3].T @ (gc_fixed - T_fixed[:3, 3]),
+        Vt1=Vt_fixed @ T_fixed[:3, :3],
+        gc2=T_moving[:3,:3].T @ (gc_moving - T_moving[:3,3]),
+        Vt2=Vt_moving @ T_moving[:3, :3],
+    )
     # check orientation (if moving fits to fixed)
-    logging.info("Check axis orientation ...")
-    R_3x3 = np.eye(3)
-    change_orientation = False
-    for axis in range(3):
-        rotate_axis_fixed = orient_axis(
-            fixed_prealigned,
-            axis=axis,
-            save_path=f"{output_dir}/plots/fixed_prealigned_intensity_profile_{axis}.png",
-        )
-        rotate_axis_moving = orient_axis(
-            moving_prealigned,
-            axis=axis,
-            save_path=f"{output_dir}/plots/moving_prealigned_intensity_profile_{axis}.png",
-        )
 
-        if rotate_axis_fixed or rotate_axis_moving:
-            print(f"Rotate axis {axis} 180 degrees to align...")
-            change_orientation = True
-            R_3x3[axis, axis] = -1
-        else:
-            print(f"Correct orientation in axis {axis}.")
+    if axis_orientation == "auto":
+        logging.info(f"Try to determine axis orientation based on intensity profile of the samples")
+        R = orient_axis(fixed_prealigned, moving_prealigned, output_dir)
+        # In case the automatic estimation is incorrect, generate possible rotations
+        generate_rotation_overlays(fixed_prealigned, moving_prealigned, output_dir)
 
-    if not change_orientation:
-        logging.info("Correct orientation.")
-    else:
-        logging.info("Rotate moving image to align orientation...")
-        logging.info(str(R_3x3))
-        img_center = 0.5 * (np.array(moving_prealigned.shape)-1)
-        offset = img_center - R_3x3 @ img_center
-        R = np.eye(4)
-        R[:3, :3] = R_3x3
-        R[:3, 3] = offset
         moving_prealigned = rotate_img(moving_prealigned, R, output_shape=moving_prealigned.shape)
-
+        logging.info("Axis orientation matrix")
+        logging.info(str(R))
         # update transformation matrix
         T_moving = T_moving @ R
+
+    elif axis_orientation == "IDENTITY":
+        pass
+
+    elif axis_orientation == "X":
+        logging.info("Rotate 180 degrees around X to orient axes")
+        R = get_axis_orient_matrix(moving_prealigned, "zyx")
+        logging.info("Axis orientation matrix")
+        logging.info(str(R))
+        moving_prealigned = rotate_img(moving_prealigned, R, output_shape=moving_prealigned.shape)
+        T_moving = T_moving @ R
+
+    elif axis_orientation == "Y":
+        logging.info("Rotate 180 degrees around Y to orient axes")
+        R = get_axis_orient_matrix(moving_prealigned, "yzx")
+        logging.info("Axis orientation matrix")
+        logging.info(str(R))
+        moving_prealigned = rotate_img(moving_prealigned, R, output_shape=moving_prealigned.shape)
+        T_moving = T_moving @ R
+
+    elif axis_orientation == "Z":
+        logging.info("Rotate 180 degrees around Z to orient axes")
+        R = get_axis_orient_matrix(moving_prealigned, "xyz")
+        logging.info("Axis orientation matrix")
+        logging.info(str(R))
+        moving_prealigned = rotate_img(moving_prealigned, R, output_shape=moving_prealigned.shape)
+        T_moving = T_moving @ R
+
 
     logging.info("Prealignment done.")
 
@@ -313,8 +422,9 @@ def run_prealignment(
 @click.option("-o", "--output_dir", required=True, help="Output directory")
 @click.option("-ok", "--output_key", required=True, help="Output key (same in both n5)")
 @click.option("-trans", "--output_transform_path", required=True, help="Path to write the final transform")
+@click.option("-axis_orientation", "--axis_orientation", required=True, help="How to find the correct orientation along the principal axes")
 @click.option("-tif", "--save_tif", is_flag=True, help="Whether to save tif or not")
-def main(fixed_path, fixed_key, moving_path, moving_key, output_dir, output_key, output_transform_path, save_tif=False):
+def main(fixed_path, fixed_key, moving_path, moving_key, output_dir, output_key, output_transform_path, axis_orientation, save_tif=False):
     """
     Perform prealignment of moving image to fixed image.
 
@@ -345,7 +455,8 @@ def main(fixed_path, fixed_key, moving_path, moving_key, output_dir, output_key,
     fixed_prealigned, moving_prealigned, prealignment_transform = run_prealignment(
         fixed_img,
         moving_img,
-        output_dir
+        output_dir,
+        axis_orientation
     )
 
     logging.info("Save prealigned fixed image")
