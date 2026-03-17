@@ -3,6 +3,7 @@ import numpy as np
 import transforms3d as tf3d
 from scipy.ndimage import affine_transform
 from elf.wrapper.resized_volume import ResizedVolume
+import logging
 
 
 def write_transform_dict(transform_dict, json_path):
@@ -145,6 +146,18 @@ def get_transformation_matrix(img, gc, Vt, img_ref=None, Vt_ref=None):
     T = center_to_origin @ rot @ center_to_new_shape
 
     return T, new_shape
+
+
+def get_axis_orient_matrix(img, axis_order):
+    # 1. center image on origin
+    center_to_origin = get_translation_matrix(np.array(img.shape) // 2)
+    # 2. rotate image
+    R = tf3d.euler.euler2mat(np.pi, 0, 0, f"s{axis_order}")
+    rot = get_rotation_matrix(R)
+    center_to_new_shape = get_translation_matrix(-np.array(img.shape) // 2)
+    # 5. combine all transforms: get transformation matrix
+    T = center_to_origin @ rot @ center_to_new_shape
+    return T
 
 
 def rotate_img(img, rotation_matrix, output_shape=None, offset=None):
