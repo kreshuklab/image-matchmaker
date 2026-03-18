@@ -235,7 +235,7 @@ def overlay_pcds(
     save_path=None,
     title="",
     center_slice=True,
-    max_points=1000,
+    max_points=2000,
 ):
     """
     Overlay two point clouds. Optionally only plot points around COM slice of the point cloud to make it easier to see/
