@@ -306,7 +306,7 @@ def run_prealignment(
         save_path=f"{output_dir}/plots/fixed_input.pdf",
         gc=gc_fixed,
         Vt=Vt_fixed,
-        cmap=PINK
+        cmap="rainbow"
     )
 
     plot_three_slices(
@@ -314,7 +314,7 @@ def run_prealignment(
         save_path=f"{output_dir}/plots/moving_input.pdf",
         gc=gc_moving,
         Vt=Vt_moving,
-        cmap=CYAN
+        cmap="rainbow"
     )
 
     plot_overlay(
