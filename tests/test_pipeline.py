@@ -11,7 +11,8 @@ from matchmaker.utils import (load_config, read_volume, download_file, check_no_
                             compute_centroid_distances,)
 
 
-def run_pipline(config_path, snakefile, cores=8, test_dir="tmp_pytest"):
+def run_pipline(config_path, snakefile, cores=8, test_dir="tmp_pytest", enable_aniso=False,
+                enable_elastic=False):
     test_dir = Path(test_dir)
     final_transform_path = test_dir / "final_transform.json"
 
@@ -22,7 +23,7 @@ def run_pipline(config_path, snakefile, cores=8, test_dir="tmp_pytest"):
     config = load_config(config_path)
 
     # Generate deformed data
-    deform_test_data(config=config)
+    deform_test_data(config=config, enable_aniso=enable_aniso, enable_elastic=enable_elastic)
 
     # Run snakemake
     result = subprocess.run(
@@ -38,10 +39,9 @@ def run_pipline(config_path, snakefile, cores=8, test_dir="tmp_pytest"):
     assert result.returncode == 0, result.stderr
 
     # Compare results
-    output_key = config["keys"]["rigid_alignment"]
     moving_path = test_dir / f"{config['moving_image']['output_name']}.n5"
 
-    test_img = read_volume(moving_path, output_key)
+    test_img = read_volume(moving_path, "rigid_alignment")
 
     ref_path = config["moving_image"]["ref_path"]
     if not Path(ref_path).exists():
@@ -70,3 +70,5 @@ def run_pipline(config_path, snakefile, cores=8, test_dir="tmp_pytest"):
 def test_workflow():
 
     run_pipline("examples/register_config_test_rigid.yaml", "workflows/registration.smk")
+    # run_pipline("examples/register_config_test_elastic.yaml", "workflows/registration.smk", enable_elastic=True)
+    # run_pipline("examples/register_config_test_aniso_rigid.yaml", "workflows/registration.smk", enable_aniso=True)
