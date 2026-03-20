@@ -7,13 +7,13 @@ fixed_image:
   z_res: 1
 
 moving_image:
-  path: "examples/data/deformed_data/platy1_muscles_stardist_moving.tif"
+  path: "examples/data/deformed_data/platy1_muscles_stardist_rigid.tif"
   output_name: "moving_image"
   x_res: 1
   y_res: 1
   z_res: 1
   ref_path: "examples/data/test_data/moving_rigid_aligned.tif"
-  ref_url: "https://github.com/kreshuklab/matchmaker/releases/download/test_data-v0.2/moving_rigid_aligned.tif"
+  ref_url: "https://github.com/kreshuklab/matchmaker/releases/download/test_data-v0.3/moving_rigid_aligned.tif"
 
 log_dir: "data/test_rigid_registration"
 final_transform_path: "data/test_rigid_registration/final_transform.json"
