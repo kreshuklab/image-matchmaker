@@ -25,7 +25,7 @@ Optional: If you want to hide all warnings during tests, append:
 
 This test generates deformed test data, runs the Snakemake workflow, and compares the final outputs against pre-computed reference results.
 
-The reference data will be downloaded automatically from this repo's release if available. If the download fails (e.g. the repository is private), manually download the reference data from [here](https://github.com/kreshuklab/matchmaker/releases/tag/test_data-v0.2) and place it under:
+The reference data will be downloaded automatically from this repo's release if available. If the download fails (e.g. the repository is private), manually download the reference data from [here](https://github.com/kreshuklab/matchmaker/releases/tag/test_data-v0.3) and place it under:
 
 ```
 examples/data/test_data/
@@ -80,8 +80,8 @@ mm.n5-utils.read_volume(...)
 ## Registration
 ### Input
 
-- **Fixed image**: 3D instance segmentation in `n5` + resolution 
-- **Moving image**: 3D instance segmentation `n5` + resolution 
+- **Fixed image**: 3D instance segmentation in `n5` + resolution
+- **Moving image**: 3D instance segmentation `n5` + resolution
 
 
 Expected image shape: ZYX
@@ -100,7 +100,7 @@ Expected image shape: ZYX
 **1. PCA pre-alignment**: alignment of fixed and moving image to the PCs \
  `prealignment.py --fixed_path ... --fixed_key ... --moving_path ... --moving_key ... --output_dir ... --mobie_export --dataset_name ...` \
 
-Outputs: 
+Outputs:
 - prealigned images: `{file_name}_prealigned.n5`
 - transformation matrixes
     - `{file_name}_fixed_T_prealignment.txt`
@@ -114,7 +114,7 @@ Outputs:
 **2. Rigid pre-alignment with Elastix** \
 `apply_rigid_elastix.py --fixed_path ... --fixed_key ... --moving_path ... --moving_key ... --output_dir ... --mobie_export --dataset_name ...` \
 
-Outputs: 
+Outputs:
 - rigid alinged moving image: `{file_name}_rigid_aligned.n5`
 - rigid transformation matrix (Elastix outputs): `result.0.mhd`, `result.0.raw`, `TransformParameters.0.txt`
 - logging file: `elastix_log_rigid.log`
