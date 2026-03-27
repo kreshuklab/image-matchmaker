@@ -84,7 +84,10 @@ def resample_volume(img, old_spacing, new_spacing, order=0):
     return zoom(img, scale, order=order)
 
 
-def get_rotated_shape(img, rotation_matrix, spacing):
+def get_rotated_shape(img, rotation_matrix, spacing, spacing_out=None):
+    if spacing_out is None:
+        spacing_out = spacing
+
     # Step 1: Define the 8 corners of the original volume
     dz, dy, dx = img.shape
 
@@ -104,7 +107,7 @@ def get_rotated_shape(img, rotation_matrix, spacing):
     # Step 2: Apply the rotation matrix
     rotated_corners = corners @ rotation_matrix[0:3, 0:3]  # Apply rotation
 
-    rotated_corners /= spacing
+    rotated_corners /= spacing_out
 
     # Step 3: Find min and max of the rotated corners
     min_coords = rotated_corners.min(axis=0)
@@ -133,17 +136,26 @@ def get_rotation_matrix(R):
     return M
 
 
-def get_transformation_matrix(img, gc, Vt, spacing, img_ref=None, Vt_ref=None, spacing_ref=None,):
+def get_transformation_matrix(img, gc, Vt, spacing, img_ref=None, Vt_ref=None,
+                                spacing_ref=None, spacing_out=None):
+    if spacing_out is None:
+        spacing_out = spacing
+        spacing_out_ref = spacing_ref
+    else:
+        spacing_out_ref = spacing_out
+
     # 1. center image on origin
     center_to_origin = get_translation_matrix(gc)
     # 2. rotate image
     rot = get_rotation_matrix(Vt.T)
+    rot_in = rot.copy()
+
     # 3. get new shape
-    new_shape, min_coords, max_coords = get_rotated_shape(img, rot, spacing)
+    new_shape, min_coords, max_coords = get_rotated_shape(img, rot_in, spacing, spacing_out)
     if img_ref is not None:
         assert Vt_ref is not None
         rot_ref = get_rotation_matrix(Vt_ref.T)
-        _, min_coords_ref, max_coords_ref = get_rotated_shape(img_ref, rot_ref, spacing_ref)
+        _, min_coords_ref, max_coords_ref = get_rotated_shape(img_ref, rot_ref, spacing_ref, spacing_out_ref)
         union_min = np.minimum(min_coords, min_coords_ref)
         union_max = np.maximum(max_coords, max_coords_ref)
         new_shape = np.ceil(union_max - union_min).astype(int)
@@ -151,9 +163,11 @@ def get_transformation_matrix(img, gc, Vt, spacing, img_ref=None, Vt_ref=None, s
     new_shape_center = np.array(new_shape) // 2
     center_to_new_shape = get_translation_matrix(-new_shape_center)
     # 5. combine all transforms: get transformation matrix
-    S = np.diag(spacing)
-    S_inv = np.diag(1.0 / spacing)
-    rot[:3, :3] = S_inv @ rot[:3, :3] @ S
+    # Because affine_transform performs inverse transform, here we need to be
+    # careful about the inverse matrix and the order, e.g. (AB)^-1 = B^-1A^-1
+    S_in_inv = np.diag(1./spacing)
+    S_out = np.diag(spacing_out)
+    rot[:3, :3] = S_in_inv @ rot[:3, :3] @ S_out
 
     T = center_to_origin @ rot @ center_to_new_shape
 

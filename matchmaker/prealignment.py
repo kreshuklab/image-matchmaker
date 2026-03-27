@@ -190,7 +190,7 @@ def generate_rotation_overlays(fixed_prealigned, moving_prealigned, output_dir):
     )
 
 
-def prealign_samples(fixed_img, moving_img, fixed_spacing, moving_spacing):
+def prealign_samples(fixed_img, moving_img, fixed_spacing, moving_spacing, new_spacing):
     """
     Pre-align two segmentation volumes using PCA.
 
@@ -206,10 +206,12 @@ def prealign_samples(fixed_img, moving_img, fixed_spacing, moving_spacing):
 
     T_fixed, fixed_shape = get_transformation_matrix(fixed_img, gc_fixed, Vt_fixed, fixed_spacing,
                                                         img_ref=moving_img, Vt_ref=Vt_moving,
-                                                        spacing_ref=moving_spacing)
+                                                        spacing_ref=moving_spacing,
+                                                        spacing_out=new_spacing)
     T_moving, moving_shape = get_transformation_matrix(moving_img, gc_moving, Vt_moving, moving_spacing,
                                                         img_ref=fixed_img, Vt_ref=Vt_fixed,
-                                                        spacing_ref=fixed_spacing)
+                                                        spacing_ref=fixed_spacing,
+                                                        spacing_out=new_spacing)
     assert np.array_equal(fixed_shape, moving_shape)
 
     fixed_rot = rotate_img(fixed_img, T_fixed, output_shape=fixed_shape)
@@ -245,6 +247,7 @@ def run_prealignment(
     moving_img,
     fixed_spacing,
     moving_spacing,
+    new_spacing,
     output_dir,
     axis_orientation
 ):
@@ -303,7 +306,7 @@ def run_prealignment(
 
     logging.info("Start prealignment of fixed and moving images ...")
 
-    prealigned_results = prealign_samples(fixed_img, moving_img, fixed_spacing, moving_spacing)
+    prealigned_results = prealign_samples(fixed_img, moving_img, fixed_spacing, moving_spacing, new_spacing)
 
     fixed_prealigned, T_fixed, gc_fixed, Vt_fixed, fixed_shape = prealigned_results["fixed"]
     moving_prealigned, T_moving, gc_moving, Vt_moving, _ = prealigned_results["moving"]
@@ -473,6 +476,7 @@ def main(fixed_path, fixed_key, fixed_spacing, moving_path, moving_key, moving_s
         moving_img,
         fixed_spacing,
         moving_spacing,
+        new_spacing,
         output_dir,
         axis_orientation
     )
@@ -481,8 +485,6 @@ def main(fixed_path, fixed_key, fixed_spacing, moving_path, moving_key, moving_s
     fixed_attributes = dict(get_attrs(fixed_path, fixed_key))
     if not np.array_equal(fixed_spacing, new_spacing):
         assert new_spacing is not None
-        logging.info(f"Resample prealigned fixed image to better resolution {new_spacing}")
-        fixed_prealigned = resample_volume(fixed_prealigned, fixed_spacing, new_spacing)
         fixed_attributes["resolution"] = new_spacing.tolist()
     write_volume(
         f=fixed_path,
@@ -494,9 +496,6 @@ def main(fixed_path, fixed_key, fixed_spacing, moving_path, moving_key, moving_s
     logging.info("Save prealigned moving image")
     moving_attributes = dict(get_attrs(moving_path, moving_key))
     if not np.array_equal(moving_spacing, new_spacing):
-        assert new_spacing is not None
-        logging.info(f"Resample prealigned moving image to better resolution {new_spacing}")
-        moving_prealigned = resample_volume(moving_prealigned, moving_spacing, new_spacing)
         moving_attributes["resolution"] = new_spacing.tolist()
     write_volume(
         f=moving_path,
