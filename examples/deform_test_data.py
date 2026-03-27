@@ -47,13 +47,15 @@ def rigid_deform(fixed, angles, voxel_spacing):
         raise TypeError()
 
     assert len(angles) == 3
+    iso_spacing = np.asarray([1, 1, 1], dtype=np.float32)
 
     center = np.array(fixed.shape) // 2
     rotation = tf3d.euler.euler2mat(
         *[np.deg2rad(angles[0]), np.deg2rad(angles[1]), np.deg2rad(angles[2])], axes="szyx"
     )
 
-    T, new_shape = get_transformation_matrix(fixed, center, rotation, voxel_spacing)
+    T, new_shape = get_transformation_matrix(fixed, center, rotation, iso_spacing,
+                                                spacing_out=voxel_spacing)
     moving = rotate_img(fixed, T, output_shape=new_shape)
     return moving
 
@@ -145,17 +147,18 @@ def deform_test_data(cfg_path="", config=None, enable_aniso=False, enable_elasti
     moving_spacing = [config["moving_image"]["z_res"], config["moving_image"]["y_res"], config["moving_image"]["x_res"]]
     fixed_spacing = np.asarray(fixed_spacing, dtype=np.float32)
     moving_spacing = np.asarray(moving_spacing, dtype=np.float32)
+
     if enable_aniso:
         assert not np.all(fixed_spacing == 1)
         assert not np.all(moving_spacing == 1)
 
     seg_fixed = tif.imread(config["fixed_image"]["source_path"])
+    seg_moving = seg_fixed.copy()
 
     seg_fixed = rigid_deform(seg_fixed, rotate_angles_fixed, fixed_spacing)
     seg_fixed = crop_to_bbox(seg_fixed)
     print("Fixed volume shape", seg_fixed.shape)
 
-    seg_moving = seg_fixed.copy()
     if enable_elastic:
         seg_moving = elastic_deform(seg_moving, alpha=alpha, sigma=sigma, grid_spacing=grid_spacing, seed=seed,)
 
