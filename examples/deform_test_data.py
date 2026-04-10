@@ -8,7 +8,7 @@ from skimage.filters import gaussian
 
 from matchmaker.utils import (get_transformation_matrix, rotate_img, write_volume,
                                 plot_three_slices, plot_overlay, grid_sample3d, load_config,
-                                crop_to_bbox)
+                                crop_to_bbox, resample_volume)
 
 
 def remove_instances(seg, prob=0.05, seed=None):
@@ -42,7 +42,7 @@ def save_volume(path, array, key="seg", chunks=(128, 512, 512), resolution=[1,1,
         tif.imwrite(path.replace(".n5", ".tif"), array)
 
 
-def rigid_deform(fixed, angles, voxel_spacing):
+def rigid_deform(fixed, angles, voxel_spacing=None):
     if not isinstance(angles, (list, tuple)):
         raise TypeError()
 
@@ -54,9 +54,12 @@ def rigid_deform(fixed, angles, voxel_spacing):
         *[np.deg2rad(angles[0]), np.deg2rad(angles[1]), np.deg2rad(angles[2])], axes="szyx"
     )
 
-    T, new_shape = get_transformation_matrix(fixed, center, rotation, iso_spacing,
-                                                spacing_out=voxel_spacing)
+    T, new_shape = get_transformation_matrix(fixed, center, rotation, iso_spacing)
     moving = rotate_img(fixed, T, output_shape=new_shape)
+
+    if not np.array_equal(voxel_spacing, iso_spacing):
+        moving = resample_volume(moving, iso_spacing, voxel_spacing)
+
     return moving
 
 
@@ -149,7 +152,6 @@ def deform_test_data(cfg_path="", config=None, enable_aniso=False, enable_elasti
     moving_spacing = np.asarray(moving_spacing, dtype=np.float32)
 
     if enable_aniso:
-        assert not np.all(fixed_spacing == 1)
         assert not np.all(moving_spacing == 1)
 
     seg_fixed = tif.imread(config["fixed_image"]["source_path"])
