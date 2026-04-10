@@ -2,7 +2,7 @@ fixed_image:
   source_path: "examples/data/platy1_muscles_stardist_fixed.tif"
   path: "examples/data/deformed_data/platy1_muscles_stardist_aniso_fixed.tif"
   output_name: "fixed_image"
-  x_res: 2
+  x_res: 1
   y_res: 1
   z_res: 1
 
