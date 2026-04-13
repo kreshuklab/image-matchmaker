@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 from matchmaker.data import create_point_cloud
 from matchmaker.utils import (get_transformation_matrix, rotate_img, read_volume, get_attrs, write_volume,
                                 write_transform_dict, plot_three_slices, plot_overlay, setup_logging,
-                                get_axis_orient_matrix, resample_volume)
+                                get_axis_orient_matrix, resample_volume, transform_axes_vis)
 
 
 def get_SVD_transform(img, spacing, save_path=None):
@@ -340,9 +340,9 @@ def run_prealignment(
         moving_prealigned,
         save_path=f"{output_dir}/plots/overlay_after_prealignment_before_axis_orient.png",
         gc1=(np.linalg.inv(T_fixed) @ np.append(gc_fixed, 1))[:3],
-        Vt1=Vt_fixed@T_fixed[:3,:3] / np.linalg.norm(Vt_fixed@T_fixed[:3,:3], axis=1, keepdims=True),
+        Vt1=transform_axes_vis(Vt_fixed, T_fixed),
         gc2=(np.linalg.inv(T_moving) @ np.append(gc_moving, 1))[:3],
-        Vt2=Vt_moving@T_moving[:3,:3] / np.linalg.norm(Vt_moving@T_moving[:3,:3], axis=1, keepdims=True),
+        Vt2=transform_axes_vis(Vt_moving, T_moving),
     )
     # check orientation (if moving fits to fixed)
 
@@ -403,14 +403,14 @@ def run_prealignment(
         fixed_prealigned,
         save_path=f"{output_dir}/plots/fixed_prealigned.png",
         gc = (np.linalg.inv(T_fixed) @ np.append(gc_fixed, 1))[:3],
-        Vt = Vt_fixed@T_fixed[:3,:3] / np.linalg.norm(Vt_fixed@T_fixed[:3,:3], axis=1, keepdims=True),
+        Vt = transform_axes_vis(Vt_fixed, T_fixed),
     )
 
     plot_three_slices(
         moving_prealigned,
         save_path=f"{output_dir}/plots/moving_prealigned.png",
         gc = (np.linalg.inv(T_moving) @ np.append(gc_moving, 1))[:3],
-        Vt = Vt_moving@T_moving[:3,:3] / np.linalg.norm(Vt_moving@T_moving[:3,:3], axis=1, keepdims=True),
+        Vt = transform_axes_vis(Vt_moving, T_moving),
     )
 
     plot_overlay(
@@ -418,9 +418,9 @@ def run_prealignment(
         moving_prealigned,
         save_path=f"{output_dir}/plots/overlay_after_prealignment.png",
         gc1=(np.linalg.inv(T_fixed) @ np.append(gc_fixed, 1))[:3],
-        Vt1=Vt_fixed@T_fixed[:3,:3] / np.linalg.norm(Vt_fixed@T_fixed[:3,:3], axis=1, keepdims=True),
+        Vt1=transform_axes_vis(Vt_fixed, T_fixed),
         gc2=(np.linalg.inv(T_moving) @ np.append(gc_moving, 1))[:3],
-        Vt2=Vt_moving@T_moving[:3,:3] / np.linalg.norm(Vt_moving@T_moving[:3,:3], axis=1, keepdims=True),
+        Vt2=transform_axes_vis(Vt_moving, T_moving),
     )
 
     return fixed_prealigned, moving_prealigned, prealignment_transform
