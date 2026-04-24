@@ -1,0 +1,15 @@
+fixed_image:
+  path: "examples/data/deformed_data/platy1_muscles_stardist_fixed_rotated.tif"
+  input_key: "input"
+
+moving_image:
+  path: "examples/data/deformed_data/platy1_muscles_stardist_rigid.tif"
+  input_key: "input"
+  x_res: 1
+  y_res: 1
+  z_res: 1
+  output_key: "pointset_alignment_transform"
+
+log_dir: "data/test_rigid_registration"
+parameter_map_path: "data/test_rigid_registration/elastix_deformable_pointset_registration/TransformParameters.2.txt"
+prealignment_transform_path: "data/test_rigid_registration/svd_prealignment/svd_prealignment_transform.json"
