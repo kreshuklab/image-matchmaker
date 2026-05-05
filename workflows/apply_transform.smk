@@ -40,7 +40,7 @@ rule apply_transform:
     input:
         parameter_map_path = parameter_map_path,
     output:
-        [directory(path) if path.endswith(".n5") else path for path in output_paths],
+        [directory(f"{path}/{key}") if path.endswith(".n5") else path for path, key in zip(output_paths, output_keys)],
     params:
         opts = lambda w: get_all_opts({
             "prealignment_transform_path": prealignment_transform_path,
