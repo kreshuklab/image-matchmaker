@@ -39,7 +39,6 @@ def run_pipline(registration_config_path, registration_snakefile, transform_conf
         ],
         check=True,
     )
-    assert result.returncode == 0, result.stderr
 
     log_dir = transform_config["log_dir"]
     for moving_img in transform_config["moving_images"]:
@@ -64,7 +63,6 @@ def run_pipline(registration_config_path, registration_snakefile, transform_conf
         ],
         check=True,
     )
-    assert result.returncode == 0, result.stderr
 
     # Compare results
     moving_path = test_dir / f"{registration_config['moving_image']['output_name']}.n5"
@@ -83,19 +81,6 @@ def run_pipline(registration_config_path, registration_snakefile, transform_conf
 
     assert_arrays_equal(result_img, ref_img)
 
-    # if sys.platform.startswith("linux"):
-    #     assert_arrays_equal(test_img, ref_img)
-    # else:
-    #     # NOTE:
-    #     # scipy.ndimage.affine_transform is not bitwise deterministic across platforms.
-    #     # In practice, small voxel-level differences may occur between operating systems.
-    #     # These differences are geometrically negligible (≤ 1 voxel shift), so we
-    #     # validate structural consistency instead of strict array equality.
-    #     no_new_id, _ = check_no_new_ids(test_img, ref_img)
-    #     assert no_new_id
-    #
-    #     centroid_distances = compute_centroid_distances(test_img, ref_img, exclude_id=0)
-    #     assert np.max(centroid_distances) < 1
     print("✅ compare_results finished.")
     shutil.rmtree(test_dir)
 
