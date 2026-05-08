@@ -1,6 +1,6 @@
 import z5py
-from pathlib import PurePath
 import numpy as np
+from pathlib import PurePath
 
 
 def print_key_tree(f: z5py.File):
@@ -9,7 +9,7 @@ def print_key_tree(f: z5py.File):
 
 
 def read_volume(
-    f: z5py.File, key: str, roi: np.lib.index_tricks.IndexExpression = np.s_[:]
+    f: z5py.File, key: str, roi: any = np.s_[:]
 ):
     if isinstance(f, (str, PurePath)):
         f = z5py.File(f, "r")
@@ -41,7 +41,25 @@ def get_attrs(f: z5py.File, key: str):
     return ds.attrs
 
 
+def set_attrs(f, key: str, attrs_dict: dict):
+    if isinstance(f, (str, PurePath)):
+        f = z5py.File(f, "a")
+
+    try:
+        ds = f[key]
+    except KeyError:
+        raise KeyError(f"No key {key} in file {f.filename}")
+        print_key_tree(f)
+        return None
+
+    # Set or update attributes
+    for k, v in attrs_dict.items():
+        ds.attrs[k] = v
+        print(f"Attributes {k} for {key} written to {f.filename}")
+
+
 def write_volume(f, arr: np.array, key, chunks=(1, 512, 512), attrs=None):
+
     shape = arr.shape
     compression = "gzip"
     dtype = arr.dtype

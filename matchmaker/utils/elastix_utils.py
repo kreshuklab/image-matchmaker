@@ -1,7 +1,7 @@
-from pathlib import Path
-import numpy as np
-import logging
 import itk
+import logging
+import numpy as np
+from pathlib import Path
 
 
 def initial_alignment(ventral_img_np, dorsal_img_np):
@@ -84,7 +84,7 @@ def run_registration(
     elastix_object.SetParameterObject(parameter_object)
     if set_threads:
         elastix_object.SetNumberOfThreads(32)
-    elastix_object.SetLogToConsole(True)
+    elastix_object.SetLogToConsole(False)
     elastix_object.SetLogToFile(True)
     elastix_object.SetOutputDirectory(log_dir)
     elastix_object.SetLogFileName(log_name)
@@ -118,7 +118,7 @@ def run_pointset_registration(
     elastix_object.SetParameterObject(parameter_object)
     if set_threads:
         elastix_object.SetNumberOfThreads(32)
-    elastix_object.SetLogToConsole(True)
+    elastix_object.SetLogToConsole(False)
     elastix_object.SetLogToFile(True)
     elastix_object.SetOutputDirectory(log_dir)
     elastix_object.SetLogFileName(log_name)
@@ -180,7 +180,8 @@ def apply_transform_chanwise(transform_parameter_object, moving_img_np, resoluti
             result_img.append(output_img_np)
         result_img = np.array(result_img)
     else:
-        moving_img = itk_scalar_img(moving_img_np, resolution, 0)
+        moving_img = itk_scalar_img(moving_img_np[None, :], resolution, 0)
+        logging.info(moving_img)
         result_img = apply_transform(transformix_filter, moving_img)
 
     return result_img

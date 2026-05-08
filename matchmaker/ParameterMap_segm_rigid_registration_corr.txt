@@ -2,6 +2,7 @@
 // (Transform "AffineTransform")
 
 (AutomaticTransformInitialization "true")
+(AutomaticTransformInitializationMethod "CenterOfGravity")
 (AutomaticParameterEstimation "true")
 (AutomaticScalesEstimation "true")
 (CheckNumberOfSamples "true")
@@ -30,6 +31,6 @@
 (NumberOfSamplesForExactGradient 20000)
 (NumberOfSpatialSamples 20000)
 // (ImagePyramidSchedule 8 32 32 4 16 16 2 8 8)
-(ImagePyramidSchedule 64 128 128 32 64 64)
+(ImagePyramidSchedule 128 128 128 64 64 64)
 
 (RequiredRatioOfValidSamples 0.05)

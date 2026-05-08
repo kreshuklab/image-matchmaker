@@ -1,9 +1,9 @@
 channels:
     - conda-forge
 name:
-   matchmaker_env 
+   matchmaker_env
 dependencies:
-    - python==3.9
+    - python==3.11
     - tifffile
     - z5py
     - tqdm
@@ -11,25 +11,32 @@ dependencies:
     - tmux
     - vim
     - git
-  
+    - git-lfs
+
     - scikit-image
-    - optuna
-    - proxsuite
+    # - optuna
+    # - proxsuite
     - cvxpy
     - transforms3d
 
     - ipykernel
     - seaborn
     - matplotlib
+    - cupy
+
+    - mobie_utils
+
+    - pytest
 
     - pip
     - pip:
         - itk-elastix
-        - cupy
-        - probreg
+    #    - cupy
+    #    - probreg
         - pyscipopt
         - click
         - pyyaml
         - itk
-    
-
+        - snakemake
+        - probreg
+        - -e .

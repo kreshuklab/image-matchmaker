@@ -1,13 +1,87 @@
 # 💞 Matchmaker
 Tool for segmentation-based deformable registration and object matching
 
+## How to run
+
+### Create conda environment
+```
+conda env create -f environment.yml
+```
+
+
+### Run tests
+
+After activating the environment, generate the deformed test data, run the Snakemake workflow, and validate the final results with pytest:
+
+```bash
+pytest -s
+```
+
+Optional: If you want to hide all warnings during tests, append:
+
+```bash
+-p no:warnings
+```
+
+This test generates deformed test data, runs the Snakemake workflow, and compares the final outputs against pre-computed reference results.
+
+The reference data will be downloaded automatically from this repo's release if available. If the download fails (e.g. the repository is private), manually download the reference data from [here](https://github.com/kreshuklab/matchmaker/releases/tag/test_data-v1.0) and place it under:
+
+```
+examples/data/test_data/
+```
+
+
+### Generate rigid and elastic deformed test data
+```
+python examples/deform_test_data.py
+```
+
+This script generates synthetic test datasets from the fixed segmentation mask stored in the repository.
+
+First, the original segmentation mask is rotated using a 3D rigid transformation.
+
+Two moving datasets are then generated:
+
+- Rigid case: applies a rigid 3D rotation to the fixed volume and removes a fraction of instances.
+- Elastic case: applies a control-grid based elastic deformation, followed by a rigid rotation and instance removal.
+
+The elastic deformation is generated from a smoothed random displacement field defined on a control grid and interpolated to full resolution.
+
+All generated deformed volumes (`.n5` and `.tif`) are saved under:
+
+```
+examples/data/deformed_data/
+```
+
+
+### 3 ways of interaction with the library
+
+- Running the full pipeline using workflow manager and a config file to set up registration parameters
+```
+snakemake -s workflows/registration.smk --configfile examples/register_config_test_rigid.yaml --cores 16
+```
+- Running separate scripts
+```
+prealignment.py --fixed_path ... --fixed_key ... --moving_path ... --moving_key ... --output_dir ... --mobie_export --dataset_name ...
+```
+
+- Importing individual functions from matchmaker:
+```
+import matchmaker as mm
+
+...
+
+mm.n5-utils.read_volume(...)
+```
+
 
 
 ## Registration
 ### Input
 
-- **Fixed image**: 3D instance segmentation in `n5` + resolution 
-- **Moving image**: 3D instance segmentation `n5` + resolution 
+- **Fixed image**: 3D instance segmentation in `n5` + resolution
+- **Moving image**: 3D instance segmentation `n5` + resolution
 
 
 Expected image shape: ZYX
@@ -26,7 +100,7 @@ Expected image shape: ZYX
 **1. PCA pre-alignment**: alignment of fixed and moving image to the PCs \
  `prealignment.py --fixed_path ... --fixed_key ... --moving_path ... --moving_key ... --output_dir ... --mobie_export --dataset_name ...` \
 
-Outputs: 
+Outputs:
 - prealigned images: `{file_name}_prealigned.n5`
 - transformation matrixes
     - `{file_name}_fixed_T_prealignment.txt`
@@ -40,7 +114,7 @@ Outputs:
 **2. Rigid pre-alignment with Elastix** \
 `apply_rigid_elastix.py --fixed_path ... --fixed_key ... --moving_path ... --moving_key ... --output_dir ... --mobie_export --dataset_name ...` \
 
-Outputs: 
+Outputs:
 - rigid alinged moving image: `{file_name}_rigid_aligned.n5`
 - rigid transformation matrix (Elastix outputs): `result.0.mhd`, `result.0.raw`, `TransformParameters.0.txt`
 - logging file: `elastix_log_rigid.log`

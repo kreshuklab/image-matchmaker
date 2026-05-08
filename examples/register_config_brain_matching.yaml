@@ -1,0 +1,36 @@
+fixed_image:
+  path: "/g/kreshuk/buglakova/data/brain_matching/corrected_igor_brain_nuclei_iso.n5"
+  input_key: "seg"
+  x_res: 0.4
+  y_res: 0.4
+  z_res: 0.4
+
+moving_image:
+  path: "/g/kreshuk/buglakova/data/brain_matching/seymour_brain_nuclei_iso.n5"
+  input_key: "seg"
+  x_res: 0.4
+  y_res: 0.4
+  z_res: 0.4
+
+log_dir: "data/brain_matching"
+final_transform_path: "data/brain_matching/final_transform.json"
+
+prealignment:
+  axis_orientation: "X"
+
+coherent_point_drift:
+  w: 0.00001
+  lmd: 0.1
+  beta: 100
+  maxiter: 150 # Low for debugging purpose, should be 100-150
+
+ILP:
+  min_neighbours: 10
+  max_dist: 30
+
+mobie_export: False
+semantic_seg: False
+mobie_dataset_name: "brain_nuclei"
+
+fixed_name: "igor_fixed_image"
+moving_name: "seymour_moving_image"
