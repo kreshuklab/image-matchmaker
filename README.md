@@ -25,7 +25,7 @@ Optional: If you want to hide all warnings during tests, append:
 
 This test generates deformed test data, runs the Snakemake workflow, and compares the final outputs against pre-computed reference results.
 
-The reference data will be downloaded automatically from this repo's release if available. If the download fails (e.g. the repository is private), manually download the reference data from [here](https://github.com/kreshuklab/matchmaker/releases/tag/test_data-v0.3) and place it under:
+The reference data will be downloaded automatically from this repo's release if available. If the download fails (e.g. the repository is private), manually download the reference data from [here](https://github.com/kreshuklab/matchmaker/releases/tag/test_data-v1.0) and place it under:
 
 ```
 examples/data/test_data/
