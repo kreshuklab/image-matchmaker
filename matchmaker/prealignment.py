@@ -306,7 +306,7 @@ def run_prealignment(
         save_path=f"{output_dir}/plots/fixed_input.pdf",
         gc=gc_fixed,
         Vt=Vt_fixed,
-        cmap="rainbow"
+        cmap="gnuplot2_r"
     )
 
     plot_three_slices(
@@ -314,7 +314,23 @@ def run_prealignment(
         save_path=f"{output_dir}/plots/moving_input.pdf",
         gc=gc_moving,
         Vt=Vt_moving,
-        cmap="rainbow"
+        cmap="gnuplot2_r"
+    )
+
+    plot_three_slices(
+        fixed_img,
+        save_path=f"{output_dir}/plots/fixed_input_semantic.pdf",
+        gc=gc_fixed,
+        Vt=Vt_fixed,
+        cmap=PINK
+    )
+
+    plot_three_slices(
+        moving_img,
+        save_path=f"{output_dir}/plots/moving_input_semantic.pdf",
+        gc=gc_moving,
+        Vt=Vt_moving,
+        cmap=CYAN
     )
 
     plot_overlay(

@@ -19,7 +19,6 @@ from matchmaker.utils import (
     read_volume,
     write_volume,
     get_attrs,
-    plot_overlay,
     itk_scalar_img,
     itk_to_np_order,
     apply_transform_chanwise,
