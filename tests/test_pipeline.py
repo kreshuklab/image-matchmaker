@@ -74,6 +74,7 @@ def run_pipline(registration_config_path, registration_snakefile, transform_conf
 
     ref_path = registration_config["moving_image"]["ref_path"]
     if not Path(ref_path).exists():
+        Path(ref_path).parent.mkdir(parents=True, exist_ok=True)
         ref_url = registration_config["moving_image"]["ref_url"]
         download_file(ref_path, ref_url)
 
