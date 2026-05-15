@@ -1,4 +1,5 @@
 import json
+import re
 
 configfile: "examples/register_config_test_rigid_apply_transform.yaml"
 
@@ -18,9 +19,9 @@ prealignment_transform_path = config["prealignment_transform_path"]
 fixed_path = config["fixed_image"]["input_path"]
 fixed_key = config["fixed_image"]["input_key"]
 
-
-def expand_flag(flag, values):
-    return " ".join(f"{flag} {v}" for v in values)
+TARGET_OUTPUTS = [f"{p}/{k}" if p.endswith(".n5") else p for p, k in zip(output_paths, output_keys)]
+FILE_OUTPUTS = [p for p in TARGET_OUTPUTS if not ".n5/" in p]
+N5_OUTPUTS = [p for p in TARGET_OUTPUTS if ".n5/" in p]
 
 
 def get_all_opts(d):
@@ -33,41 +34,76 @@ def get_all_opts(d):
 
 rule all:
     input:
-        output_paths,
+        TARGET_OUTPUTS,
 
 
-rule apply_transform:
+rule apply_transform_file:
     input:
         parameter_map_path = parameter_map_path,
+        moving_img = lambda w: moving_paths[TARGET_OUTPUTS.index(w.out_file)]
     output:
-        [directory(f"{path}/{key}") if path.endswith(".n5") else path for path, key in zip(output_paths, output_keys)],
+        out_file = "{out_file}"
+    wildcard_constraints:
+        out_file = "^(" + "|".join(re.escape(p) for p in FILE_OUTPUTS) + ")$" if FILE_OUTPUTS else "$^"
     params:
         opts = lambda w: get_all_opts({
             "prealignment_transform_path": prealignment_transform_path,
             "fixed_path": fixed_path,
             "fixed_key": fixed_key,
         }),
-
-        moving_paths = expand_flag("--moving_paths", moving_paths),
-        moving_keys = expand_flag("--moving_keys", moving_keys),
-        moving_resolutions = expand_flag("--moving_resolutions", moving_resolutions),
-        output_paths = expand_flag("--output_paths", output_paths),
-        output_keys = expand_flag("--output_keys", output_keys),
-        interpolation_orders = expand_flag("--interpolation_orders", interpolation_orders),
-        log_dir = log_dir,
-
-    log: f"{log_dir}/matchmaker.log"
+        moving_path = lambda w: moving_paths[TARGET_OUTPUTS.index(w.out_file)],
+        moving_key = lambda w: moving_keys[TARGET_OUTPUTS.index(w.out_file)],
+        moving_resolution = lambda w: moving_resolutions[TARGET_OUTPUTS.index(w.out_file)],
+        output_path = lambda w: output_paths[TARGET_OUTPUTS.index(w.out_file)],
+        output_key = lambda w: output_keys[TARGET_OUTPUTS.index(w.out_file)],
+        interpolation_order = lambda w: interpolation_orders[TARGET_OUTPUTS.index(w.out_file)],
     conda: "matchmaker_env"
     shell:
         """
         python matchmaker/apply_transform.py \
             {params.opts} \
-            {params.moving_paths} \
-            {params.moving_keys} \
-            {params.moving_resolutions} \
-            {params.output_paths} \
-            {params.output_keys} \
-            {params.interpolation_orders} \
-            --log_dir {params.log_dir} \
+            --moving_path {params.moving_path} \
+            --moving_key {params.moving_key} \
+            --moving_resolution '{params.moving_resolution}' \
+            --output_path {params.output_path} \
+            --output_key {params.output_key} \
+            --interpolation_order {params.interpolation_order} \
+            --log_dir {log_dir} \
+            --parameter_map_path {input.parameter_map_path}
+        """
+
+
+rule apply_transform_n5:
+    input:
+        parameter_map_path = parameter_map_path,
+        moving_img = lambda w: moving_paths[TARGET_OUTPUTS.index(w.out_dir)]
+    output:
+        out_dir = directory("{out_dir}")
+    wildcard_constraints:
+        out_dir = "^(" + "|".join(re.escape(p) for p in N5_OUTPUTS) + ")$" if N5_OUTPUTS else "$^"
+    params:
+        opts = lambda w: get_all_opts({
+            "prealignment_transform_path": prealignment_transform_path,
+            "fixed_path": fixed_path,
+            "fixed_key": fixed_key,
+        }),
+        moving_path = lambda w: moving_paths[TARGET_OUTPUTS.index(w.out_dir)],
+        moving_key = lambda w: moving_keys[TARGET_OUTPUTS.index(w.out_dir)],
+        moving_resolution = lambda w: moving_resolutions[TARGET_OUTPUTS.index(w.out_dir)],
+        output_path = lambda w: output_paths[TARGET_OUTPUTS.index(w.out_dir)],
+        output_key = lambda w: output_keys[TARGET_OUTPUTS.index(w.out_dir)],
+        interpolation_order = lambda w: interpolation_orders[TARGET_OUTPUTS.index(w.out_dir)],
+    conda: "matchmaker_env"
+    shell:
+        """
+        python matchmaker/apply_transform.py \
+            {params.opts} \
+            --moving_path {params.moving_path} \
+            --moving_key {params.moving_key} \
+            --moving_resolution '{params.moving_resolution}' \
+            --output_path {params.output_path} \
+            --output_key {params.output_key} \
+            --interpolation_order {params.interpolation_order} \
+            --log_dir {log_dir} \
             --parameter_map_path {input.parameter_map_path}
         """
