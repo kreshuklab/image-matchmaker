@@ -8,7 +8,7 @@ from skimage.filters import gaussian
 
 from matchmaker.utils import (get_transformation_matrix, rotate_img, write_volume,
                                 plot_three_slices, plot_overlay, grid_sample3d, load_config,
-                                crop_to_bbox)
+                                crop_to_bbox, resample_volume)
 
 
 def remove_instances(seg, prob=0.05, seed=None):
@@ -32,33 +32,38 @@ def remove_instances(seg, prob=0.05, seed=None):
     return seg
 
 
-def save_volume(path, array, key="seg", chunks=(128, 512, 512), attributes={"resolution":[1,1,1]},
+def save_volume(path, array, key="seg", chunks=(128, 512, 512), resolution=[1,1,1],
                 save_tif=True):
     assert path.endswith(".n5")
 
-    write_volume(f=path, arr=array, key=key, chunks=chunks, attrs=attributes,)
+    write_volume(f=path, arr=array, key=key, chunks=chunks, attrs={"resolution":resolution,},)
 
     if save_tif:
         tif.imwrite(path.replace(".n5", ".tif"), array)
 
 
-def rigid_deform(fixed, angles):
+def rigid_deform(fixed, angles, voxel_spacing=None):
     if not isinstance(angles, (list, tuple)):
         raise TypeError()
 
     assert len(angles) == 3
+    iso_spacing = np.asarray([1, 1, 1], dtype=np.float32)
 
     center = np.array(fixed.shape) // 2
     rotation = tf3d.euler.euler2mat(
         *[np.deg2rad(angles[0]), np.deg2rad(angles[1]), np.deg2rad(angles[2])], axes="szyx"
     )
 
-    T, new_shape = get_transformation_matrix(fixed, center, rotation)
+    T, new_shape = get_transformation_matrix(fixed, center, rotation, iso_spacing)
     moving = rotate_img(fixed, T, output_shape=new_shape)
+
+    if not np.array_equal(voxel_spacing, iso_spacing):
+        moving = resample_volume(moving, iso_spacing, voxel_spacing)
+
     return moving
 
 
-def elastic_deform(volume, alpha=(1.,1.,1.), sigma=None, spacing=16, mode="nearest",
+def elastic_deform(volume, alpha=(1.,1.,1.), sigma=None, grid_spacing=16, mode="nearest",
                     align_corners=False, seed=None,):
     """
     Apply elastic deformation to a 3D volume.
@@ -67,7 +72,7 @@ def elastic_deform(volume, alpha=(1.,1.,1.), sigma=None, spacing=16, mode="neare
         volume (np.ndarray): Input volume of shape (D, H, W).
         alpha (tuple[float, float, float]): Displacement amplitude scaling factors.
         sigma (float): Gaussian smoothing std.
-        spacing (int | tuple[int, int, int]): Control point spacing (in voxels).
+        grid_spacing (int | tuple[int, int, int]): Control point spacing (in voxels).
         mode (str): Interpolation mode, "nearest" or "trilinear".
         align_corners (bool): Grid sampling alignment flag.
         seed (int | None): Random seed.
@@ -91,15 +96,15 @@ def elastic_deform(volume, alpha=(1.,1.,1.), sigma=None, spacing=16, mode="neare
     else:
         raise ValueError
 
-    if isinstance(spacing, int):
-        spacing = [spacing] * 3
-    elif isinstance(spacing, (list, tuple)):
-        assert len(spacing) == 3
+    if isinstance(grid_spacing, int):
+        grid_spacing = [grid_spacing] * 3
+    elif isinstance(grid_spacing, (list, tuple)):
+        assert len(grid_spacing) == 3
     else:
         raise ValueError
 
     if sigma is None:
-        sigma = (spacing[0] / 2, spacing[1] / 2, spacing[2] / 2)
+        sigma = (grid_spacing[0] / 2, grid_spacing[1] / 2, grid_spacing[2] / 2)
     elif isinstance(sigma, (int, float)):
         sigma = (sigma, sigma, sigma)
     elif isinstance(sigma, (list, tuple)):
@@ -108,13 +113,13 @@ def elastic_deform(volume, alpha=(1.,1.,1.), sigma=None, spacing=16, mode="neare
     else:
         raise ValueError
 
-    shape = (int(np.ceil(D/spacing[0])), int(np.ceil(H/spacing[1])), int(np.ceil(W/spacing[2])))
+    shape = (int(np.ceil(D/grid_spacing[0])), int(np.ceil(H/grid_spacing[1])), int(np.ceil(W/grid_spacing[2])))
     disp = np.random.randn(*shape, 3).astype(np.float32)
 
     disp = gaussian(disp, sigma=(*sigma, 0), mode="constant", preserve_range=True,)
     disp *= alpha
 
-    if (spacing[0] > 1) or (spacing[1] > 1) or (spacing[2] > 1):
+    if (grid_spacing[0] > 1) or (grid_spacing[1] > 1) or (grid_spacing[2] > 1):
         zoom_factors = (D / shape[0], H / shape[1], W / shape[2], 1.,)
         disp = zoom(disp, zoom_factors, order=1)
 
@@ -132,42 +137,50 @@ def elastic_deform(volume, alpha=(1.,1.,1.), sigma=None, spacing=16, mode="neare
     return sampled.astype(volume.dtype)
 
 
-def deform_test_data(cfg_path="", config=None, enable_elastic=False, alpha=0.9, sigma=2, spacing=16,
-                        rotate_angles_fixed=[20,345,30], rotate_angles_moving=[155,30,65],
-                        remove_p=0.05, seed=42, visualize=True):
+def deform_test_data(cfg_path="", config=None, enable_aniso=False, enable_elastic=False,
+                        alpha=0.9, sigma=2, grid_spacing=16, rotate_angles_fixed=[20,345,30],
+                        rotate_angles_moving=[155,30,65], remove_p=0.05, seed=42, visualize=True):
     if config is None:
         config = load_config(cfg_path)
 
     data_dir = Path(config["fixed_image"]["path"]).parent
     data_dir.mkdir(parents=True, exist_ok=True)
 
-    seg_fixed = tif.imread(config["fixed_image"]["source_path"])
+    fixed_spacing = [config["fixed_image"]["z_res"], config["fixed_image"]["y_res"], config["fixed_image"]["x_res"]]
+    moving_spacing = [config["moving_image"]["z_res"], config["moving_image"]["y_res"], config["moving_image"]["x_res"]]
+    fixed_spacing = np.asarray(fixed_spacing, dtype=np.float32)
+    moving_spacing = np.asarray(moving_spacing, dtype=np.float32)
 
-    seg_fixed = rigid_deform(seg_fixed, angles=rotate_angles_fixed)
+    if enable_aniso:
+        assert not np.all(moving_spacing == 1)
+
+    seg_fixed = tif.imread(config["fixed_image"]["source_path"])
+    seg_moving = seg_fixed.copy()
+
+    seg_fixed = rigid_deform(seg_fixed, rotate_angles_fixed, fixed_spacing)
     seg_fixed = crop_to_bbox(seg_fixed)
     print("Fixed volume shape", seg_fixed.shape)
 
-    seg_moving = seg_fixed.copy()
     if enable_elastic:
-        seg_moving = elastic_deform(seg_moving, alpha=alpha, sigma=sigma, spacing=spacing, seed=seed,)
+        seg_moving = elastic_deform(seg_moving, alpha=alpha, sigma=sigma, grid_spacing=grid_spacing, seed=seed,)
 
-    seg_moving = rigid_deform(seg_moving, angles=rotate_angles_moving)
+    seg_moving = rigid_deform(seg_moving, rotate_angles_moving, moving_spacing)
     seg_moving = remove_instances(seg_moving, prob=remove_p, seed=seed)
     seg_moving = crop_to_bbox(seg_moving)
     print("Moving volume shape", seg_moving.shape)
 
-    save_volume(config["fixed_image"]["path"].replace(".tif", ".n5"), seg_fixed)
-    save_volume(config["moving_image"]["path"].replace(".tif", ".n5"), seg_moving)
+    save_volume(config["fixed_image"]["path"].replace(".tif", ".n5"), seg_fixed, resolution=fixed_spacing.tolist())
+    save_volume(config["moving_image"]["path"].replace(".tif", ".n5"), seg_moving, resolution=moving_spacing.tolist())
 
     if visualize:
         plot_dir = data_dir / "plots"
         plot_dir.mkdir(parents=True, exist_ok=True)
-        plot_three_slices(seg_fixed, save_path=plot_dir/"seg_fixed.png")
+        iso_name = "aniso_" if enable_aniso else ""
+        elastic_name = "elastic" if enable_elastic else "rigid"
 
-        moving_name = "seg_elastic" if enable_elastic else "seg_rigid"
-        plot_three_slices(seg_moving, save_path=plot_dir/f"{moving_name}.png")
-        overlay_name = "elastic_overlay" if enable_elastic else "rigid_overlay"
-        plot_overlay(seg_fixed, seg_moving, save_path=plot_dir/f"{overlay_name}.png")
+        plot_three_slices(seg_fixed, save_path=plot_dir/f"seg_{iso_name}fixed.png")
+        plot_three_slices(seg_moving, save_path=plot_dir/f"seg_{iso_name}{elastic_name}.png")
+        plot_overlay(seg_fixed, seg_moving, save_path=plot_dir/f"{iso_name}{elastic_name}_overlay.png")
 
 
 if __name__ == "__main__":

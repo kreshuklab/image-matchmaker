@@ -1,0 +1,27 @@
+fixed_image:
+  input_path: "examples/data/deformed_data/platy1_muscles_stardist_fixed_rotated.tif"
+  input_key: "input"
+
+moving_images:
+  -
+    input_path: "data/test_rigid_registration/moving_image.n5"
+    input_key: "input"
+    output_path: "data/test_apply_transform/moving_image.n5"
+    output_key: "pointset_alignment_transform"
+    x_res: 1
+    y_res: 1
+    z_res: 1
+    interpolation_order: 0
+  -
+    input_path: "examples/data/deformed_data/platy1_muscles_stardist_rigid.tif"
+    input_key: "input"
+    output_path: "data/test_apply_transform/moving_image.tif"
+    output_key: "pointset_alignment_transform"
+    x_res: 1
+    y_res: 1
+    z_res: 1
+    interpolation_order: 0
+
+log_dir: "data/test_apply_transform"
+parameter_map_path: "data/test_rigid_registration/elastix_deformable_pointset_registration/TransformParameters.2.txt"
+prealignment_transform_path: "data/test_rigid_registration/svd_prealignment/svd_prealignment_transform.json"

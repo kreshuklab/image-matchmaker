@@ -368,3 +368,13 @@ def plot_matching_qc(  # TODO: change thickness of bars
     plt.close()
 
 
+def transform_axes_vis(Vt, T):
+    """
+    Transform PCA axes into the target space for visualization.
+    Extracts the pure rotation from the affine transform T (removing scaling)
+    and applies it to the PCA axes Vt. The resulting axes are normalized.
+    """
+    U, _, Vt_svd = np.linalg.svd(T[:3, :3])
+    R = U @ Vt_svd
+    Vt_vis = Vt @ R
+    return Vt_vis / np.linalg.norm(Vt_vis, axis=1, keepdims=True)

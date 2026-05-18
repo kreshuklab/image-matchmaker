@@ -7,12 +7,13 @@ import matplotlib.pyplot as plt
 
 from matchmaker.data import create_point_cloud
 from matchmaker.utils import (get_transformation_matrix, rotate_img, read_volume, get_attrs, write_volume,
-                                write_transform_dict, plot_three_slices, plot_overlay, setup_logging, get_axis_orient_matrix)
+                                write_transform_dict, plot_three_slices, plot_overlay, setup_logging,
+                                get_axis_orient_matrix, resample_volume, transform_axes_vis)
 
 from matchmaker.utils.vis import PINK, CYAN
 
 
-def get_SVD_transform(img, save_path=None):
+def get_SVD_transform(img, spacing, save_path=None):
     """Convert image to point cloud by thresholding, then run SVD on resulting point cloud.
 
     Args:
@@ -24,6 +25,9 @@ def get_SVD_transform(img, save_path=None):
     """
 
     pos, _ = create_point_cloud(img)
+
+    pos *= spacing
+
     gc = pos.mean(axis=0)
     pos_c = pos - gc
     logging.info(f"Point cloud shape {pos.shape}")
@@ -38,17 +42,19 @@ def get_SVD_transform(img, save_path=None):
     logging.info("Vt")
     logging.info(str(Vt))
 
-    logging.info("Rotate point cloud")
-    vr = pos_c @ Vt.T
+    gc /= spacing
 
-    plt.figure(figsize=(10, 5))
-    plt.subplot(1, 2, 1)
-    plt.title("Original Vertices")
-    plt.scatter(pos_c[:, 0], pos_c[:, 1], alpha=0.2)
-    plt.subplot(1, 2, 2)
-    plt.title("Rotated Vertices")
-    plt.scatter(vr[:, 0], vr[:, 1], alpha=0.1)
     if save_path:
+        logging.info("Rotate point cloud")
+        vr = pos_c @ Vt.T
+
+        plt.figure(figsize=(10, 5))
+        plt.subplot(1, 2, 1)
+        plt.title("Original Vertices")
+        plt.scatter(pos_c[:, 0], pos_c[:, 1], alpha=0.2)
+        plt.subplot(1, 2, 2)
+        plt.title("Rotated Vertices")
+        plt.scatter(vr[:, 0], vr[:, 1], alpha=0.1)
         plt.savefig(save_path, dpi=300)
 
     return gc, Vt
@@ -186,8 +192,7 @@ def generate_rotation_overlays(fixed_prealigned, moving_prealigned, output_dir):
     )
 
 
-
-def prealign_samples(fixed_img, moving_img):
+def prealign_samples(fixed_img, moving_img, fixed_spacing, moving_spacing, new_spacing):
     """
     Pre-align two segmentation volumes using PCA.
 
@@ -198,13 +203,17 @@ def prealign_samples(fixed_img, moving_img):
     Returns:
         fixed_rot, moving_rot, T_fixed, T_moving
     """
-    gc_fixed, Vt_fixed = get_SVD_transform(fixed_img)
-    gc_moving, Vt_moving = get_SVD_transform(moving_img)
+    gc_fixed, Vt_fixed = get_SVD_transform(fixed_img, fixed_spacing)
+    gc_moving, Vt_moving = get_SVD_transform(moving_img, moving_spacing)
 
-    T_fixed, fixed_shape = get_transformation_matrix(fixed_img, gc_fixed, Vt_fixed,
-                                                        img_ref=moving_img, Vt_ref=Vt_moving)
-    T_moving, moving_shape = get_transformation_matrix(moving_img, gc_moving, Vt_moving,
-                                                        img_ref=fixed_img, Vt_ref=Vt_fixed)
+    T_fixed, fixed_shape = get_transformation_matrix(fixed_img, gc_fixed, Vt_fixed, fixed_spacing,
+                                                        img_ref=moving_img, Vt_ref=Vt_moving,
+                                                        spacing_ref=moving_spacing,
+                                                        spacing_out=new_spacing)
+    T_moving, moving_shape = get_transformation_matrix(moving_img, gc_moving, Vt_moving, moving_spacing,
+                                                        img_ref=fixed_img, Vt_ref=Vt_fixed,
+                                                        spacing_ref=fixed_spacing,
+                                                        spacing_out=new_spacing)
     assert np.array_equal(fixed_shape, moving_shape)
 
     fixed_rot = rotate_img(fixed_img, T_fixed, output_shape=fixed_shape)
@@ -238,6 +247,9 @@ def prealign_samples(fixed_img, moving_img):
 def run_prealignment(
     fixed_img,
     moving_img,
+    fixed_spacing,
+    moving_spacing,
+    new_spacing,
     output_dir,
     axis_orientation
 ):
@@ -296,7 +308,7 @@ def run_prealignment(
 
     logging.info("Start prealignment of fixed and moving images ...")
 
-    prealigned_results = prealign_samples(fixed_img, moving_img)
+    prealigned_results = prealign_samples(fixed_img, moving_img, fixed_spacing, moving_spacing, new_spacing)
 
     fixed_prealigned, T_fixed, gc_fixed, Vt_fixed, fixed_shape = prealigned_results["fixed"]
     moving_prealigned, T_moving, gc_moving, Vt_moving, _ = prealigned_results["moving"]
@@ -347,10 +359,10 @@ def run_prealignment(
         fixed_prealigned,
         moving_prealigned,
         save_path=f"{output_dir}/plots/overlay_after_prealignment_before_axis_orient.png",
-        gc1=T_fixed[:3,:3].T @ (gc_fixed - T_fixed[:3, 3]),
-        Vt1=Vt_fixed @ T_fixed[:3, :3],
-        gc2=T_moving[:3,:3].T @ (gc_moving - T_moving[:3,3]),
-        Vt2=Vt_moving @ T_moving[:3, :3],
+        gc1=(np.linalg.inv(T_fixed) @ np.append(gc_fixed, 1))[:3],
+        Vt1=transform_axes_vis(Vt_fixed, T_fixed),
+        gc2=(np.linalg.inv(T_moving) @ np.append(gc_moving, 1))[:3],
+        Vt2=transform_axes_vis(Vt_moving, T_moving),
     )
     # check orientation (if moving fits to fixed)
 
@@ -409,28 +421,28 @@ def run_prealignment(
 
     plot_three_slices(
         fixed_prealigned,
-        save_path=f"{output_dir}/plots/fixed_prealigned.pdf",
-        gc = T_fixed[:3,:3].T @ (gc_fixed - T_fixed[:3, 3]),
-        Vt = Vt_fixed @ T_fixed[:3, :3],
+        save_path=f"{output_dir}/plots/fixed_prealigned.png",
+        gc = (np.linalg.inv(T_fixed) @ np.append(gc_fixed, 1))[:3],
+        Vt = transform_axes_vis(Vt_fixed, T_fixed),
         cmap=PINK
     )
 
     plot_three_slices(
         moving_prealigned,
         save_path=f"{output_dir}/plots/moving_prealigned.pdf",
-        gc = T_moving[:3,:3].T @ (gc_moving - T_moving[:3,3]),
-        Vt = Vt_moving @ T_moving[:3, :3],
+        gc = (np.linalg.inv(T_moving) @ np.append(gc_moving, 1))[:3],
+        Vt = transform_axes_vis(Vt_moving, T_moving),
         cmap=CYAN
     )
 
     plot_overlay(
         fixed_prealigned,
         moving_prealigned,
-        save_path=f"{output_dir}/plots/overlay_after_prealignment.pdf",
-        gc1=T_fixed[:3,:3].T @ (gc_fixed - T_fixed[:3, 3]),
-        Vt1=Vt_fixed @ T_fixed[:3, :3],
-        gc2=T_moving[:3,:3].T @ (gc_moving - T_moving[:3,3]),
-        Vt2=Vt_moving @ T_moving[:3, :3],
+        save_path=f"{output_dir}/plots/overlay_after_prealignment.png",
+        gc1=(np.linalg.inv(T_fixed) @ np.append(gc_fixed, 1))[:3],
+        Vt1=transform_axes_vis(Vt_fixed, T_fixed),
+        gc2=(np.linalg.inv(T_moving) @ np.append(gc_moving, 1))[:3],
+        Vt2=transform_axes_vis(Vt_moving, T_moving),
     )
 
     return fixed_prealigned, moving_prealigned, prealignment_transform
@@ -439,14 +451,17 @@ def run_prealignment(
 @click.command()
 @click.option("-fi", "--fixed_path", required=True, help="Fixed input .n5 file")
 @click.option("-fk", "--fixed_key", required=True, help="Fixed input key")
+@click.option("-fs", "--fixed_spacing", nargs=3, required=True, help="Fixed input spacing")
 @click.option("-mi", "--moving_path", required=True, help="Moving input .n5 file")
 @click.option("-mk", "--moving_key", required=True, help="Moving input key")
+@click.option("-ms", "--moving_spacing", nargs=3, required=True, help="Moving input spacing")
 @click.option("-o", "--output_dir", required=True, help="Output directory")
 @click.option("-ok", "--output_key", required=True, help="Output key (same in both n5)")
 @click.option("-trans", "--output_transform_path", required=True, help="Path to write the final transform")
 @click.option("-axis_orientation", "--axis_orientation", required=True, help="How to find the correct orientation along the principal axes")
 @click.option("-tif", "--save_tif", is_flag=True, help="Whether to save tif or not")
-def main(fixed_path, fixed_key, moving_path, moving_key, output_dir, output_key, output_transform_path, axis_orientation, save_tif=False):
+def main(fixed_path, fixed_key, fixed_spacing, moving_path, moving_key, moving_spacing,
+            output_dir, output_key, output_transform_path, axis_orientation, save_tif=False):
     """
     Perform prealignment of moving image to fixed image.
 
@@ -466,23 +481,33 @@ def main(fixed_path, fixed_key, moving_path, moving_key, output_dir, output_key,
     """
     setup_logging(output_dir, "prealignment.log")
 
+    fixed_spacing = np.asarray(fixed_spacing, dtype=np.float32)
+    moving_spacing = np.asarray(moving_spacing, dtype=np.float32)
+    new_spacing = np.full_like(fixed_spacing, fixed_spacing.min())
+
     logging.info("Reading fixed image")
     fixed_img = read_volume(fixed_path, fixed_key)
-    logging.info(f"Fixed image shape: {fixed_img.shape}, dtype {fixed_img.dtype}")
+    logging.info(f"Fixed image shape: {fixed_img.shape}, dtype {fixed_img.dtype}, resolution {fixed_spacing}")
 
     logging.info("Reading moving image")
     moving_img = read_volume(moving_path, moving_key)
-    logging.info(f"Moving image shape: {moving_img.shape}, dtype {moving_img.dtype}")
+    logging.info(f"Moving image shape: {moving_img.shape}, dtype {moving_img.dtype}, resolution {moving_spacing}")
 
     fixed_prealigned, moving_prealigned, prealignment_transform = run_prealignment(
         fixed_img,
         moving_img,
+        fixed_spacing,
+        moving_spacing,
+        new_spacing,
         output_dir,
         axis_orientation
     )
 
     logging.info("Save prealigned fixed image")
     fixed_attributes = dict(get_attrs(fixed_path, fixed_key))
+    if not np.array_equal(fixed_spacing, new_spacing):
+        assert new_spacing is not None
+        fixed_attributes["resolution"] = new_spacing.tolist()
     write_volume(
         f=fixed_path,
         arr=fixed_prealigned,
@@ -492,6 +517,8 @@ def main(fixed_path, fixed_key, moving_path, moving_key, output_dir, output_key,
 
     logging.info("Save prealigned moving image")
     moving_attributes = dict(get_attrs(moving_path, moving_key))
+    if not np.array_equal(moving_spacing, new_spacing):
+        moving_attributes["resolution"] = new_spacing.tolist()
     write_volume(
         f=moving_path,
         arr=moving_prealigned,
