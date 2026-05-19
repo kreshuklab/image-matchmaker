@@ -8,22 +8,19 @@ import matplotlib.colors as mcolors
 from matchmaker.preprocessing import percentile_norm
 
 
-def _slice_gc_coords(gc, axis):
-    cz, cy, cx = gc
-    if axis==0: return cx, cy
-    if axis==1: return cx, cz
-    if axis==2: return cy, cz
+PINK_HEX = '#FF3E96'
+CYAN_HEX = '#00CED1'
 
 
 def get_pink_cmap():
     pink_colors = [
         '#FFFFFF',  # White (for 0)
-        '#FFD1DC',  # Light Pink
-        '#FFB6C1',  # Light Pink
+        #'#FFE4EF',  # Very Light Pink
+        #'#FFC1DD',  # Light Pink
+        '#FF9CCA',  # Mid Pink
         '#FF69B4',  # Hot Pink
+        '#FF3E96',  # Strong Pink
         '#FF1493',  # Deep Pink
-        '#C71585',  # Medium Violet Red
-        '#9B30FF',  # Very Deep Pink / Purple-Pink (optional)
     ]
 
     # Create the colormap
@@ -37,12 +34,12 @@ def get_pink_cmap():
 def get_cyan_cmap():
     cyan_colors = [
         '#FFFFFF',  # White (for 0)
-        '#E0FFFF',  # Light Cyan
-        '#B0E0E6',  # Powder Blue
-        '#87CEFA',  # Sky Blue
-        '#00CED1',  # Dark Turquoise
-        '#008B8B',  # Dark Cyan
-        '#006666',  # Deep Cyan (almost teal)
+        #'#E8FFFF',  # Very Light Cyan
+        #'#C8FFFF',  # Light Cyan
+        '#9FFBFF',  # Soft Cyan
+        '#66F2FF',  # Mid Cyan
+        '#33EAF7',  # Bright Cyan
+        '#00CED1',  # Dark Turquoise / Cyan
     ]
 
     # Create the colormap
@@ -53,6 +50,13 @@ def get_cyan_cmap():
 
 PINK = get_pink_cmap()
 CYAN = get_cyan_cmap()
+
+
+def _slice_gc_coords(gc, axis):
+    cz, cy, cx = gc
+    if axis==0: return cx, cy
+    if axis==1: return cx, cz
+    if axis==2: return cy, cz
 
 
 def _draw_axes(px, py, Vt, shape, axis):
@@ -229,8 +233,8 @@ def plot_projection(fixed_np, moving_np, projection, center_slice, max_points):
 def overlay_pcds(
     fixed_pcd: o3d.t.geometry.PointCloud,
     moving_pcd: o3d.t.geometry.PointCloud,
-    fixed_col="cornflowerblue",
-    moving_col="orangered",
+    fixed_col=PINK_HEX,
+    moving_col=CYAN_HEX,
     projection="xy",
     save_path=None,
     title="",
@@ -258,7 +262,7 @@ def overlay_pcds(
     plt.scatter(
         fixed_np[roi_x][fixed_mask],
         fixed_np[roi_y][fixed_mask],
-        s=0.6,
+        s=2,
         c=fixed_col,
         alpha=0.5,
         label="Fixed point cloud",
@@ -266,7 +270,7 @@ def overlay_pcds(
     plt.scatter(
         moving_np[roi_x][moving_mask],
         moving_np[roi_y][moving_mask],
-        s=0.6,
+        s=2,
         c=moving_col,
         alpha=0.5,
         label="Moving point cloud",
@@ -274,6 +278,7 @@ def overlay_pcds(
     plt.legend()
     plt.xlabel(projection[0])
     plt.ylabel(projection[1])
+    plt.gca().invert_yaxis()
     if save_path is None:
         plt.show()
     else:
@@ -303,9 +308,11 @@ def visualize_displacement_field(
         plt.plot(
             [moving_np[roi_x][idx], registered_np[roi_x][idx]],
             [moving_np[roi_y][idx], registered_np[roi_y][idx]],
+            linewidth=0.5,
         )
 
     plt.axis("equal")
+    plt.gca().invert_yaxis()
     if save_path is None:
         plt.show()
     else:
@@ -329,14 +336,14 @@ def plot_matching_qc(
         y=fixed_np[fixed_mask, d2],
         alpha=0.8,
         label="fixed",
-        c="mediumpurple",
+        color=PINK_HEX,
     )
     sns.scatterplot(
         x=moving_np[moving_mask, d1],
         y=moving_np[moving_mask, d2],
         alpha=0.8,
         label="moving",
-        c="lightseagreen",
+        color=CYAN_HEX,
     )
 
     if "z" not in projection:
@@ -356,9 +363,10 @@ def plot_matching_qc(
                 & (p2[orth_axis] > min_range)
                 & (p2[orth_axis] < max_range)
             ):
-                plt.plot([p1[d1], p2[d1]], [p1[d2], p2[d2]], c="green")
+                plt.plot([p1[d1], p2[d1]], [p1[d2], p2[d2]], c="lightseagreen", linewidth=0.5)
 
     plt.legend()
+    plt.gca().invert_yaxis()
 
     plt.savefig(fig_name, dpi=300)
     plt.close()

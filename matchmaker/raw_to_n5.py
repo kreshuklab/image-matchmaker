@@ -5,7 +5,7 @@ import numpy as np
 import tifffile as tif
 from pathlib import Path
 
-from matchmaker.utils import (read_volume, write_volume, get_attrs, set_attrs, plot_three_slices, convert_to_int)
+from matchmaker.utils import (read_volume, write_volume, plot_three_slices, convert_to_int)
 
 
 def preprocess_tif_input(input_path, output_path, output_key, log_dir, x_res, y_res, z_res):
@@ -17,7 +17,7 @@ def preprocess_tif_input(input_path, output_path, output_key, log_dir, x_res, y_
 
     assert (image.ndim == 3) or (
         image.ndim == 4
-    ), "Currently pipeline only works with ZYX or CZYX images, input has {image.ndim} dimensions"
+    ), f"Currently pipeline only works with ZYX or CZYX images, input has {image.ndim} dimensions"
 
     image = convert_to_int(image)    
     logging.info(f"Writing output image to {output_path}")
@@ -28,11 +28,19 @@ def preprocess_tif_input(input_path, output_path, output_key, log_dir, x_res, y_
     if image.ndim == 4:
         chunks = (1, 128, 512, 512)
         for chan in range(image.shape[0]):
-            plot_three_slices(image[chan], log_dir / f"input_image_{Path(input_path).stem}_{chan}.png")
+            plot_three_slices(
+                image[chan],
+                log_dir / f"input_image_{Path(input_path).stem}_{chan}.png",
+                cmap="gnuplot2_r",
+            )
 
     else:
         chunks = (128, 512, 512)
-        plot_three_slices(image, log_dir / f"input_image_{Path(input_path).stem}.png")
+        plot_three_slices(
+            image,
+            log_dir / f"input_image_{Path(input_path).stem}.png",
+            cmap="gnuplot2_r",
+        )
 
     write_volume(output_path, image, output_key, chunks=chunks, attrs=attrs)
 
@@ -58,14 +66,21 @@ def preprocess_n5_input(input_path, input_key, output_path, output_key, log_dir,
     if image.ndim == 4:
         chunks = (1, 128, 512, 512)
         for chan in range(image.shape[0]):
-            plot_three_slices(image[chan], log_dir / f"input_image_{Path(input_path).stem}_{chan}.png")
+            plot_three_slices(
+                image[chan],
+                log_dir / f"input_image_{Path(input_path).stem}_{chan}.png",
+                cmap="gnuplot2_r",
+            )
 
     else:
         chunks = (128, 512, 512)
-        plot_three_slices(image, log_dir / f"input_image_{Path(input_path).stem}.png")
+        plot_three_slices(
+            image,
+            save_path=log_dir / f"input_image_{Path(input_path).stem}.png",
+            cmap="gnuplot2_r",
+        )
 
     write_volume(output_path, image, output_key, chunks=chunks, attrs=attrs)
-
 
 
 @click.command()
