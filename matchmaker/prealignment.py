@@ -10,7 +10,7 @@ from matchmaker.utils import (get_transformation_matrix, rotate_img, read_volume
                                 write_transform_dict, plot_three_slices, plot_overlay, setup_logging,
                                 get_axis_orient_matrix, resample_volume, transform_axes_vis)
 
-from matchmaker.utils.vis import PINK, CYAN
+from matchmaker.utils.vis import CYAN_HEX, PINK, CYAN, PINK_HEX
 
 
 def get_SVD_transform(img, spacing, save_path=None):
@@ -78,24 +78,24 @@ def orient_axis(fixed_prealigned, moving_prealigned, output_dir):
         int_prof_x_fixed = np.sum(fixed_prealigned > 0, axis=(1, 0)) / np.sum(fixed_prealigned > 0)
 
         plt.figure()
-        plt.plot(int_prof_z, label="moving")
-        plt.plot(int_prof_z_fixed, label="fixed")
+        plt.plot(int_prof_z_fixed, label="fixed", color=PINK_HEX)
+        plt.plot(int_prof_z, label="moving", color=CYAN_HEX)
         plt.xlabel(f"Axis Z Coordinate")
         plt.ylabel(f"Sum intensity along axis = Z")
         plt.legend()
         plt.savefig(f"{output_dir}/plots/axis_int_profile_Z.png", dpi=300)
 
         plt.figure()
-        plt.plot(int_prof_y, label="moving")
-        plt.plot(int_prof_y_fixed, label="fixed")
+        plt.plot(int_prof_y_fixed, label="fixed", color=PINK_HEX)
+        plt.plot(int_prof_y, label="moving", color=CYAN_HEX)
         plt.xlabel(f"Axis Y Coordinate")
         plt.ylabel(f"Sum intensity along axis = Y")
         plt.legend()
         plt.savefig(f"{output_dir}/plots/axis_int_profile_Y.png", dpi=300)
 
         plt.figure()
-        plt.plot(int_prof_x, label="moving")
-        plt.plot(int_prof_x_fixed, label="fixed")
+        plt.plot(int_prof_x_fixed, label="fixed", color=PINK_HEX)
+        plt.plot(int_prof_x, label="moving", color=CYAN_HEX)
         plt.xlabel(f"Axis X Coordinate")
         plt.ylabel(f"Sum intensity along axis = X")
         plt.legend()

@@ -8,15 +8,15 @@ import matplotlib.colors as mcolors
 from matchmaker.preprocessing import percentile_norm
 
 
-PINK_HEX = '#FF69B4'
+PINK_HEX = '#FF3E96'
 CYAN_HEX = '#00CED1'
 
 
 def get_pink_cmap():
     pink_colors = [
         '#FFFFFF',  # White (for 0)
-        '#FFE4EF',  # Very Light Pink
-        '#FFC1DD',  # Light Pink
+        #'#FFE4EF',  # Very Light Pink
+        #'#FFC1DD',  # Light Pink
         '#FF9CCA',  # Mid Pink
         '#FF69B4',  # Hot Pink
         '#FF3E96',  # Strong Pink
@@ -34,8 +34,8 @@ def get_pink_cmap():
 def get_cyan_cmap():
     cyan_colors = [
         '#FFFFFF',  # White (for 0)
-        '#E8FFFF',  # Very Light Cyan
-        '#C8FFFF',  # Light Cyan
+        #'#E8FFFF',  # Very Light Cyan
+        #'#C8FFFF',  # Light Cyan
         '#9FFBFF',  # Soft Cyan
         '#66F2FF',  # Mid Cyan
         '#33EAF7',  # Bright Cyan
@@ -262,7 +262,7 @@ def overlay_pcds(
     plt.scatter(
         fixed_np[roi_x][fixed_mask],
         fixed_np[roi_y][fixed_mask],
-        s=0.6,
+        s=2,
         c=fixed_col,
         alpha=0.5,
         label="Fixed point cloud",
@@ -270,7 +270,7 @@ def overlay_pcds(
     plt.scatter(
         moving_np[roi_x][moving_mask],
         moving_np[roi_y][moving_mask],
-        s=0.6,
+        s=2,
         c=moving_col,
         alpha=0.5,
         label="Moving point cloud",
@@ -278,6 +278,7 @@ def overlay_pcds(
     plt.legend()
     plt.xlabel(projection[0])
     plt.ylabel(projection[1])
+    plt.gca().invert_yaxis()
     if save_path is None:
         plt.show()
     else:
@@ -285,7 +286,7 @@ def overlay_pcds(
     plt.close()
 
 
-def visualize_displacement_field(  # TODO: change thickness of bars
+def visualize_displacement_field(
     moving_pcd: o3d.t.geometry.PointCloud,
     registered_pcd: o3d.t.geometry.PointCloud,
     save_path=None,
@@ -307,9 +308,11 @@ def visualize_displacement_field(  # TODO: change thickness of bars
         plt.plot(
             [moving_np[roi_x][idx], registered_np[roi_x][idx]],
             [moving_np[roi_y][idx], registered_np[roi_y][idx]],
+            linewidth=0.5,
         )
 
     plt.axis("equal")
+    plt.gca().invert_yaxis()
     if save_path is None:
         plt.show()
     else:
@@ -317,7 +320,7 @@ def visualize_displacement_field(  # TODO: change thickness of bars
     plt.close()
 
 
-def plot_matching_qc(  # TODO: change thickness of bars
+def plot_matching_qc(
     fixed_np, moving_np, fig_name, pairs=None, projection="xz", center_slice=True, max_points=1000
 ):
 
@@ -360,9 +363,10 @@ def plot_matching_qc(  # TODO: change thickness of bars
                 & (p2[orth_axis] > min_range)
                 & (p2[orth_axis] < max_range)
             ):
-                plt.plot([p1[d1], p2[d1]], [p1[d2], p2[d2]], c="lightseagreen")
+                plt.plot([p1[d1], p2[d1]], [p1[d2], p2[d2]], c="lightseagreen", linewidth=0.5)
 
     plt.legend()
+    plt.gca().invert_yaxis()
 
     plt.savefig(fig_name, dpi=300)
     plt.close()
