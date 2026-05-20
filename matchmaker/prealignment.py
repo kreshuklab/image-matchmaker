@@ -334,7 +334,8 @@ def run_prealignment(
         save_path=f"{output_dir}/plots/fixed_input_semantic.pdf",
         gc=gc_fixed,
         Vt=Vt_fixed,
-        cmap=PINK
+        cmap=PINK,
+
     )
 
     plot_three_slices(
@@ -342,7 +343,8 @@ def run_prealignment(
         save_path=f"{output_dir}/plots/moving_input_semantic.pdf",
         gc=gc_moving,
         Vt=Vt_moving,
-        cmap=CYAN
+        cmap=CYAN,
+
     )
 
     plot_overlay(
@@ -424,7 +426,8 @@ def run_prealignment(
         save_path=f"{output_dir}/plots/fixed_prealigned.png",
         gc = (np.linalg.inv(T_fixed) @ np.append(gc_fixed, 1))[:3],
         Vt = transform_axes_vis(Vt_fixed, T_fixed),
-        cmap=PINK
+        cmap=PINK,
+
     )
 
     plot_three_slices(
@@ -432,7 +435,8 @@ def run_prealignment(
         save_path=f"{output_dir}/plots/moving_prealigned.pdf",
         gc = (np.linalg.inv(T_moving) @ np.append(gc_moving, 1))[:3],
         Vt = transform_axes_vis(Vt_moving, T_moving),
-        cmap=CYAN
+        cmap=CYAN,
+
     )
 
     plot_overlay(
