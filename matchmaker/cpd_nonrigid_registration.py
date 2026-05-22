@@ -34,6 +34,7 @@ def cpd_from_images(fixed_img, fixed_resolution, moving_img, moving_resolution, 
     overlay_pcds(fixed_pcd, registered_pcd, projection="yz", save_path = output_dir / "plots/pcds_after_registration_yz.png")
 
     visualize_displacement_field(moving_pcd, registered_pcd, projection="xz", save_path = output_dir / "plots/displacement_field.pdf")
+    visualize_displacement_field(moving_pcd, registered_pcd, projection="xz", save_path = output_dir / "plots/displacement_field.png")
 
     o3d.t.io.write_point_cloud(str(output_dir / "fixed_pcd.pcd"), fixed_pcd, write_ascii=True)
     o3d.t.io.write_point_cloud(str(output_dir / "moving_pcd.pcd"), moving_pcd, write_ascii=True)

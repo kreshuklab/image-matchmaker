@@ -46,10 +46,16 @@ def match_points(fixed_pcd, registered_pcd, output_dir):
         plot_matching_qc(
             pos_2, pos_1, f"{output_dir}/plots/point_matching.pdf", pairs=matched_idx_pairs
         )
+        plot_matching_qc(
+            pos_2, pos_1, f"{output_dir}/plots/point_matching.png", pairs=matched_idx_pairs
+        )
 
     else:
         plot_matching_qc(
             pos_1, pos_2, f"{output_dir}/plots/point_matching.pdf", pairs=matched_idx_pairs
+        )
+        plot_matching_qc(
+            pos_1, pos_2, f"{output_dir}/plots/point_matching.png", pairs=matched_idx_pairs
         )
 
     return matched_idx_pairs, matched_label_pairs

@@ -115,6 +115,11 @@ def elastix_deformable_pointset_alignment(
         itk_to_np_order(itk.GetArrayFromImage(moving_img)),
         f"{output_dir}/plots/deformable_pointset_alignment_before.pdf",
     )
+    plot_overlay(
+        itk_to_np_order(itk.GetArrayFromImage(fixed_img)),
+        itk_to_np_order(itk.GetArrayFromImage(moving_img)),
+        f"{output_dir}/plots/deformable_pointset_alignment_before.png",
+    )
 
     SCRIPT_DIR = Path(__file__).resolve().parent
     parameter_map_paths = [
@@ -141,6 +146,11 @@ def elastix_deformable_pointset_alignment(
         result_img_np,
         f"{output_dir}/plots/deformable_pointset_alignment_semantic.pdf",
     )
+    plot_overlay(
+        itk_to_np_order(itk.GetArrayFromImage(fixed_img)),
+        result_img_np,
+        f"{output_dir}/plots/deformable_pointset_alignment_semantic.png",
+    )
 
     logging.info(f"Apply transform to all channels")
     logging.info(f"Moving image shape {moving_img_np.shape}")
@@ -151,6 +161,11 @@ def elastix_deformable_pointset_alignment(
         fixed_img_np,
         result_img_np,
         f"{output_dir}/plots/deformable_pointset_alignment_final.pdf",
+    )
+    plot_overlay(
+        fixed_img_np,
+        result_img_np,
+        f"{output_dir}/plots/deformable_pointset_alignment_final.png",
     )
     logging.info(f"Result image shape {result_img_np.shape}")
 
@@ -283,6 +298,11 @@ def main(
         prealigned_fixed,
         prealigned_moving_aligned,
         f"{output_dir}/plots/deformable_pointset_alignment_prealigned.pdf",
+    )
+    plot_overlay(
+        prealigned_fixed,
+        prealigned_moving_aligned,
+        f"{output_dir}/plots/deformable_pointset_alignment_prealigned.png",
     )
 
 
