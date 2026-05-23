@@ -18,7 +18,7 @@ def create_cost_matrix(pos_1, pos_2, max_dist=35, min_neighbours=10):
     logging.info("Get a list of nonzero elements")
     nonzero_idx = sdm.nonzero()
     nonzero_idx = sdm > 0
-    unconnected_pcd1 = np.argwhere(nonzero_idx.sum(axis=1) < min_neighbours)[:, 0]
+    unconnected_pcd1 = np.argwhere((nonzero_idx > 0).sum(axis=1) < min_neighbours)[:, 0]
     unconnected_pcd2 = np.argwhere((nonzero_idx > 0).sum(axis=0) < min_neighbours)[:, 1]
     logging.info(
         f"N points in pcd2  with less than {min_neighbours} neighbours: {len(nonzero_idx.sum(axis=0)[0, unconnected_pcd2])} out of {len(pos_2)}"
@@ -44,7 +44,7 @@ def create_cost_matrix(pos_1, pos_2, max_dist=35, min_neighbours=10):
         for d, knn_idx in zip(knn_distances, knn_i):
             sdm[idx, knn_idx] = d
     nonzero_idx = sdm > 0
-    unconnected_pcd1 = np.argwhere(nonzero_idx.sum(axis=1) < min_neighbours)[:, 0]
+    unconnected_pcd1 = np.argwhere((nonzero_idx > 0).sum(axis=1) < min_neighbours)[:, 0]
     unconnected_pcd2 = np.argwhere((nonzero_idx > 0).sum(axis=0) < min_neighbours)[:, 1]
     logging.info(
         f"N points in pcd2  with less than {min_neighbours} neighbours after adding knn: {len(nonzero_idx.sum(axis=0)[0, unconnected_pcd2])} out of {len(pos_2)}"
@@ -69,9 +69,14 @@ def problem_setup(sdm):
     for point in range(sdm.shape[1]):
         point_idx = np.argwhere(nonzero_idx[1] == point).flatten()
         constraints += [cp.sum(X[:, point_idx]) == 1]
+    
+    #########################################
+    # Comment this out to get a one-to-one matching
+    #########################################
     for point in range(sdm.shape[0]):
         point_idx = np.argwhere(nonzero_idx[0] == point).flatten()
         constraints += [cp.sum(X[:, point_idx]) >= 1]
+    #########################################
     prob = cp.Problem(objective, constraints)
     return X, prob
 
