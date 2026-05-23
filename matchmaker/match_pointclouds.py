@@ -12,7 +12,7 @@ from matchmaker.utils import sparse_ilp_matching, write_index_pairs, plot_matchi
 
 
 
-def match_points(fixed_pcd, registered_pcd, output_dir):
+def match_points(fixed_pcd, registered_pcd, output_dir, min_neighbours, max_dist):
 
     logging.info(f"Number of points in fixed pcd: {len(fixed_pcd.point.positions)}")
     logging.info(
@@ -29,7 +29,7 @@ def match_points(fixed_pcd, registered_pcd, output_dir):
         pos_2 = fixed_pcd.point.positions.numpy()
         swap_order = True
 
-    matched_idx_pairs = sparse_ilp_matching(pos_1, pos_2, max_dist=8, min_neighbours=30)
+    matched_idx_pairs = sparse_ilp_matching(pos_1, pos_2, max_dist=max_dist, min_neighbours=min_neighbours)
 
     if swap_order:
         matched_idx_pairs = [(p2, p1) for p1, p2 in matched_idx_pairs]
@@ -103,7 +103,7 @@ def main(fixed_pcd, moving_pcd, output_dir, min_neighbours, max_dist):
     moving_pcd = o3d.t.io.read_point_cloud(moving_pcd)
 
     matched_idx_pairs, matched_label_pairs = match_points(
-        fixed_pcd, moving_pcd, output_dir
+        fixed_pcd, moving_pcd, output_dir, min_neighbours, max_dist
     )
 
     write_index_pairs(matched_idx_pairs, str(output_dir / "matched_idx_pairs.txt"))
