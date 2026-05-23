@@ -12,7 +12,7 @@ from matchmaker.utils import sparse_ilp_matching, write_index_pairs, plot_matchi
 
 
 
-def match_points(fixed_pcd, registered_pcd, output_dir, min_neighbours, max_dist):
+def match_points(fixed_pcd, registered_pcd, output_dir, max_dist, min_neighbours):
 
     logging.info(f"Number of points in fixed pcd: {len(fixed_pcd.point.positions)}")
     logging.info(
@@ -30,6 +30,7 @@ def match_points(fixed_pcd, registered_pcd, output_dir, min_neighbours, max_dist
         swap_order = True
 
     matched_idx_pairs = sparse_ilp_matching(pos_1, pos_2, max_dist=max_dist, min_neighbours=min_neighbours)
+    matched_idx_pairs = sparse_ilp_matching(pos_1, pos_2, max_dist=max_dist, min_neighbours=min_neighbours)
 
     if swap_order:
         matched_idx_pairs = [(p2, p1) for p1, p2 in matched_idx_pairs]
@@ -43,20 +44,16 @@ def match_points(fixed_pcd, registered_pcd, output_dir, min_neighbours, max_dist
     ]
 
     if swap_order:
-        plot_matching_qc(
-            pos_2, pos_1, f"{output_dir}/plots/point_matching.pdf", pairs=matched_idx_pairs
-        )
-        plot_matching_qc(
-            pos_2, pos_1, f"{output_dir}/plots/point_matching.png", pairs=matched_idx_pairs
-        )
+        plot_matching_qc(pos_2, pos_1, output_dir / "point_matching_xz.png", pairs=matched_idx_pairs, projection="xz")
+        plot_matching_qc(pos_2, pos_1, output_dir / "point_matching_yz.png", pairs=matched_idx_pairs, projection="yz")
+        plot_matching_qc(pos_2, pos_1, output_dir / "point_matching_xy.png", pairs=matched_idx_pairs, projection="xy")
 
     else:
-        plot_matching_qc(
-            pos_1, pos_2, f"{output_dir}/plots/point_matching.pdf", pairs=matched_idx_pairs
-        )
-        plot_matching_qc(
-            pos_1, pos_2, f"{output_dir}/plots/point_matching.png", pairs=matched_idx_pairs
-        )
+        plot_matching_qc(pos_1, pos_2, output_dir / "point_matching_xz.png", pairs=matched_idx_pairs, projection="xz")
+        plot_matching_qc(pos_1, pos_2, output_dir / "point_matching_yz.png", pairs=matched_idx_pairs, projection="yz")
+        plot_matching_qc(pos_1, pos_2, output_dir / "point_matching_xy.png", pairs=matched_idx_pairs, projection="xy")
+
+    
 
     return matched_idx_pairs, matched_label_pairs
 
@@ -103,7 +100,7 @@ def main(fixed_pcd, moving_pcd, output_dir, min_neighbours, max_dist):
     moving_pcd = o3d.t.io.read_point_cloud(moving_pcd)
 
     matched_idx_pairs, matched_label_pairs = match_points(
-        fixed_pcd, moving_pcd, output_dir, min_neighbours, max_dist
+        fixed_pcd, moving_pcd, output_dir, max_dist, min_neighbours
     )
 
     write_index_pairs(matched_idx_pairs, str(output_dir / "matched_idx_pairs.txt"))
