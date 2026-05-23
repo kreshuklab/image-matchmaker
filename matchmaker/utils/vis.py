@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 import open3d as o3d
 import seaborn as sns
 import matplotlib.colors as mcolors
+import logging
 
 from matchmaker.preprocessing import percentile_norm
 
