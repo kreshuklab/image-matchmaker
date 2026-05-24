@@ -52,6 +52,11 @@ def elastix_segm_rigid_alignment(
     plot_overlay(
         itk_to_np_order(itk.GetArrayFromImage(fixed_img)),
         result_img_np,
+        f"{output_dir}/plots/overlay_after_rigid_alignment.pdf",
+    )
+    plot_overlay(
+        itk_to_np_order(itk.GetArrayFromImage(fixed_img)),
+        result_img_np,
         f"{output_dir}/plots/overlay_after_rigid_alignment.png",
     )
 

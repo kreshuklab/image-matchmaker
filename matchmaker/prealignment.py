@@ -10,6 +10,8 @@ from matchmaker.utils import (get_transformation_matrix, rotate_img, read_volume
                                 write_transform_dict, plot_three_slices, plot_overlay, setup_logging,
                                 get_axis_orient_matrix, resample_volume, transform_axes_vis)
 
+from matchmaker.utils.vis import CYAN_HEX, PINK, CYAN, PINK_HEX
+
 
 def get_SVD_transform(img, spacing, save_path=None):
     """Convert image to point cloud by thresholding, then run SVD on resulting point cloud.
@@ -76,24 +78,24 @@ def orient_axis(fixed_prealigned, moving_prealigned, output_dir):
         int_prof_x_fixed = np.sum(fixed_prealigned > 0, axis=(1, 0)) / np.sum(fixed_prealigned > 0)
 
         plt.figure()
-        plt.plot(int_prof_z, label="moving")
-        plt.plot(int_prof_z_fixed, label="fixed")
+        plt.plot(int_prof_z_fixed, label="fixed", color=PINK_HEX)
+        plt.plot(int_prof_z, label="moving", color=CYAN_HEX)
         plt.xlabel(f"Axis Z Coordinate")
         plt.ylabel(f"Sum intensity along axis = Z")
         plt.legend()
         plt.savefig(f"{output_dir}/plots/axis_int_profile_Z.png", dpi=300)
 
         plt.figure()
-        plt.plot(int_prof_y, label="moving")
-        plt.plot(int_prof_y_fixed, label="fixed")
+        plt.plot(int_prof_y_fixed, label="fixed", color=PINK_HEX)
+        plt.plot(int_prof_y, label="moving", color=CYAN_HEX)
         plt.xlabel(f"Axis Y Coordinate")
         plt.ylabel(f"Sum intensity along axis = Y")
         plt.legend()
         plt.savefig(f"{output_dir}/plots/axis_int_profile_Y.png", dpi=300)
 
         plt.figure()
-        plt.plot(int_prof_x, label="moving")
-        plt.plot(int_prof_x_fixed, label="fixed")
+        plt.plot(int_prof_x_fixed, label="fixed", color=PINK_HEX)
+        plt.plot(int_prof_x, label="moving", color=CYAN_HEX)
         plt.xlabel(f"Axis X Coordinate")
         plt.ylabel(f"Sum intensity along axis = X")
         plt.legend()
@@ -313,18 +315,74 @@ def run_prealignment(
 
     plot_three_slices(
         fixed_img,
+        save_path=f"{output_dir}/plots/fixed_input.pdf",
+        gc=gc_fixed,
+        Vt=Vt_fixed,
+        cmap="gnuplot2_r"
+    )
+    plot_three_slices(
+        fixed_img,
         save_path=f"{output_dir}/plots/fixed_input.png",
         gc=gc_fixed,
         Vt=Vt_fixed,
+        cmap="gnuplot2_r"
     )
 
+    plot_three_slices(
+        moving_img,
+        save_path=f"{output_dir}/plots/moving_input.pdf",
+        gc=gc_moving,
+        Vt=Vt_moving,
+        cmap="gnuplot2_r"
+    )
     plot_three_slices(
         moving_img,
         save_path=f"{output_dir}/plots/moving_input.png",
         gc=gc_moving,
         Vt=Vt_moving,
+        cmap="gnuplot2_r"
     )
 
+    plot_three_slices(
+        fixed_img,
+        save_path=f"{output_dir}/plots/fixed_input_semantic.pdf",
+        gc=gc_fixed,
+        Vt=Vt_fixed,
+        cmap=PINK,
+    )
+    plot_three_slices(
+        fixed_img,
+        save_path=f"{output_dir}/plots/fixed_input_semantic.png",
+        gc=gc_fixed,
+        Vt=Vt_fixed,
+        cmap=PINK,
+
+    )
+
+    plot_three_slices(
+        moving_img,
+        save_path=f"{output_dir}/plots/moving_input_semantic.pdf",
+        gc=gc_moving,
+        Vt=Vt_moving,
+        cmap=CYAN
+    )
+    plot_three_slices(
+        moving_img,
+        save_path=f"{output_dir}/plots/moving_input_semantic.png",
+        gc=gc_moving,
+        Vt=Vt_moving,
+        cmap=CYAN
+    )
+
+    plot_overlay(
+        fixed_img,
+        moving_img,
+        save_path=f"{output_dir}/plots/overlay_input.pdf",
+        gc1=gc_fixed,
+        Vt1=Vt_fixed,
+        gc2=gc_moving,
+        Vt2=Vt_moving,
+    )
     plot_overlay(
         fixed_img,
         moving_img,
@@ -404,13 +462,17 @@ def run_prealignment(
         save_path=f"{output_dir}/plots/fixed_prealigned.png",
         gc = (np.linalg.inv(T_fixed) @ np.append(gc_fixed, 1))[:3],
         Vt = transform_axes_vis(Vt_fixed, T_fixed),
+        cmap=PINK,
+
     )
 
     plot_three_slices(
         moving_prealigned,
-        save_path=f"{output_dir}/plots/moving_prealigned.png",
+        save_path=f"{output_dir}/plots/moving_prealigned.pdf",
         gc = (np.linalg.inv(T_moving) @ np.append(gc_moving, 1))[:3],
         Vt = transform_axes_vis(Vt_moving, T_moving),
+        cmap=CYAN,
+
     )
 
     plot_overlay(
