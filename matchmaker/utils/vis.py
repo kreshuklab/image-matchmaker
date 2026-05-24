@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 import open3d as o3d
 import seaborn as sns
 import matplotlib.colors as mcolors
+import logging
 
 from matchmaker.preprocessing import percentile_norm
 
@@ -229,7 +230,8 @@ def plot_projection(fixed_np, moving_np, projection, center_slice, max_points):
         orth_axis = axis_order["y"]
 
     if center_slice:
-        min_range, max_range = get_pcd_slice(fixed_np, max_points)
+        min_range, max_range = get_pcd_slice(fixed_np[:, orth_axis], max_points)
+        logging.info(f"Min max range {min_range} {max_range}")
         fixed_mask = (fixed_np[:, orth_axis] > min_range) & (
             fixed_np[:, orth_axis] < max_range
         )
@@ -294,6 +296,7 @@ def overlay_pcds(
     plt.xlabel(projection[0])
     plt.ylabel(projection[1])
     plt.gca().invert_yaxis()
+    plt.axis("equal")
     if save_path is None:
         plt.show()
     else:
@@ -307,7 +310,7 @@ def visualize_displacement_field(
     save_path=None,
     projection="xy",
     center_slice=True,
-    max_points=1000,
+    max_points=2000,
 ):
     assert (
         len(projection) == 2
@@ -337,7 +340,7 @@ def visualize_displacement_field(
 
 
 def plot_matching_qc(
-    fixed_np, moving_np, fig_name, pairs=None, projection="xz", center_slice=True, max_points=1000
+    fixed_np, moving_np, fig_name, pairs=None, projection="xz", center_slice=True, max_points=500
 ):
 
     axis_order = {"x": 0, "y": 1, "z": 2}
