@@ -1,8 +1,8 @@
 """Optuna-based grid search for CPD parameters evaluated via landmark registration error (LRE).
 
-Landmarks must already be embedded in the segmentations as single-voxel labels
-(use add_landmarks.py first). After CPD, the distance between corresponding landmark
-positions in fixed and registered point clouds gives the LRE objective.
+Landmarks must already be embedded in the segmentations as sphere labels and aligned
+(use add_landmarks.py first). After CPD, the mean Euclidean distance between corresponding
+landmark positions in the fixed and registered point clouds gives the LRE objective.
 """
 
 import json
@@ -21,13 +21,20 @@ from matchmaker.utils import (
     read_volume, get_attrs, extract_centroids, run_cpd, create_pcd, setup_logging,
 )
 
+DEFAULT_SEARCH_SPACE = {
+    "w":       [1e-5, 1e-4, 1e-3, 1e-2],
+    "beta":    [10.0, 50.0, 100.0, 200.0],
+    "lmd":     [0.01, 0.1, 1.0],
+    "maxiter": [100, 150],
+}
+
 
 def compute_lre(fixed_pcd, registered_pcd, id_map):
     """Compute mean and per-landmark LRE (µm) between fixed and CPD-registered point clouds.
 
     Args:
-        fixed_pcd: Open3D point cloud for the fixed (Igor) image with landmark labels
-        registered_pcd: Open3D point cloud after CPD with Seymour's landmark labels at new positions
+        fixed_pcd: Open3D point cloud for the fixed image, with landmark labels embedded
+        registered_pcd: Open3D point cloud after CPD, with moving landmark labels at new positions
         id_map: {landmark_name: label_id}
 
     Returns:
@@ -82,9 +89,7 @@ def run_optimization(fixed_path, fixed_key, fixed_resolution,
         lmd = trial.suggest_categorical("lmd", search_space["lmd"])
         maxiter = trial.suggest_categorical("maxiter", search_space["maxiter"])
 
-        logging.info(
-            f"Trial {trial.number}: w={w}, beta={beta}, lmd={lmd}, maxiter={maxiter}"
-        )
+        logging.info(f"Trial {trial.number}: w={w}, beta={beta}, lmd={lmd}, maxiter={maxiter}")
         registered_pcd = run_cpd(fixed_pcd, moving_pcd, w, beta, lmd, maxiter)
         mean_lre, per_lm = compute_lre(fixed_pcd, registered_pcd, id_map)
         logging.info(f"  → mean LRE = {mean_lre:.2f} µm")
@@ -99,8 +104,7 @@ def run_optimization(fixed_path, fixed_key, fixed_resolution,
             "per_landmark_um": per_lm,
         }
         trial_results.append(result)
-        trial_path = output_dir / f"trial_{trial.number:04d}.json"
-        with open(trial_path, "w") as f:
+        with open(output_dir / f"trial_{trial.number:04d}.json", "w") as f:
             json.dump(result, f, indent=2)
 
         return mean_lre
@@ -120,7 +124,6 @@ def run_optimization(fixed_path, fixed_key, fixed_resolution,
         f"→ mean LRE = {best.value:.2f} µm"
     )
 
-    # Save best parameters in the same format as the main pipeline config
     best_params = {
         "coherent_point_drift": {
             "w": best.params["w"],
@@ -138,7 +141,6 @@ def run_optimization(fixed_path, fixed_key, fixed_resolution,
         yaml.dump(best_params, f, default_flow_style=False)
     logging.info(f"Best parameters written to {best_params_path}")
 
-    # Save summary CSV of all trials
     summary = pd.DataFrame([
         {
             "trial": r["trial"],
@@ -159,9 +161,7 @@ def run_optimization(fixed_path, fixed_key, fixed_resolution,
 
 @click.command()
 @click.option("--config", required=True, help="Path to cpd_optimization_config.yaml")
-@click.option("--landmark_ids_json", required=True,
-              help="JSON written by add_landmarks.py with {name: label_id} mapping")
-def main(config, landmark_ids_json):
+def main(config):
     with open(config) as f:
         cfg = yaml.safe_load(f)
 
@@ -185,16 +185,23 @@ def main(config, landmark_ids_json):
         cfg["moving_image"]["x_res"],
     ]
 
-    with open(landmark_ids_json) as f:
+    landmark_ids_path = output_dir / "landmark_label_ids.json"
+    with open(landmark_ids_path) as f:
         id_map = {name: int(lbl) for name, lbl in json.load(f).items()}
-    logging.info(f"Loaded {len(id_map)} landmark label IDs from {landmark_ids_json}")
+    logging.info(f"Loaded {len(id_map)} landmark label IDs from {landmark_ids_path}")
 
-    search_space = {k: list(v) for k, v in cfg["optuna"]["search_space"].items()}
+    search_space_cfg = cfg.get("optuna", {}).get("search_space")
+    if search_space_cfg:
+        search_space = {k: list(v) for k, v in search_space_cfg.items()}
+        logging.info("Using search space from config")
+    else:
+        search_space = DEFAULT_SEARCH_SPACE
+        logging.info("No search space in config, using defaults")
     n_combinations = reduce(lambda a, b: a * b, (len(v) for v in search_space.values()), 1)
-    logging.info(f"Grid search: {search_space}")
-    logging.info(f"Total grid combinations: {n_combinations}")
+    logging.info(f"Grid search space: {search_space}")
+    logging.info(f"Total combinations: {n_combinations}")
 
-    study_name = cfg["optuna"].get("study_name", "cpd_optimization")
+    study_name = cfg.get("optuna", {}).get("study_name", "cpd_optimization")
 
     run_optimization(
         fixed_path=fixed_path,
