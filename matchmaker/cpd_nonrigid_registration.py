@@ -1,3 +1,4 @@
+import os
 import sys
 import click
 import logging
@@ -24,6 +25,7 @@ def cpd_from_images(fixed_img, fixed_resolution, moving_img, moving_resolution, 
 
     overlay_pcds(fixed_pcd, moving_pcd, projection="xz", save_path = output_dir / "pcds_before_registration_xz.png")
     overlay_pcds(fixed_pcd, moving_pcd, projection="yz", save_path = output_dir / "pcds_before_registration_yz.png")
+    overlay_pcds(fixed_pcd, moving_pcd, projection="xy", save_path = output_dir / "pcds_before_registration_xy.png")
 
     logging.info(f"Point cloud registration with parameters w={w}, beta={beta}, lmd={lmd}, maxiter={maxiter}")
 
@@ -31,8 +33,11 @@ def cpd_from_images(fixed_img, fixed_resolution, moving_img, moving_resolution, 
 
     overlay_pcds(fixed_pcd, registered_pcd, projection="xz", save_path = output_dir / "pcds_after_registration_xz.png")
     overlay_pcds(fixed_pcd, registered_pcd, projection="yz", save_path = output_dir / "pcds_after_registration_yz.png")
+    overlay_pcds(fixed_pcd, registered_pcd, projection="xy", save_path = output_dir / "pcds_after_registration_xy.png")
 
-    visualize_displacement_field(moving_pcd, registered_pcd, projection="xz", save_path = output_dir / "displacement_field.png")
+    visualize_displacement_field(moving_pcd, registered_pcd, projection="xz", save_path = output_dir / "displacement_field_xz.png")
+    visualize_displacement_field(moving_pcd, registered_pcd, projection="yz", save_path = output_dir / "displacement_field_yz.png")
+    visualize_displacement_field(moving_pcd, registered_pcd, projection="xy", save_path = output_dir / "displacement_field_xy.png")
 
     o3d.t.io.write_point_cloud(str(output_dir / "fixed_pcd.pcd"), fixed_pcd, write_ascii=True)
     o3d.t.io.write_point_cloud(str(output_dir / "moving_pcd.pcd"), moving_pcd, write_ascii=True)
@@ -56,13 +61,15 @@ def main(fixed_path, fixed_key, moving_path, moving_key, output_dir, w, beta, lm
         level=logging.INFO,
         format="%(asctime)s [%(levelname)s] %(message)s",
         handlers=[
-            logging.FileHandler(f"{output_dir}/rigid_alignment.log", mode="w"),
+            logging.FileHandler(f"{output_dir}/cpd_nonrigid_registration.log", mode="w"),
             logging.StreamHandler(sys.stdout),
         ],
         datefmt="%Y-%m-%d %H:%M:%S",
     )
 
     output_dir = Path(output_dir)
+    os.makedirs(output_dir / "plots", exist_ok=True)
+
     logging.info("Reading fixed image")
     fixed_img = read_volume(fixed_path, fixed_key)
     fixed_resolution = get_attrs(fixed_path, fixed_key)["resolution"]

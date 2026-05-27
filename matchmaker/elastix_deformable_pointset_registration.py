@@ -19,7 +19,6 @@ from matchmaker.utils import (
     read_volume,
     write_volume,
     get_attrs,
-    plot_overlay,
     itk_scalar_img,
     itk_to_np_order,
     apply_transform_chanwise,
@@ -114,7 +113,12 @@ def elastix_deformable_pointset_alignment(
     plot_overlay(
         itk_to_np_order(itk.GetArrayFromImage(fixed_img)),
         itk_to_np_order(itk.GetArrayFromImage(moving_img)),
-        output_dir / f"deformable_pointset_alignment_before.png",
+        f"{output_dir}/plots/deformable_pointset_alignment_before.pdf",
+    )
+    plot_overlay(
+        itk_to_np_order(itk.GetArrayFromImage(fixed_img)),
+        itk_to_np_order(itk.GetArrayFromImage(moving_img)),
+        f"{output_dir}/plots/deformable_pointset_alignment_before.png",
     )
 
     SCRIPT_DIR = Path(__file__).resolve().parent
@@ -140,7 +144,12 @@ def elastix_deformable_pointset_alignment(
     plot_overlay(
         itk_to_np_order(itk.GetArrayFromImage(fixed_img)),
         result_img_np,
-        output_dir / f"deformable_pointset_alignment_semantic.png",
+        f"{output_dir}/plots/deformable_pointset_alignment_semantic.pdf",
+    )
+    plot_overlay(
+        itk_to_np_order(itk.GetArrayFromImage(fixed_img)),
+        result_img_np,
+        f"{output_dir}/plots/deformable_pointset_alignment_semantic.png",
     )
 
     logging.info(f"Apply transform to all channels")
@@ -151,7 +160,12 @@ def elastix_deformable_pointset_alignment(
     plot_overlay(
         fixed_img_np,
         result_img_np,
-        output_dir / f"deformable_pointset_alignment_final.png",
+        f"{output_dir}/plots/deformable_pointset_alignment_final.pdf",
+    )
+    plot_overlay(
+        fixed_img_np,
+        result_img_np,
+        f"{output_dir}/plots/deformable_pointset_alignment_final.png",
     )
     logging.info(f"Result image shape {result_img_np.shape}")
 
@@ -163,8 +177,8 @@ def elastix_deformable_pointset_alignment(
     transformed_grid_np = apply_transform_chanwise(
         result_transform_parameters, grid_img_np.astype(np.float32), moving_resolution
     )
-    plot_overlay(fixed_img_np, grid_img_np, output_dir / f"grid_before.png")
-    plot_overlay(fixed_img_np, transformed_grid_np, output_dir / f"grid_after.png")
+    plot_overlay(fixed_img_np, grid_img_np, f"{output_dir}/plots/grid_before.png")
+    plot_overlay(fixed_img_np, transformed_grid_np, f"{output_dir}/plots/grid_after.png")
 
     return result_img_np
 
@@ -236,6 +250,7 @@ def main(
     )
 
     output_dir = Path(output_dir)
+    os.makedirs(output_dir / "plots", exist_ok=True)
 
     logging.info("Reading fixed image")
     fixed_img = read_volume(fixed_path, fixed_key)
@@ -282,7 +297,12 @@ def main(
     plot_overlay(
         prealigned_fixed,
         prealigned_moving_aligned,
-        output_dir / f"deformable_pointset_alignment_prealigned.png",
+        f"{output_dir}/plots/deformable_pointset_alignment_prealigned.pdf",
+    )
+    plot_overlay(
+        prealigned_fixed,
+        prealigned_moving_aligned,
+        f"{output_dir}/plots/deformable_pointset_alignment_prealigned.png",
     )
 
 

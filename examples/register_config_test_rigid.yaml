@@ -31,6 +31,6 @@ ILP:
   min_neighbours: 10
   max_dist: 30
 
-mobie_export: True
+mobie_export: False
 semantic_seg: True
 mobie_dataset_name: "platy1_muscles_stardist"
