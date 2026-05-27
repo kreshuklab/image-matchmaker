@@ -60,22 +60,21 @@ def apply_transform(moving_img, moving_resolution, parameter_object, interpolati
 
 
 @click.command()
-@click.option("-mp", "--moving_paths", required=True, multiple=True, help="Paths to moving inputs")
-@click.option("-mk", "--moving_keys", required=True, multiple=True, help="Keys of moving inputs")
-@click.option("-mr", "--moving_resolutions", required=True, multiple=True, help="Resolutions of moving inputs")
-@click.option("-op", "--output_paths", required=True, multiple=True, help="Paths to save warped images",)
-@click.option("-ok", "--output_keys", required=True, multiple=True, help="Keys of moving outputs",)
-@click.option("-io", "--interpolation_orders", required=True, multiple=True, help="Orders of interpolation",)
+@click.option("-mp", "--moving_path", required=True, help="Path to moving input")
+@click.option("-mk", "--moving_key", required=True, help="Key of moving input")
+@click.option("-mr", "--moving_resolution", required=True, help="Resolution of moving input")
+@click.option("-op", "--output_path", required=True, help="Path to save warped image")
+@click.option("-ok", "--output_key", required=True, help="Key of moving output")
+@click.option("-io", "--interpolation_order", required=True, help="Order of interpolation")
 @click.option("-ld", "--log_dir", required=True, help="Log directory")
 @click.option("-pm", "--parameter_map_path", required=True, help="Path to the parameter map",)
 @click.option("-pt", "--prealignment_transform_path", default=None, help="Prealignment transform path",)
 @click.option("-fi", "--fixed_path", default=None, help="Fixed input .n5 file")
 @click.option("-fk", "--fixed_key", default=None, help="Fixed input key")
 @click.option("-vb", "--verbose", is_flag=True, default=False, help="Show verbose logs")
-def apply_transforms(moving_paths, moving_keys, moving_resolutions, output_paths, output_keys,
-                    interpolation_orders, log_dir, parameter_map_path, prealignment_transform_path,
-                    fixed_path, fixed_key, verbose):
-    assert len(moving_paths) == len(moving_keys) == len(moving_resolutions) == len(output_paths) == len(output_keys) == len(interpolation_orders)
+def apply_transforms(moving_path, moving_key, moving_resolution, output_path, output_key,
+                    interpolation_order, log_dir, parameter_map_path,
+                    prealignment_transform_path, fixed_path, fixed_key, verbose):
     log_dir = Path(log_dir)
     log_dir.mkdir(exist_ok=True)
 
@@ -102,61 +101,57 @@ def apply_transforms(moving_paths, moving_keys, moving_resolutions, output_paths
             logging.info("Rotate fixed image using prealignment transform")
             fixed_prealigned = rotate_img(fixed_img, T_fixed, output_shape=output_shape)
 
-    for i, (moving_path, moving_key) in enumerate(zip(moving_paths, moving_keys)):
-        print("\n")
-        logging.info(f"[{i+1}/{len(moving_paths)}] Start processing moving image: {moving_path}")
-        moving_resolution = json.loads(moving_resolutions[i])
-        output_path, output_key = output_paths[i], output_keys[i]
-        interpolation_order = interpolation_orders[i]
+    logging.info(f"Start processing moving image: {moving_path}")
+    moving_resolution = json.loads(moving_resolution)
 
-        moving_name = Path(moving_path).stem
-        logging.info("Read moving image")
-        moving_img = load_data(moving_path, moving_key)
-        if moving_path.endswith(".n5"):
-            if list(moving_resolution) != get_attrs(moving_path, moving_key)["resolution"]:
-                raise ValueError("Moving resolution from config is different from n5 file")
+    moving_name = Path(moving_path).stem
+    logging.info("Read moving image")
+    moving_img = load_data(moving_path, moving_key)
+    if moving_path.endswith(".n5"):
+        if list(moving_resolution) != get_attrs(moving_path, moving_key)["resolution"]:
+            raise ValueError("Moving resolution from config is different from n5 file")
 
-        if moving_img.ndim == 3:
-            moving_img = moving_img[None, ...]
-            chunks = (128, 512, 512)
-        else:
-            chunks = (1, 128, 512, 512)
+    if moving_img.ndim == 3:
+        moving_img = moving_img[None, ...]
+        chunks = (128, 512, 512)
+    else:
+        chunks = (1, 128, 512, 512)
 
-        logging.info("Start transformation")
-        warped, warp_prealigned = apply_transform(moving_img,
-                                                    moving_resolution,
-                                                    parameter_object,
-                                                    interpolation_order,
-                                                    T_fixed=T_fixed,
-                                                    output_shape=output_shape)
+    logging.info("Start transformation")
+    warped, warp_prealigned = apply_transform(moving_img,
+                                                moving_resolution,
+                                                parameter_object,
+                                                interpolation_order,
+                                                T_fixed=T_fixed,
+                                                output_shape=output_shape)
 
-        resolution = [float(res) for res in parameter_object.GetParameter(0, "Spacing")]
+    resolution = [float(res) for res in parameter_object.GetParameter(0, "Spacing")]
 
-        save_attrs = {}
-        if moving_path.endswith(".n5"):
-            attributes = dict(get_attrs(moving_path, moving_key))
-            attributes["resolution"] = resolution
-            save_attrs["chunks"] = chunks
-            save_attrs["attrs"] = attributes
+    save_attrs = {}
+    if moving_path.endswith(".n5"):
+        attributes = dict(get_attrs(moving_path, moving_key))
+        attributes["resolution"] = resolution
+        save_attrs["chunks"] = chunks
+        save_attrs["attrs"] = attributes
 
-        logging.info("Plot warped image")
-        plot_three_slices(warped, save_path=log_dir / f"{moving_name}_warped.png")
+    logging.info("Plot warped image")
+    plot_three_slices(warped, save_path=log_dir / f"{moving_name}_warped.png")
+    if fixed_path:
+        logging.info("Plot overlay image")
+        plot_overlay(fixed_img, warped, log_dir / f"{moving_name}_warped_overlay.png",)
+
+    if T_fixed is not None:
+        logging.info("Plot warped moving image after pre-alignment")
+        plot_three_slices(warp_prealigned, save_path=log_dir / f"{moving_name}_warp_prealigned.png")
+
         if fixed_path:
-            logging.info("Plot overlay image")
-            plot_overlay(fixed_img, warped, log_dir / f"{moving_name}_warped_overlay.png",)
+            logging.info("Plot overlay image after pre-alignment")
+            plot_overlay(fixed_prealigned, warp_prealigned, log_dir / f"{moving_name}_warp_prealigned_overlay.png",)
 
-        if T_fixed is not None:
-            logging.info("Plot warped moving image after pre-alignment")
-            plot_three_slices(warp_prealigned, save_path=log_dir / f"{moving_name}_warp_prealigned.png")
+        save_data(warp_prealigned, output_path, output_key=output_key, **save_attrs)
 
-            if fixed_path:
-                logging.info("Plot overlay image after pre-alignment")
-                plot_overlay(fixed_prealigned, warp_prealigned, log_dir / f"{moving_name}_warp_prealigned_overlay.png",)
-
-            save_data(warp_prealigned, output_path, output_key=output_key, **save_attrs)
-
-        else:
-            save_data(warped, output_path, output_key=output_key, **save_attrs)
+    else:
+        save_data(warped, output_path, output_key=output_key, **save_attrs)
 
 
 if __name__ == "__main__":

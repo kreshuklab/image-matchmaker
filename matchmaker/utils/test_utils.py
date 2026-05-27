@@ -66,6 +66,8 @@ def compute_centroids(mask, exclude_id=None):
         coords = np.argwhere(np.ones_like(mask, dtype=bool))
         labels = mask.ravel()
 
+    labels = labels.astype(int)
+
     max_id = int(labels.max())
     sums = np.zeros((max_id + 1, mask.ndim), dtype=np.float64)
     np.add.at(sums, labels, coords)
