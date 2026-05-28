@@ -9,3 +9,4 @@ bio_matchmaker documentation
    installation
    quickstart
    config_ref
+   example_data
