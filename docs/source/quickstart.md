@@ -1,6 +1,24 @@
 # Quick Start
 
-## 1. Run registration
+## 1. Prepare the inputs
+
+The registration pipeline expects:
+
+- a fixed 3D instance segmentation mask
+- a moving 3D instance segmentation mask
+
+Currently supported input formats:
+
+* `.tif`/`.tiff`
+* `.n5`
+
+*Note:*
+- Input volumes are expected in **ZYX** axis order.
+- Voxel resolution must be provided for both fixed and moving images through the registration config.
+
+---
+
+## 2. Run registration
 
 Run the registration workflow with:
 
@@ -9,8 +27,6 @@ snakemake -s workflows/registration.smk \
     --configfile /path/to/the/registration/config.yaml \
     --cores 8
 ```
-
----
 
 ### Registration config
 
@@ -44,11 +60,6 @@ Registration input segmentation masks.
 
 Path to the input segmentation mask.
 
-Currently supported formats:
-
-* `.tif`/`.tiff`
-* `.n5`
-
 ##### `output_name`
 
 Output key used within the generated `.n5` folder.
@@ -57,15 +68,13 @@ Output key used within the generated `.n5` folder.
 
 Voxel resolution along each axis.
 
----
-
 ##### `log_dir`
 
 Directory where logs, plots, intermediate files, and registration outputs are saved.
 
 ---
 
-## 2. Apply transforms to other images
+## 3. Apply transforms to other images
 
 After registration finishes successfully, the resulting transforms can be applied to other datasets (for example EM image or additional LM channels).
 
@@ -76,8 +85,6 @@ snakemake -s workflows/apply_transform.smk \
     --configfile /path/to/the/transform/config.yaml \
     --cores 8
 ```
-
----
 
 ### Transform config
 
@@ -128,8 +135,6 @@ Path to the fixed image.
 
 Dataset key if the input is an `.n5` file.
 
----
-
 ##### `moving_images` (required)
 
 List of moving images to transform.
@@ -139,11 +144,6 @@ Multiple moving inputs can be processed in a single run.
 ##### `input_path` / `output_path`
 
 Input and output image paths.
-
-Supported formats:
-
-* `.tif`/`.tiff`
-* `.n5`
 
 ##### `input_key` / `output_key`
 
@@ -165,8 +165,6 @@ interpolation_order: 0
 
 For intensity images, higher interpolation orders are recommended for smoother results, at the cost of increased runtime.
 
----
-
 ##### `parameter_map_path`
 
 Path to the Elastix transform parameter file.
@@ -176,8 +174,6 @@ Typically:
 ```text
 TransformParameters.2.txt
 ```
-
----
 
 ##### `prealignment_transform_path` (optional)
 
