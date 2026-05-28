@@ -72,6 +72,25 @@ Voxel resolution along each axis.
 
 Directory where logs, plots, intermediate files, and registration outputs are saved.
 
+### Registration outputs
+
+The registration workflow generates:
+
+* transformed moving segmentation masks
+* pre-alignment transforms
+* Elastix transform parameter files
+* Table of correspondence between instances in moving and fixed masks
+* quality-control plots
+* log files for each registration stage
+
+The final deformable transformation is typically stored in:
+
+```text
+{log_dir}/elastix_deformable_pointset_registration/TransformParameters.0.txt
+{log_dir}/elastix_deformable_pointset_registration/TransformParameters.1.txt
+{log_dir}/elastix_deformable_pointset_registration/TransformParameters.2.txt
+```
+
 ---
 
 ## 3. Apply transforms to other images
