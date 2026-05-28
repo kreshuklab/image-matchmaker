@@ -1,6 +1,6 @@
 # Quick Start
 
-### Run registration
+## 1. Run registration
 
 Run the registration workflow with:
 
@@ -65,7 +65,7 @@ Directory where logs, plots, intermediate files, and registration outputs are sa
 
 ---
 
-### Apply transforms to other images
+## 2. Apply transforms to other images
 
 After registration finishes successfully, the resulting transforms can be applied to other datasets (for example EM image or additional LM channels).
 
@@ -142,7 +142,7 @@ Input and output image paths.
 
 Supported formats:
 
-* `.tif`
+* `.tif`/`.tiff`
 * `.n5`
 
 ##### `input_key` / `output_key`
