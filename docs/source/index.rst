@@ -8,3 +8,4 @@ bio_matchmaker documentation
    overview
    installation
    quickstart
+   config_ref
