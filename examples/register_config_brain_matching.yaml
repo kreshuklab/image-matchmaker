@@ -15,6 +15,10 @@ moving_image:
 log_dir: "data/brain_matching"
 final_transform_path: "data/brain_matching/final_transform.json"
 
+landmarks:
+  fixed: "data/brain_matching/landmarks/igor_landmarks_matchmaker.csv"
+  moving: "data/brain_matching/landmarks/seymour_landmarks_matchmaker.csv"
+
 prealignment:
   axis_orientation: "X"
 

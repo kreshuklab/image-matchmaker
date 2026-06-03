@@ -1,10 +1,3 @@
-"""Optuna-based grid search for CPD parameters evaluated via landmark registration error (LRE).
-
-Landmarks must already be embedded in the segmentations as sphere labels and aligned
-(use add_landmarks.py first). After CPD, the mean Euclidean distance between corresponding
-landmark positions in the fixed and registered point clouds gives the LRE objective.
-"""
-
 import json
 import click
 import logging
@@ -18,15 +11,12 @@ import optuna
 from optuna.samplers import GridSampler
 
 from matchmaker.utils import (
-    read_volume, get_attrs, extract_centroids, run_cpd, create_pcd, setup_logging,
+    read_volume, extract_centroids, run_cpd, create_pcd, setup_logging,
 )
 
-DEFAULT_SEARCH_SPACE = {
-    "w":       [1e-5, 1e-4, 1e-3, 1e-2],
-    "beta":    [10.0, 50.0, 100.0, 200.0],
-    "lmd":     [0.01, 0.1, 1.0],
-    "maxiter": [100, 150],
-}
+_ranges_file = Path(__file__).parent / "default_cpd_ranges.yaml"
+with open(_ranges_file) as _f:
+    DEFAULT_SEARCH_SPACE = yaml.safe_load(_f)
 
 
 def compute_lre(fixed_pcd, registered_pcd, id_map):
@@ -61,21 +51,29 @@ def compute_lre(fixed_pcd, registered_pcd, id_map):
     return mean_lre, per_lm
 
 
-def run_optimization(fixed_path, fixed_key, fixed_resolution,
-                     moving_path, moving_key, moving_resolution,
+def suggest_beta_ranges(coords):
+    """Compute 4 beta values covering extent/[40, 20, 10, 5] from point cloud coords (µm)."""
+    if len(coords) == 0:
+        logging.warning("Empty point cloud, falling back to default beta ranges")
+        return DEFAULT_SEARCH_SPACE["beta"]
+    extents = coords.max(axis=0) - coords.min(axis=0)
+    mean_extent = float(np.mean(extents))
+    logging.info(f"Point cloud extent per axis (µm): {extents}, mean: {mean_extent:.1f}")
+    betas = sorted({
+        mean_extent / 40,
+        mean_extent / 20,
+        mean_extent / 10,
+        mean_extent / 5,
+    })
+    return np.round(betas, 2).tolist()
+
+
+def run_optimization(fixed_pcd, moving_pcd, fixed_labels, moving_labels,
                      id_map, search_space, n_trials, study_name, output_dir):
     """Run Optuna grid search and save results."""
 
-    logging.info("Extracting centroids (done once, reused across all trials)")
-    fixed_img = read_volume(fixed_path, fixed_key)
-    moving_img = read_volume(moving_path, moving_key)
-    fixed_labels, fixed_coords = extract_centroids(fixed_img, fixed_resolution)
-    moving_labels, moving_coords = extract_centroids(moving_img, moving_resolution)
-    fixed_pcd = create_pcd(fixed_coords, fixed_labels)
-    moving_pcd = create_pcd(moving_coords, moving_labels)
-    logging.info(f"Fixed point cloud: {len(fixed_coords)} points")
-    logging.info(f"Moving point cloud: {len(moving_coords)} points")
-
+    logging.info(f"Fixed point cloud: {len(fixed_labels)} points")
+    logging.info(f"Moving point cloud: {len(moving_labels)} points")
     min_lm_id = min(id_map.values())
     n_landmark_fixed = sum(1 for lbl in fixed_labels if lbl >= min_lm_id)
     n_landmark_moving = sum(1 for lbl in moving_labels if lbl >= min_lm_id)
@@ -161,7 +159,8 @@ def run_optimization(fixed_path, fixed_key, fixed_resolution,
 
 @click.command()
 @click.option("--config", required=True, help="Path to cpd_optimization_config.yaml")
-def main(config):
+@click.option("--landmark_ids_json", default=None, help="Path to landmark_label_ids.json (default: <log_dir>/landmark_label_ids.json)")
+def main(config, landmark_ids_json):
     with open(config) as f:
         cfg = yaml.safe_load(f)
 
@@ -185,18 +184,30 @@ def main(config):
         cfg["moving_image"]["x_res"],
     ]
 
-    landmark_ids_path = output_dir / "landmark_label_ids.json"
+    landmark_ids_path = Path(landmark_ids_json) if landmark_ids_json else output_dir / "landmark_label_ids.json"
     with open(landmark_ids_path) as f:
         id_map = {name: int(lbl) for name, lbl in json.load(f).items()}
     logging.info(f"Loaded {len(id_map)} landmark label IDs from {landmark_ids_path}")
 
-    search_space_cfg = cfg.get("optuna", {}).get("search_space")
-    if search_space_cfg:
+    logging.info("Extracting point clouds (done once, reused across all trials)")
+    fixed_img = read_volume(fixed_path, fixed_key)
+    moving_img = read_volume(moving_path, moving_key)
+    fixed_labels, fixed_coords = extract_centroids(fixed_img, fixed_resolution)
+    moving_labels, moving_coords = extract_centroids(moving_img, moving_resolution)
+    fixed_pcd = create_pcd(fixed_coords, fixed_labels)
+    moving_pcd = create_pcd(moving_coords, moving_labels)
+
+    search_space_cfg = cfg.get("optuna", {}).get("search_space", "default")
+    if isinstance(search_space_cfg, dict):
         search_space = {k: list(v) for k, v in search_space_cfg.items()}
-        logging.info("Using search space from config")
+        logging.info("Using manually specified search space from config")
+    elif search_space_cfg == "dataset-specific":
+        search_space = dict(DEFAULT_SEARCH_SPACE)
+        search_space["beta"] = suggest_beta_ranges(fixed_coords)
+        logging.info(f"Dataset-specific beta ranges: {search_space['beta']}")
     else:
         search_space = DEFAULT_SEARCH_SPACE
-        logging.info("No search space in config, using defaults")
+        logging.info("Using default search space from default_cpd_ranges.yaml")
     n_combinations = reduce(lambda a, b: a * b, (len(v) for v in search_space.values()), 1)
     logging.info(f"Grid search space: {search_space}")
     logging.info(f"Total combinations: {n_combinations}")
@@ -204,12 +215,10 @@ def main(config):
     study_name = cfg.get("optuna", {}).get("study_name", "cpd_optimization")
 
     run_optimization(
-        fixed_path=fixed_path,
-        fixed_key=fixed_key,
-        fixed_resolution=fixed_resolution,
-        moving_path=moving_path,
-        moving_key=moving_key,
-        moving_resolution=moving_resolution,
+        fixed_pcd=fixed_pcd,
+        moving_pcd=moving_pcd,
+        fixed_labels=fixed_labels,
+        moving_labels=moving_labels,
         id_map=id_map,
         search_space=search_space,
         n_trials=n_combinations,

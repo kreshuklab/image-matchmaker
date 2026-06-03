@@ -1,11 +1,13 @@
 """Snakemake workflow for CPD parameter optimization via Optuna.
 
 Separate from the main registration pipeline. Performs:
-  1. Embed anatomical landmarks into the input segmentations as single-voxel labels.
-  2. Apply the stored SVD prealignment transform to the fixed (Igor) image with landmarks.
-  3. Apply the stored SVD + rigid transforms to the moving (Seymour) image with landmarks.
+  1. Embed anatomical landmarks into both raw segmentations.
+  2. Run SVD prealignment on the landmark-embedded segmentations.
+  3. Run elastix rigid alignment, so landmarks end up in the aligned space used by CPD.
   4. Run an Optuna grid search over CPD parameters, evaluating each combination by the
      mean Landmark Registration Error (LRE) between corresponding landmarks after CPD.
+     For dataset-specific beta ranges, beta is computed from the extracted point clouds
+     inside cpd_optimization.py.
 
 Output: best_cpd_params.yaml (drop-in replacement for the coherent_point_drift section
 of the main registration config).
@@ -22,98 +24,139 @@ root_dir = f"{Path(workflow.basedir).resolve().parent}/"
 workdir: root_dir
 configfile: "data/brain_matching/cpd_optimization_config.yaml"
 
-fixed_n5        = config["fixed_image"]["path"]
-fixed_input_key = config["fixed_image"]["input_key"]
+fixed_n5          = config["fixed_image"]["path"]
+fixed_input_key   = config["fixed_image"]["input_key"]
 fixed_aligned_key = config["fixed_image"]["aligned_key"]
 
-moving_n5        = config["moving_image"]["path"]
-moving_input_key = config["moving_image"]["input_key"]
+moving_n5          = config["moving_image"]["path"]
+moving_input_key   = config["moving_image"]["input_key"]
 moving_aligned_key = config["moving_image"]["aligned_key"]
-
-prealignment_transform = config["prealignment_transform"]
-rigid_transform        = config["rigid_transform"]
 
 fixed_lm_csv  = config["landmarks"]["fixed"]
 moving_lm_csv = config["landmarks"]["moving"]
 
-log_dir = config["log_dir"]
+log_dir          = config["log_dir"]
+axis_orientation = config["axis_orientation"]
+
+lm_input_key      = "input_with_lm"
+landmark_ids_json = f"{log_dir}/prepare_landmarks/landmark_label_ids.json"
+
+fixed_spacing  = [config["fixed_image"]["z_res"], config["fixed_image"]["y_res"], config["fixed_image"]["x_res"]]
+moving_spacing = [config["moving_image"]["z_res"], config["moving_image"]["y_res"], config["moving_image"]["x_res"]]
 
 
 rule all:
     input:
-        best_params = f"{log_dir}/best_cpd_params.yaml",
+        best_params   = f"{log_dir}/best_cpd_params.yaml",
         study_results = f"{log_dir}/study_results.csv",
 
 
-rule prepare_fixed_with_lm:
-    """Add Igor landmarks to the input segmentation, apply SVD prealignment transform."""
+rule add_landmarks:
+    """Embed landmarks into both raw segmentations."""
     input:
-        seg_n5        = fixed_n5,
-        lm_csv        = fixed_lm_csv,
-        transform_json = prealignment_transform,
+        fixed_n5      = fixed_n5,
+        moving_n5     = moving_n5,
+        fixed_lm_csv  = fixed_lm_csv,
+        moving_lm_csv = moving_lm_csv,
     output:
-        directory(f"{fixed_n5}/{fixed_aligned_key}"),
+        directory(f"{fixed_n5}/{lm_input_key}"),
+        directory(f"{moving_n5}/{lm_input_key}"),
+        landmark_ids = landmark_ids_json,
     params:
-        input_key             = fixed_input_key,
-        output_key            = fixed_aligned_key,
-        transform_sample_key  = "fixed_prealignment",
-        log_dir               = f"{log_dir}/prepare_fixed",
-    log: f"{log_dir}/prepare_fixed/add_landmarks.log"
+        fixed_input_key  = fixed_input_key,
+        moving_input_key = moving_input_key,
+        lm_input_key     = lm_input_key,
+        log_dir          = f"{log_dir}/prepare_landmarks",
+    log: f"{log_dir}/prepare_landmarks/add_landmarks.log"
     conda: "matchmaker_env"
     shell:
-        "python matchmaker/add_landmarks.py "
-        "--input_path {input.seg_n5} "
-        "--input_key {params.input_key} "
-        "--output_path {input.seg_n5} "
-        "--output_key {params.output_key} "
-        "--landmarks_csv {input.lm_csv} "
-        "--transform_json {input.transform_json} "
-        "--transform_sample_key {params.transform_sample_key} "
+        "python matchmaker/cpd_parameter_tuning/add_landmarks.py "
+        "--fixed_path {input.fixed_n5} "
+        "--fixed_key {params.fixed_input_key} "
+        "--fixed_output_key {params.lm_input_key} "
+        "--fixed_landmarks_csv {input.fixed_lm_csv} "
+        "--moving_path {input.moving_n5} "
+        "--moving_key {params.moving_input_key} "
+        "--moving_output_key {params.lm_input_key} "
+        "--moving_landmarks_csv {input.moving_lm_csv} "
         "--log_dir {params.log_dir}"
 
 
-rule prepare_moving_with_lm:
-    """Add Seymour landmarks to the input segmentation, apply SVD + rigid transforms."""
+rule prealignment_with_lm:
+    """Run SVD prealignment on the landmark-embedded segmentations."""
     input:
-        seg_n5         = moving_n5,
-        lm_csv         = moving_lm_csv,
-        transform_json = prealignment_transform,
-        rigid_transform = rigid_transform,
+        fixed_ds  = f"{fixed_n5}/{lm_input_key}",
+        moving_ds = f"{moving_n5}/{lm_input_key}",
+    output:
+        directory(f"{fixed_n5}/{fixed_aligned_key}"),
+        directory(f"{moving_n5}/{fixed_aligned_key}"),
+        transform = f"{log_dir}/prealignment_with_lm/prealignment_transform.json",
+    params:
+        fixed_path       = fixed_n5,
+        moving_path      = moving_n5,
+        input_key        = lm_input_key,
+        output_key       = fixed_aligned_key,
+        fixed_spacing    = f"{config['fixed_image']['z_res']} {config['fixed_image']['y_res']} {config['fixed_image']['x_res']}",
+        moving_spacing   = f"{config['moving_image']['z_res']} {config['moving_image']['y_res']} {config['moving_image']['x_res']}",
+        axis_orientation = axis_orientation,
+        output_dir       = f"{log_dir}/prealignment_with_lm",
+    log: f"{log_dir}/prealignment_with_lm/prealignment.log"
+    conda: "matchmaker_env"
+    shell:
+        "python matchmaker/prealignment.py "
+        "--fixed_path {params.fixed_path} "
+        "--fixed_key {params.input_key} "
+        "--fixed_spacing {params.fixed_spacing} "
+        "--moving_path {params.moving_path} "
+        "--moving_key {params.input_key} "
+        "--moving_spacing {params.moving_spacing} "
+        "--output_dir {params.output_dir} "
+        "--output_key {params.output_key} "
+        "--output_transform_path {output.transform} "
+        "--axis_orientation {params.axis_orientation}"
+
+
+rule rigid_alignment_with_lm:
+    """Run elastix rigid alignment on the prealigned landmark-embedded segmentations."""
+    input:
+        fixed_ds  = f"{fixed_n5}/{fixed_aligned_key}",
+        moving_ds = f"{moving_n5}/{fixed_aligned_key}",
     output:
         directory(f"{moving_n5}/{moving_aligned_key}"),
     params:
-        input_key            = moving_input_key,
-        output_key           = moving_aligned_key,
-        transform_sample_key = "moving_prealignment",
-        log_dir              = f"{log_dir}/prepare_moving",
-    log: f"{log_dir}/prepare_moving/add_landmarks.log"
+        fixed_path  = fixed_n5,
+        moving_path = moving_n5,
+        input_key   = fixed_aligned_key,
+        output_key  = moving_aligned_key,
+        output_dir  = f"{log_dir}/rigid_alignment_with_lm",
+    log: f"{log_dir}/rigid_alignment_with_lm/rigid_alignment.log"
     conda: "matchmaker_env"
     shell:
-        "python matchmaker/add_landmarks.py "
-        "--input_path {input.seg_n5} "
-        "--input_key {params.input_key} "
-        "--output_path {input.seg_n5} "
-        "--output_key {params.output_key} "
-        "--landmarks_csv {input.lm_csv} "
-        "--transform_json {input.transform_json} "
-        "--transform_sample_key {params.transform_sample_key} "
-        "--rigid_transform_path {input.rigid_transform} "
-        "--log_dir {params.log_dir}"
+        "python matchmaker/rigid_alignment_elastix.py "
+        "--fixed_path {params.fixed_path} "
+        "--fixed_key {params.input_key} "
+        "--moving_path {params.moving_path} "
+        "--moving_key {params.input_key} "
+        "--output_dir {params.output_dir} "
+        "--output_key {params.output_key}"
 
 
 rule optimize_cpd:
-    """Run Optuna grid search over CPD parameters, evaluated by mean LRE."""
+    """Run Optuna grid search over CPD parameters, evaluated by mean LRE.
+    Beta ranges for dataset-specific mode are computed inside cpd_optimization.py
+    from the extracted point clouds.
+    """
     input:
-        fixed_ds         = f"{fixed_n5}/{fixed_aligned_key}",
-        moving_ds        = f"{moving_n5}/{moving_aligned_key}",
-        config           = "data/brain_matching/cpd_optimization_config.yaml",
-        landmark_ids_json = f"{log_dir}/prepare_fixed/landmark_label_ids.json",
+        fixed_ds          = f"{fixed_n5}/{fixed_aligned_key}",
+        moving_ds         = f"{moving_n5}/{moving_aligned_key}",
+        config            = workflow.configfiles[0],
+        landmark_ids_json = landmark_ids_json,
     output:
         best_params   = f"{log_dir}/best_cpd_params.yaml",
         study_results = f"{log_dir}/study_results.csv",
     log: f"{log_dir}/cpd_optimization.log"
     conda: "matchmaker_env"
     shell:
-        "python matchmaker/cpd_optimization.py "
+        "python matchmaker/cpd_parameter_tuning/cpd_optimization.py "
         "--config {input.config} "
         "--landmark_ids_json {input.landmark_ids_json}"

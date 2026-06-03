@@ -1,0 +1,4 @@
+beta: 100
+w: 1.0e-5
+lmd: 0.1
+maxiter: 150

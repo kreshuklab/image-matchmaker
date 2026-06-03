@@ -1,126 +1,76 @@
 # CPD Hyperparameter Tuning
 
 Optuna-based grid search over CPD (Coherent Point Drift) nonrigid registration parameters,
-evaluated via Landmark Registration Error (LRE) on user-provided corresponding landmarks.
+evaluated on user-provided corresponding landmarks.
 
-## Parameters being tuned
+## Parameters
 
 | Parameter | Role |
 |-----------|------|
 | `beta` | Gaussian kernel width — controls smoothness/locality of the displacement field. Larger = smoother, more global deformation. |
 | `w` | Outlier weight — fraction of points treated as noise. Higher = more robust to outliers but less accurate. |
-| `lmd` (lambda) | Regularization strength — stiffness of the deformation. Larger = stiffer, less flexible. |
+| `lmd` | Regularization strength. Larger = stiffer, penalizes deformation more strongly. |
 | `maxiter` | Maximum EM iterations. |
 
-Search ranges can be suggested automatically from point-cloud statistics using
-`suggest_cpd_ranges.py` (see below).
+### Default CPD parameters
 
-## Evaluation metric
-
-**Landmark Registration Error (LRE)** — mean Euclidean distance (µm) between corresponding
-landmark positions in the fixed image and the CPD-registered moving image. Lower is better.
-
-## Landmark input format
-
-Two CSV files are required, one for the fixed image and one for the moving image:
+saved in `default_cpd_params.yaml`
 
 ```
-name,x,y,z
-landmark_a,52.48,68.48,54.04
-landmark_b,62.08,66.88,56.00
-...
+beta = 100
+w = 1e-5
+lmd = 0.1
+maxiter = 150
 ```
 
-- `name`: unique identifier for the landmark.
-- `x`, `y`, `z`: landmark position in physical units (µm).
-- Correspondence between fixed and moving landmarks is established by matching `name` values. Only landmarks whose name appears in **both** files are used; landmarks present in only one file are ignored with a warning.
+### Default CPD grid search ranges
 
-Both files must use the same coordinate space as the segmentation volumes passed to the pipeline.
+saved in `default_cpd_ranges.yaml`
 
-## Workflow
-
-### 1. Embed landmarks and run alignment
-
-Landmarks are embedded as small spheres (filled, radius=3 voxels) with high label IDs into
-the **raw (unaligned) instance segmentations** of both images, before any registration takes
-place. The script then computes SVD prealignment and elastix rigid alignment itself, carrying
-the landmark labels through both transforms together with the nuclei.
-
-Both images are processed together in a single call since SVD prealignment requires both
-volumes simultaneously.
-
-```bash
-python matchmaker/cpd_parameter_tuning/add_landmarks.py \
-    --fixed_path <fixed.n5> \
-    --fixed_key <raw_fixed_key> \
-    --fixed_output_key <fixed_aligned_with_lm_key> \
-    --fixed_landmarks_csv <fixed_landmarks.csv> \
-    --moving_path <moving.n5> \
-    --moving_key <raw_moving_key> \
-    --moving_output_key <moving_aligned_with_lm_key> \
-    --moving_landmarks_csv <moving_landmarks.csv> \
-    --axis_orientation <X|Y|Z|IDENTITY|auto> \
-    --log_dir <output_dir>
+```
+DEFAULT_SEARCH_SPACE = {
+    "w":       [1e-5, 1e-4, 1e-3, 1e-2, 1e-1],
+    "beta":    [10.0, 50.0, 100.0, 200.0],
+    "lmd":     [0.01, 0.1, 1.0, 10.0],
+    "maxiter": [150],
+}
 ```
 
-### 2. (Optional) Suggest parameter search ranges
+### Dataset specific CPD grid search ranges
 
-Derives a `beta` range from point-cloud spatial extent and prints a YAML block ready to
-paste into the optimization config.
+run `suggest_cpd_ranges.py`: output `dataset_cpd_ranges.yaml
 
-```bash
-python matchmaker/cpd_parameter_tuning/suggest_cpd_ranges.py \
-    --path <fixed.n5> \
-    --key <prealigned_key> \
-    --x_res <µm> --y_res <µm> --z_res <µm>
+Suggest dataset-specific beta parameter search ranges for use in cpd_optimization_config.yaml (set `search_space: "dataset-specific"`).
+
+Reads a segmentation and computes basic point-cloud statistics (spatial extent, point density)
+to derive a beta search range proportional to the data scale.  Prints a YAML block that can
+be pasted into the optuna.search_space section of the optimization config.
+
+Usage:
+    python matchmaker/cpd_parameter_tuning/suggest_cpd_ranges.py \
+        --path data/brain_matching/igor_fixed_image.n5 \
+        --key svd_prealignment \
+        --x_res 0.4 --y_res 0.4 --z_res 0.4`
+
+
+## Snakemake workflow
+
+Snakemake workflow for CPD parameter optimization via Optuna.
+
+Separate from the main registration pipeline. Performs:
+  1. Embed anatomical landmarks into the input segmentations as single-voxel labels.
+  2. Apply the stored SVD prealignment transform to the fixed (Igor) image with landmarks.
+  3. Apply the stored SVD + rigid transforms to the moving (Seymour) image with landmarks.
+  4. Optionally compute dataset-specific beta ranges from the aligned fixed segmentation.
+  5. Run an Optuna grid search over CPD parameters, evaluating each combination by the
+     mean Landmark Registration Error (LRE) between corresponding landmarks after CPD.
+
+Output: best_cpd_params.yaml (drop-in replacement for the coherent_point_drift section
+of the main registration config).
+
+Usage:
 ```
-
-### 3. Run the grid search
-
-```bash
-python matchmaker/cpd_parameter_tuning/cpd_optimization.py \
-    --config <cpd_optimization_config.yaml>
-```
-
-The grid search runs all parameter combinations defined in the config.
-Results are written to the `log_dir` specified in the config.
-
-## Outputs
-
-| File | Description |
-|------|-------------|
-| `best_cpd_params.yaml` | Best parameters in pipeline-config format, ready to paste into the main pipeline config |
-| `study_results.csv` | All trials sorted by mean LRE |
-| `trial_NNNN.json` | Per-trial results including per-landmark distances |
-| `landmark_label_ids.json` | Mapping of landmark names to label IDs (written by `add_landmarks.py`, required by the grid search) |
-
-## Config file
-
-The optimization is configured via a YAML file. See
-`data/brain_matching/cpd_optimization_config.yaml` for a full example. Key sections:
-
-```yaml
-fixed_image:
-  path: <path to .n5>
-  aligned_key: <dataset key with landmarks embedded>
-  x_res: <µm>
-  y_res: <µm>
-  z_res: <µm>
-
-moving_image:
-  # same structure as fixed_image
-
-landmarks:
-  fixed: <fixed_landmarks.csv>
-  moving: <moving_landmarks.csv>
-
-log_dir: <output directory>
-
-optuna:
-  study_name: <name>
-  search_space:
-    w: [1.0e-5, 1.0e-4, 1.0e-3, 1.0e-2]
-    beta: [50.0, 100.0, 200.0]
-    lmd: [0.01, 0.1, 1.0]
-    maxiter: [100, 150]
+snakemake -s workflows/cpd_optimization.smk \
+          --configfile data/brain_matching/cpd_optimization_config.yaml \
+          --cores 1
 ```
