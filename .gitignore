@@ -185,6 +185,9 @@ examples/data/test_data/
 *.png
 *.ome.zarr/
 
+# allow example tif files
+!examples/data/platy1_muscles_stardist_fixed.tif
+
 .DS_Store
 
 # Snakemake logs
