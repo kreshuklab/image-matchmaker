@@ -177,7 +177,7 @@ cython_debug/
 examples/data/test/
 examples/data/deformed_data/
 examples/data/test_data/
-data
+/data
 
 # huge data
 *.tif
