@@ -12,6 +12,11 @@ Currently supported input formats:
 * `.tif`/`.tiff`
 * `.n5`
 
+You can either:
+
+1. Prepare your own segmentation masks.
+2. Use the example datasets provided with the repository (See {doc}`Example Data <example_data>`).
+
 *Note:*
 - Input volumes are expected in **ZYX** axis order.
 - Voxel resolution must be provided for both fixed and moving images through the registration config.
