@@ -36,7 +36,7 @@ fixed_lm_csv  = config["landmarks"]["fixed"]
 moving_lm_csv = config["landmarks"]["moving"]
 
 log_dir          = config["log_dir"]
-axis_orientation = config["axis_orientation"]
+axis_orientation = config["prealignment"]["axis_orientation"]
 
 lm_input_key      = "input_with_lm"
 landmark_ids_json = f"{log_dir}/prepare_landmarks/landmark_label_ids.json"

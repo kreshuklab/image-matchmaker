@@ -11,7 +11,7 @@ import optuna
 from optuna.samplers import GridSampler
 
 from matchmaker.utils import (
-    read_volume, extract_centroids, run_cpd, create_pcd, setup_logging,
+    read_volume, get_attrs, extract_centroids, run_cpd, create_pcd, setup_logging,
 )
 
 _ranges_file = Path(__file__).parent / "default_cpd_ranges.yaml"
@@ -82,6 +82,7 @@ def run_optimization(fixed_pcd, moving_pcd, fixed_labels, moving_labels,
     trial_results = []
 
     def objective(trial):
+        # NOTE
         w = trial.suggest_categorical("w", search_space["w"])
         beta = trial.suggest_categorical("beta", search_space["beta"])
         lmd = trial.suggest_categorical("lmd", search_space["lmd"])
@@ -105,14 +106,18 @@ def run_optimization(fixed_pcd, moving_pcd, fixed_labels, moving_labels,
         with open(output_dir / f"trial_{trial.number:04d}.json", "w") as f:
             json.dump(result, f, indent=2)
 
-        return mean_lre
+        return mean_lre  # NOTE Optuna minimizes the mean distances between landmarks
 
-    sampler = GridSampler(search_space)
+    storage = f"sqlite:///{output_dir}/optuna_study.db"
+    sampler = GridSampler(search_space)  # NOTE add this as a parameter in config
     study = optuna.create_study(
         study_name=study_name,
         direction="minimize",
         sampler=sampler,
+        storage=storage,
+        load_if_exists=True,
     )
+    logging.info(f"Optuna study stored at {output_dir}/optuna_study.db")
     study.optimize(objective, n_trials=n_trials)
 
     best = study.best_trial
@@ -170,19 +175,9 @@ def main(config, landmark_ids_json):
 
     fixed_path = cfg["fixed_image"]["path"]
     fixed_key = cfg["fixed_image"]["aligned_key"]
-    fixed_resolution = [
-        cfg["fixed_image"]["z_res"],
-        cfg["fixed_image"]["y_res"],
-        cfg["fixed_image"]["x_res"],
-    ]
 
     moving_path = cfg["moving_image"]["path"]
     moving_key = cfg["moving_image"]["aligned_key"]
-    moving_resolution = [
-        cfg["moving_image"]["z_res"],
-        cfg["moving_image"]["y_res"],
-        cfg["moving_image"]["x_res"],
-    ]
 
     landmark_ids_path = Path(landmark_ids_json) if landmark_ids_json else output_dir / "landmark_label_ids.json"
     with open(landmark_ids_path) as f:
@@ -190,10 +185,20 @@ def main(config, landmark_ids_json):
     logging.info(f"Loaded {len(id_map)} landmark label IDs from {landmark_ids_path}")
 
     logging.info("Extracting point clouds (done once, reused across all trials)")
+
+    logging.info("Reading fixed image")
     fixed_img = read_volume(fixed_path, fixed_key)
+    fixed_resolution = get_attrs(fixed_path, fixed_key)["resolution"]
+    logging.info(f"Fixed image shape: {fixed_img.shape}, dtype {fixed_img.dtype}")
+
+    logging.info("Reading moving image")
     moving_img = read_volume(moving_path, moving_key)
+    moving_resolution = get_attrs(moving_path, moving_key)["resolution"]
+    logging.info(f"Moving image shape: {moving_img.shape}, dtype {moving_img.dtype}")
+
     fixed_labels, fixed_coords = extract_centroids(fixed_img, fixed_resolution)
     moving_labels, moving_coords = extract_centroids(moving_img, moving_resolution)
+
     fixed_pcd = create_pcd(fixed_coords, fixed_labels)
     moving_pcd = create_pcd(moving_coords, moving_labels)
 

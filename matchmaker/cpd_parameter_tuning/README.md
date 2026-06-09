@@ -20,7 +20,7 @@ saved in `default_cpd_params.yaml`
 beta = 100
 w = 1e-5
 lmd = 0.1
-maxiter = 150
+maxiter = 100
 ```
 
 ### Default CPD grid search ranges
@@ -32,7 +32,7 @@ DEFAULT_SEARCH_SPACE = {
     "w":       [1e-5, 1e-4, 1e-3, 1e-2, 1e-1],
     "beta":    [10.0, 50.0, 100.0, 200.0],
     "lmd":     [0.01, 0.1, 1.0, 10.0],
-    "maxiter": [150],
+    "maxiter": [100],
 }
 ```
 
