@@ -311,6 +311,7 @@ def visualize_displacement_field(
     projection="xy",
     center_slice=True,
     max_points=2000,
+    title=None,
 ):
     assert (
         len(projection) == 2
@@ -332,10 +333,12 @@ def visualize_displacement_field(
 
     plt.axis("equal")
     plt.gca().invert_yaxis()
+    if title is not None:
+        plt.title(title, fontsize=8)
     if save_path is None:
         plt.show()
     else:
-        plt.savefig(save_path, dpi=300)
+        plt.savefig(save_path, dpi=300, bbox_inches="tight")
     plt.close()
 
 

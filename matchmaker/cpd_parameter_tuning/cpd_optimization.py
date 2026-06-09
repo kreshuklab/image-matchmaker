@@ -1,4 +1,5 @@
 import json
+import threading
 import click
 import logging
 import numpy as np
@@ -12,7 +13,12 @@ from optuna.samplers import GridSampler
 
 from matchmaker.utils import (
     read_volume, get_attrs, extract_centroids, run_cpd, create_pcd, setup_logging,
+    visualize_displacement_field,
 )
+from matchmaker.cpd_parameter_tuning.suggest_cpd_ranges import suggest_beta_ranges
+
+import matplotlib
+matplotlib.use("agg")  # non-interactive backend required for worker threads
 
 _ranges_file = Path(__file__).parent / "default_cpd_ranges.yaml"
 with open(_ranges_file) as _f:
@@ -51,25 +57,8 @@ def compute_lre(fixed_pcd, registered_pcd, id_map):
     return mean_lre, per_lm
 
 
-def suggest_beta_ranges(coords):
-    """Compute 4 beta values covering extent/[40, 20, 10, 5] from point cloud coords (µm)."""
-    if len(coords) == 0:
-        logging.warning("Empty point cloud, falling back to default beta ranges")
-        return DEFAULT_SEARCH_SPACE["beta"]
-    extents = coords.max(axis=0) - coords.min(axis=0)
-    mean_extent = float(np.mean(extents))
-    logging.info(f"Point cloud extent per axis (µm): {extents}, mean: {mean_extent:.1f}")
-    betas = sorted({
-        mean_extent / 40,
-        mean_extent / 20,
-        mean_extent / 10,
-        mean_extent / 5,
-    })
-    return np.round(betas, 2).tolist()
-
-
 def run_optimization(fixed_pcd, moving_pcd, fixed_labels, moving_labels,
-                     id_map, search_space, n_trials, study_name, output_dir):
+                     id_map, search_space, n_trials, study_name, output_dir, n_jobs=1):
     """Run Optuna grid search and save results."""
 
     logging.info(f"Fixed point cloud: {len(fixed_labels)} points")
@@ -80,9 +69,9 @@ def run_optimization(fixed_pcd, moving_pcd, fixed_labels, moving_labels,
     logging.info(f"Landmarks in fixed pcd: {n_landmark_fixed}, in moving pcd: {n_landmark_moving}")
 
     trial_results = []
+    results_lock = threading.Lock()
 
     def objective(trial):
-        # NOTE
         w = trial.suggest_categorical("w", search_space["w"])
         beta = trial.suggest_categorical("beta", search_space["beta"])
         lmd = trial.suggest_categorical("lmd", search_space["lmd"])
@@ -93,6 +82,16 @@ def run_optimization(fixed_pcd, moving_pcd, fixed_labels, moving_labels,
         mean_lre, per_lm = compute_lre(fixed_pcd, registered_pcd, id_map)
         logging.info(f"  → mean LRE = {mean_lre:.2f} µm")
 
+        plot_title = f"Trial {trial.number:04d} | w={w}, β={beta}, λ={lmd}, maxiter={maxiter} | LRE={mean_lre:.2f} µm"
+        for proj in ("xy", "xz", "yz"):
+            visualize_displacement_field(
+                moving_pcd,
+                registered_pcd,
+                projection=proj,
+                title=plot_title,
+                save_path=plots_dir / f"trial_{trial.number:04d}_{proj}.png",
+            )
+
         result = {
             "trial": trial.number,
             "w": w,
@@ -102,14 +101,18 @@ def run_optimization(fixed_pcd, moving_pcd, fixed_labels, moving_labels,
             "mean_lre_um": mean_lre,
             "per_landmark_um": per_lm,
         }
-        trial_results.append(result)
+        with results_lock:
+            trial_results.append(result)
         with open(output_dir / f"trial_{trial.number:04d}.json", "w") as f:
             json.dump(result, f, indent=2)
 
-        return mean_lre  # NOTE Optuna minimizes the mean distances between landmarks
+        return mean_lre
+
+    plots_dir = output_dir / "plots"
+    plots_dir.mkdir(exist_ok=True)
 
     storage = f"sqlite:///{output_dir}/optuna_study.db"
-    sampler = GridSampler(search_space)  # NOTE add this as a parameter in config
+    sampler = GridSampler(search_space)
     study = optuna.create_study(
         study_name=study_name,
         direction="minimize",
@@ -118,7 +121,8 @@ def run_optimization(fixed_pcd, moving_pcd, fixed_labels, moving_labels,
         load_if_exists=True,
     )
     logging.info(f"Optuna study stored at {output_dir}/optuna_study.db")
-    study.optimize(objective, n_trials=n_trials)
+    logging.info(f"Running {n_trials} trials with n_jobs={n_jobs}")
+    study.optimize(objective, n_trials=n_trials, n_jobs=n_jobs)
 
     best = study.best_trial
     logging.info(
@@ -164,8 +168,18 @@ def run_optimization(fixed_pcd, moving_pcd, fixed_labels, moving_labels,
 
 @click.command()
 @click.option("--config", required=True, help="Path to cpd_optimization_config.yaml")
-@click.option("--landmark_ids_json", default=None, help="Path to landmark_label_ids.json (default: <log_dir>/landmark_label_ids.json)")
-def main(config, landmark_ids_json):
+@click.option(
+    "--landmark_ids_json",
+    default=None,
+    help="Path to landmark_label_ids.json (default: <log_dir>/landmark_label_ids.json)",
+)
+@click.option(
+    "--fixed_path", default=None, help="Override fixed image n5 path from config"
+)
+@click.option(
+    "--moving_path", default=None, help="Override moving image n5 path from config"
+)
+def main(config, landmark_ids_json, fixed_path, moving_path):
     with open(config) as f:
         cfg = yaml.safe_load(f)
 
@@ -173,10 +187,10 @@ def main(config, landmark_ids_json):
     output_dir.mkdir(parents=True, exist_ok=True)
     setup_logging(str(output_dir), "cpd_optimization.log")
 
-    fixed_path = cfg["fixed_image"]["path"]
+    fixed_path = fixed_path or cfg["fixed_image"]["path"]
     fixed_key = cfg["fixed_image"]["aligned_key"]
 
-    moving_path = cfg["moving_image"]["path"]
+    moving_path = moving_path or cfg["moving_image"]["path"]
     moving_key = cfg["moving_image"]["aligned_key"]
 
     landmark_ids_path = Path(landmark_ids_json) if landmark_ids_json else output_dir / "landmark_label_ids.json"
@@ -208,7 +222,7 @@ def main(config, landmark_ids_json):
         logging.info("Using manually specified search space from config")
     elif search_space_cfg == "dataset-specific":
         search_space = dict(DEFAULT_SEARCH_SPACE)
-        search_space["beta"] = suggest_beta_ranges(fixed_coords)
+        search_space["beta"] = suggest_beta_ranges(fixed_coords, fallback_betas=DEFAULT_SEARCH_SPACE["beta"])
         logging.info(f"Dataset-specific beta ranges: {search_space['beta']}")
     else:
         search_space = DEFAULT_SEARCH_SPACE
@@ -218,6 +232,7 @@ def main(config, landmark_ids_json):
     logging.info(f"Total combinations: {n_combinations}")
 
     study_name = cfg.get("optuna", {}).get("study_name", "cpd_optimization")
+    n_jobs = cfg.get("optuna", {}).get("n_jobs", 1)
 
     run_optimization(
         fixed_pcd=fixed_pcd,
@@ -229,6 +244,7 @@ def main(config, landmark_ids_json):
         n_trials=n_combinations,
         study_name=study_name,
         output_dir=output_dir,
+        n_jobs=n_jobs,
     )
 
 

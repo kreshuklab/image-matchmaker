@@ -1,38 +1,55 @@
+import logging
 from pathlib import Path
 
 import click
 import numpy as np
 import yaml
+from scipy.spatial import cKDTree
 
 from matchmaker.utils import read_volume, get_attrs, extract_centroids
 
 _DEFAULT_RANGES_FILE = Path(__file__).parent / "default_cpd_ranges.yaml"
 
 
-def suggest_beta_ranges(positions: np.ndarray) -> dict:
-    """Derive CPD search space from point-cloud spatial statistics.
+def compute_point_spacing(coords: np.ndarray) -> float:
+    """Mean nearest-neighbor distance as a proxy for point spacing (µm)."""
+    tree = cKDTree(coords)
+    distances, _ = tree.query(coords, k=2)  # k=2: first hit is self (dist=0)
+    return float(np.mean(distances[:, 1]))
 
-    beta should scale with dataset extent: the range covers
-    extent/40 to extent/5 across 4 values (extent/40, extent/20,
-    extent/10, extent/5).
+
+def suggest_beta_ranges(coords: np.ndarray, fallback_betas: list | None = None) -> list:
+    """4 beta values as max(n*h, f*D) with h=point spacing, D=mean extent.
+
+    Values: max(2h,0.025D), max(4h,0.05D), max(8h,0.1D), max(16h,0.2D).
+    The h-based terms set a lower bound relative to point density; the
+    D-based terms prevent pathologically small betas when landmarks are
+    very densely packed relative to the object scale.
 
     Args:
-        positions: (N, 3) array of point positions in µm
+        coords: (N, 3) array of point positions in µm.
+        fallback_betas: returned as-is when coords has fewer than 2 points.
 
     Returns:
-        betas: sorted list of beta values to try in CPD optimization
+        List of 4 beta values rounded to 2 decimal places.
     """
-    extents = positions.max(axis=0) - positions.min(axis=0)
-    mean_extent = float(np.mean(extents))
+    if len(coords) < 2:
+        logging.warning("Fewer than 2 points; returning fallback beta ranges")
+        return fallback_betas if fallback_betas is not None else []
 
-    betas = sorted({
-        mean_extent / 40,
-        mean_extent / 20,
-        mean_extent / 10,
-        mean_extent / 5,
-    })
+    h = compute_point_spacing(coords)
+    D = float(np.mean(coords.max(axis=0) - coords.min(axis=0)))
+    logging.info(f"Mean NN spacing h={h:.2f} µm, mean extent D={D:.1f} µm")
 
-    return np.round(betas, 2).tolist()
+    betas = [
+        max(2  * h, 0.025 * D),
+        max(4  * h, 0.05  * D),
+        max(8  * h, 0.1   * D),
+        max(16 * h, 0.2   * D),
+    ]
+    betas = np.round(betas, 2).tolist()
+    logging.info(f"Beta ranges: {betas}")
+    return betas
 
 
 @click.command()
