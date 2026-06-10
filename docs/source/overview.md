@@ -7,7 +7,7 @@ Matchmaker is designed to optimize a transformation that maps a moving image/vol
 - Moving Volume: The source dataset that is spatially transformed (warped) to match the target.
 - Fixed Volume: The stationary reference dataset that defines the target coordinate space for the registration.
 
-```{figure} _static/images/registration_pipeline.png
+```{figure} _static/images/workflow.png
 :width: 90%
 :align: center
 
