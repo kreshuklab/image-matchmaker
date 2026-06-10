@@ -185,6 +185,9 @@ data
 *.png
 *.ome.zarr/
 
+# Documentation images
+!docs/source/_static/images/*.png
+
 .DS_Store
 
 # Snakemake logs
