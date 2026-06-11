@@ -21,7 +21,7 @@ from matchmaker.utils import (
     transform_axes_vis,
 )
 
-from matchmaker.utils.vis import CYAN_HEX, PINK, CYAN, PINK_HEX
+from matchmaker.utils.vis import CYAN_HEX, PINK, CYAN, PINK_HEX, LABEL
 
 
 def get_SVD_transform(img, spacing, save_path=None):
@@ -342,14 +342,14 @@ def run_prealignment(
         save_path=f"{output_dir}/plots/fixed_input.pdf",
         gc=gc_fixed,
         Vt=Vt_fixed,
-        cmap="gnuplot2_r"
+        cmap=LABEL
     )
     plot_three_slices(
         fixed_img,
         save_path=f"{output_dir}/plots/fixed_input.png",
         gc=gc_fixed,
         Vt=Vt_fixed,
-        cmap="gnuplot2_r"
+        cmap=LABEL
     )
 
     plot_three_slices(
@@ -357,14 +357,14 @@ def run_prealignment(
         save_path=f"{output_dir}/plots/moving_input.pdf",
         gc=gc_moving,
         Vt=Vt_moving,
-        cmap="gnuplot2_r"
+        cmap=LABEL
     )
     plot_three_slices(
         moving_img,
         save_path=f"{output_dir}/plots/moving_input.png",
         gc=gc_moving,
         Vt=Vt_moving,
-        cmap="gnuplot2_r"
+        cmap=LABEL
     )
 
     plot_three_slices(

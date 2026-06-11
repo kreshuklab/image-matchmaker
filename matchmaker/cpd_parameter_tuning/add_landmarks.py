@@ -12,7 +12,7 @@ import numpy as np
 import pandas as pd
 from pathlib import Path
 
-from matchmaker.utils import read_volume, write_volume, get_attrs, setup_logging
+from matchmaker.utils import read_volume, write_volume, get_attrs, setup_logging, plot_landmark_qc, PINK, CYAN
 
 
 def landmark_label_ids(sorted_names, dtype):
@@ -83,7 +83,10 @@ def add_landmarks_to_seg(seg, landmarks_df, resolution, id_map, radius=3):
 @click.option("--moving_path", required=True, help="Path to the moving raw .n5 segmentation")
 @click.option("--moving_key", required=True, help="Dataset key of the raw moving segmentation")
 @click.option("--moving_output_key", required=True, help="Dataset key to write the moving segmentation with landmarks")
-@click.option("--moving_landmarks_csv", required=True, help="CSV with columns [name, x, y, z] in µm for the moving image")
+@click.option(
+    "--moving_landmarks_csv",
+    required=True,
+    help="CSV with columns [name, x, y, z] in µm for the moving image")
 @click.option("--log_dir", required=True, help="Output directory for logs and landmark_label_ids.json")
 def main(fixed_path, fixed_key, fixed_output_key, fixed_landmarks_csv,
          moving_path, moving_key, moving_output_key, moving_landmarks_csv,
@@ -136,6 +139,16 @@ def main(fixed_path, fixed_key, fixed_output_key, fixed_landmarks_csv,
     with open(label_id_path, "w") as f:
         json.dump(id_map, f, indent=2)
     logging.info(f"Label ID mapping written to {label_id_path}")
+
+    plots_dir = Path(log_dir) / "plots"
+    plots_dir.mkdir(exist_ok=True)
+    plot_landmark_qc(fixed_seg_lm, id_map,
+                     save_path=plots_dir / "fixed_landmarks_qc.png",
+                     cell_cmap=PINK, landmark_color="red")
+    plot_landmark_qc(moving_seg_lm, id_map,
+                     save_path=plots_dir / "moving_landmarks_qc.png",
+                     cell_cmap=CYAN, landmark_color="blue")
+    logging.info(f"Landmark QC plots written to {plots_dir}")
 
 
 if __name__ == "__main__":
