@@ -87,5 +87,3 @@ svd_prealignment_transform.json
 ```
 
 If provided, the pre-alignment transform is applied before the Elastix transforms.
-
----

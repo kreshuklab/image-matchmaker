@@ -28,5 +28,3 @@ Generated outputs are saved under:
 ```text
 examples/data/deformed_data/
 ```
-
----
