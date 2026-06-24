@@ -192,3 +192,5 @@ data
 
 # Ignore temporary files from mobie
 tmp*
+
+*.out
