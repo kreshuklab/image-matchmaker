@@ -52,21 +52,22 @@ DEFAULT_SEARCH_SPACE = {
 }
 ```
 
-### Dataset specific CPD grid search ranges
+### Dataset-specific CPD grid search ranges
 
-run `suggest_cpd_ranges.py`: output `dataset_cpd_ranges.yaml
+`suggest_cpd_ranges.py` derives a `beta` search range proportional to the data scale.
+It reads a segmentation, computes basic point-cloud statistics (spatial extent, point
+density), and prints a YAML block that can be pasted into the `optuna.search_space`
+section of the optimization config.
 
-Suggest dataset-specific beta parameter search ranges for use in cpd_optimization_config.yaml (set `search_space: "dataset-specific"`).
+When the config sets `search_space: "dataset-specific"`, the Snakemake workflow runs this
+step automatically on the aligned fixed segmentation. You can also run it manually:
 
-Reads a segmentation and computes basic point-cloud statistics (spatial extent, point density)
-to derive a beta search range proportional to the data scale.  Prints a YAML block that can
-be pasted into the optuna.search_space section of the optimization config.
-
-Usage:
-    python matchmaker/cpd_parameter_tuning/suggest_cpd_ranges.py \
-        --path data/brain_matching/igor_fixed_image.n5 \
-        --key svd_prealignment \
-        --x_res 0.4 --y_res 0.4 --z_res 0.4`
+```
+python matchmaker/cpd_parameter_tuning/suggest_cpd_ranges.py \
+    --path <segmentation>.n5 \
+    --key svd_prealignment \
+    --x_res 0.4 --y_res 0.4 --z_res 0.4
+```
 
 
 ## Snakemake workflow
@@ -74,19 +75,20 @@ Usage:
 Snakemake workflow for CPD parameter optimization via Optuna.
 
 Separate from the main registration pipeline. Performs:
-  1. Embed anatomical landmarks into the input segmentations as single-voxel labels.
-  2. Apply the stored SVD prealignment transform to the fixed (Igor) image with landmarks.
-  3. Apply the stored SVD + rigid transforms to the moving (Seymour) image with landmarks.
-  4. Optionally compute dataset-specific beta ranges from the aligned fixed segmentation.
+  1. Embed the corresponding landmarks into both input segmentations as labeled spheres.
+  2. Apply SVD prealignment to the fixed image (carrying its landmarks).
+  3. Apply SVD + rigid alignment to the moving image (carrying its landmarks).
+  4. Optionally compute dataset-specific beta ranges from the aligned fixed segmentation
+     (when `search_space: "dataset-specific"`).
   5. Run an Optuna grid search over CPD parameters, evaluating each combination by the
      mean Landmark Registration Error (LRE) between corresponding landmarks after CPD.
 
-Output: best_cpd_params.yaml (drop-in replacement for the coherent_point_drift section
+Output: `best_cpd_params.yaml` (drop-in replacement for the `coherent_point_drift` section
 of the main registration config).
 
 Usage:
 ```
 snakemake -s workflows/cpd_optimization.smk \
-          --configfile data/brain_matching/cpd_optimization_config.yaml \
+          --configfile examples/cpd_optimization_config.yaml \
           --cores 1
 ```
