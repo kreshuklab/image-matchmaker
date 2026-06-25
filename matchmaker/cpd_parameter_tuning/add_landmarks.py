@@ -1,10 +1,3 @@
-"""Add anatomical landmark voxels to both nuclei segmentations.
-
-Landmarks are embedded as small sphere labels with high IDs into the raw (unaligned)
-segmentation volumes before any registration. Prealignment and rigid alignment are handled
-as separate steps in the Snakemake workflow.
-"""
-
 import json
 import click
 import logging

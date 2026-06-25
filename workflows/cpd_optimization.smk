@@ -1,23 +1,3 @@
-"""Snakemake workflow for CPD parameter optimization via Optuna.
-
-Separate from the main registration pipeline. Performs:
-  1. Embed anatomical landmarks into both raw segmentations.
-  2. Run SVD prealignment on the landmark-embedded segmentations.
-  3. Run elastix rigid alignment, so landmarks end up in the aligned space used by CPD.
-  4. Run an Optuna grid search over CPD parameters, evaluating each combination by the
-     mean Landmark Registration Error (LRE) between corresponding landmarks after CPD.
-     For dataset-specific beta ranges, beta is computed from the extracted point clouds
-     inside cpd_optimization.py.
-
-Output: best_cpd_params.yaml (drop-in replacement for the coherent_point_drift section
-of the main registration config).
-
-Usage:
-    snakemake -s workflows/cpd_optimization.smk \
-              --configfile data/brain_matching/cpd_optimization_config.yaml \
-              --cores 1
-"""
-
 from pathlib import Path
 
 root_dir = f"{Path(workflow.basedir).resolve().parent}/"
