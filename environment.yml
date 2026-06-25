@@ -14,6 +14,7 @@ dependencies:
     - git-lfs
 
     - scikit-image
+    - optuna
     # - proxsuite
     - cvxpy
     - transforms3d
