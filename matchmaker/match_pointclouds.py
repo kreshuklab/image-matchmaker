@@ -10,8 +10,6 @@ import open3d as o3d
 from matchmaker.utils import sparse_ilp_matching, write_index_pairs, plot_matching_qc
 
 
-
-
 def match_points(fixed_pcd, registered_pcd, output_dir, max_dist, min_neighbours):
 
     logging.info(f"Number of points in fixed pcd: {len(fixed_pcd.point.positions)}")
@@ -52,8 +50,6 @@ def match_points(fixed_pcd, registered_pcd, output_dir, max_dist, min_neighbours
         plot_matching_qc(pos_1, pos_2, output_dir / "point_matching_xz.png", pairs=matched_idx_pairs, projection="xz")
         plot_matching_qc(pos_1, pos_2, output_dir / "point_matching_yz.png", pairs=matched_idx_pairs, projection="yz")
         plot_matching_qc(pos_1, pos_2, output_dir / "point_matching_xy.png", pairs=matched_idx_pairs, projection="xy")
-
-    
 
     return matched_idx_pairs, matched_label_pairs
 

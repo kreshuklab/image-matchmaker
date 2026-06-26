@@ -19,7 +19,7 @@ from matchmaker.utils import (
     transform_axes_vis,
 )
 
-from matchmaker.utils.vis import CYAN_HEX, PINK, CYAN, PINK_HEX, LABEL
+from matchmaker.utils.vis import CYAN_HEX, PINK, CYAN, PINK_HEX, LABEL, _savefig
 
 
 def get_SVD_transform(img, spacing, save_path=None):
@@ -64,7 +64,7 @@ def get_SVD_transform(img, spacing, save_path=None):
         plt.subplot(1, 2, 2)
         plt.title("Rotated Vertices")
         plt.scatter(vr[:, 0], vr[:, 1], alpha=0.1)
-        plt.savefig(save_path, dpi=300)
+        _savefig(save_path)
 
     return gc, Vt
 
@@ -113,7 +113,7 @@ def orient_axis(fixed_prealigned, moving_prealigned, output_dir):
     plt.xlabel("Axis Z Coordinate")
     plt.ylabel("Sum intensity along axis = Z")
     plt.legend()
-    plt.savefig(f"{output_dir}/plots/axis_int_profile_Z.png", dpi=300)
+    _savefig(f"{output_dir}/plots/axis_int_profile_Z.png")
 
     plt.figure()
     plt.plot(int_prof_y_fixed, label="fixed", color=PINK_HEX)
@@ -121,7 +121,7 @@ def orient_axis(fixed_prealigned, moving_prealigned, output_dir):
     plt.xlabel("Axis Y Coordinate")
     plt.ylabel("Sum intensity along axis = Y")
     plt.legend()
-    plt.savefig(f"{output_dir}/plots/axis_int_profile_Y.png", dpi=300)
+    _savefig(f"{output_dir}/plots/axis_int_profile_Y.png")
 
     plt.figure()
     plt.plot(int_prof_x_fixed, label="fixed", color=PINK_HEX)
@@ -129,7 +129,7 @@ def orient_axis(fixed_prealigned, moving_prealigned, output_dir):
     plt.xlabel("Axis X Coordinate")
     plt.ylabel("Sum intensity along axis = X")
     plt.legend()
-    plt.savefig(f"{output_dir}/plots/axis_int_profile_X.png", dpi=300)
+    _savefig(f"{output_dir}/plots/axis_int_profile_X.png")
 
     if (
         np.corrcoef(int_prof_z, int_prof_z_fixed)[0, 1]
@@ -373,24 +373,10 @@ def run_prealignment(
         Vt=Vt_fixed,
         cmap=LABEL
     )
-    plot_three_slices(
-        fixed_img,
-        save_path=f"{output_dir}/plots/fixed_input.png",
-        gc=gc_fixed,
-        Vt=Vt_fixed,
-        cmap=LABEL
-    )
 
     plot_three_slices(
         moving_img,
         save_path=f"{output_dir}/plots/moving_input.pdf",
-        gc=gc_moving,
-        Vt=Vt_moving,
-        cmap=LABEL
-    )
-    plot_three_slices(
-        moving_img,
-        save_path=f"{output_dir}/plots/moving_input.png",
         gc=gc_moving,
         Vt=Vt_moving,
         cmap=LABEL
@@ -403,25 +389,10 @@ def run_prealignment(
         Vt=Vt_fixed,
         cmap=PINK,
     )
-    plot_three_slices(
-        fixed_img,
-        save_path=f"{output_dir}/plots/fixed_input_semantic.png",
-        gc=gc_fixed,
-        Vt=Vt_fixed,
-        cmap=PINK,
-
-    )
 
     plot_three_slices(
         moving_img,
         save_path=f"{output_dir}/plots/moving_input_semantic.pdf",
-        gc=gc_moving,
-        Vt=Vt_moving,
-        cmap=CYAN
-    )
-    plot_three_slices(
-        moving_img,
-        save_path=f"{output_dir}/plots/moving_input_semantic.png",
         gc=gc_moving,
         Vt=Vt_moving,
         cmap=CYAN
@@ -431,15 +402,6 @@ def run_prealignment(
         fixed_img,
         moving_img,
         save_path=f"{output_dir}/plots/overlay_input.pdf",
-        gc1=gc_fixed,
-        Vt1=Vt_fixed,
-        gc2=gc_moving,
-        Vt2=Vt_moving,
-    )
-    plot_overlay(
-        fixed_img,
-        moving_img,
-        save_path=f"{output_dir}/plots/overlay_input.png",
         gc1=gc_fixed,
         Vt1=Vt_fixed,
         gc2=gc_moving,

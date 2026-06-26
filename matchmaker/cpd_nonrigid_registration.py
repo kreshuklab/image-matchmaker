@@ -57,6 +57,12 @@ def cpd_from_images(fixed_img, fixed_resolution, moving_img, moving_resolution, 
     visualize_displacement_field(
         moving_pcd,
         registered_pcd,
+        projection="xz",
+        save_path=output_dir / "plots/displacement_field_xz.pdf",
+    )
+    visualize_displacement_field(
+        moving_pcd,
+        registered_pcd,
         projection="yz",
         save_path=output_dir / "plots/displacement_field_yz.png",
     )
