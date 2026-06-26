@@ -5,8 +5,8 @@ evaluated on user-provided corresponding landmarks.
 
 ## Input landmarks
 
-You must supply your own pairs of corresponding landmarks — one CSV for the fixed image and
-one for the moving image — and point to them in the `landmarks` section of
+Pairs of corresponding landmarks needs to be provided, one CSV for the fixed image and
+one for the moving image. Point to them in the `landmarks` section of
 `examples/cpd_optimization_config.yaml`. Each CSV has the columns `name, x, y, z`, where
 coordinates are in physical µm and `name` matches between the two files so corresponding
 landmarks can be paired:
@@ -23,9 +23,9 @@ The repository does not ship example landmark CSVs; the example config paths are
 
 | Parameter | Role |
 |-----------|------|
-| `beta` | Gaussian kernel width — controls smoothness/locality of the displacement field. Larger = smoother, more global deformation. |
-| `w` | Outlier weight — fraction of points treated as noise. Higher = more robust to outliers but less accurate. |
-| `lmd` | Regularization strength. Larger = stiffer, penalizes deformation more strongly. |
+| `beta` | Gaussian kernel width: controls smoothness/locality of the displacement field. Larger = smoother, more global deformation. |
+| `w` | Outlier weight: fraction of points treated as noise. Higher = more robust to outliers but less accurate. |
+| `lmd` | Regularization strength: Larger = stiffer, penalizes deformation more strongly. |
 | `maxiter` | Maximum EM iterations. |
 
 ### Default CPD parameters
@@ -60,7 +60,7 @@ density), and prints a YAML block that can be pasted into the `optuna.search_spa
 section of the optimization config.
 
 When the config sets `search_space: "dataset-specific"`, the Snakemake workflow runs this
-step automatically on the aligned fixed segmentation. You can also run it manually:
+step automatically on the aligned fixed segmentation. It can also run manually:
 
 ```
 python matchmaker/cpd_parameter_tuning/suggest_cpd_ranges.py \
