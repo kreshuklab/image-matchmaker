@@ -42,14 +42,14 @@ def match_points(fixed_pcd, registered_pcd, output_dir, max_dist, min_neighbours
     ]
 
     if swap_order:
-        plot_matching_qc(pos_2, pos_1, output_dir / "point_matching_xz.png", pairs=matched_idx_pairs, projection="xz")
-        plot_matching_qc(pos_2, pos_1, output_dir / "point_matching_yz.png", pairs=matched_idx_pairs, projection="yz")
-        plot_matching_qc(pos_2, pos_1, output_dir / "point_matching_xy.png", pairs=matched_idx_pairs, projection="xy")
+        plot_matching_qc(pos_2, pos_1, output_dir / "plots/point_matching_xz.png", pairs=matched_idx_pairs, projection="xz")
+        plot_matching_qc(pos_2, pos_1, output_dir / "plots/point_matching_yz.png", pairs=matched_idx_pairs, projection="yz")
+        plot_matching_qc(pos_2, pos_1, output_dir / "plots/point_matching_xy.png", pairs=matched_idx_pairs, projection="xy")
 
     else:
-        plot_matching_qc(pos_1, pos_2, output_dir / "point_matching_xz.png", pairs=matched_idx_pairs, projection="xz")
-        plot_matching_qc(pos_1, pos_2, output_dir / "point_matching_yz.png", pairs=matched_idx_pairs, projection="yz")
-        plot_matching_qc(pos_1, pos_2, output_dir / "point_matching_xy.png", pairs=matched_idx_pairs, projection="xy")
+        plot_matching_qc(pos_1, pos_2, output_dir / "plots/point_matching_xz.png", pairs=matched_idx_pairs, projection="xz")
+        plot_matching_qc(pos_1, pos_2, output_dir / "plots/point_matching_yz.png", pairs=matched_idx_pairs, projection="yz")
+        plot_matching_qc(pos_1, pos_2, output_dir / "plots/point_matching_xy.png", pairs=matched_idx_pairs, projection="xy")
 
     return matched_idx_pairs, matched_label_pairs
 

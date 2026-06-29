@@ -10,7 +10,7 @@ from skimage.color import label2rgb
 from matchmaker.preprocessing import percentile_norm
 
 # Change to 'png' or None (infer from path extension) to switch output format
-PLOT_FORMAT = 'png'
+PLOT_FORMAT = 'pdf'
 
 
 def _savefig(save_path, dpi=300):

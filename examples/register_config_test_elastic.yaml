@@ -15,7 +15,7 @@ moving_image:
   ref_path:
   ref_url:
 
-log_dir: "data/test_elastic_registration_png"
+log_dir: "data/test_elastic_registration"
 final_transform_path: "data/test_elastic_registration/final_transform.json"
 
 prealignment:
@@ -29,7 +29,7 @@ coherent_point_drift:
 
 ILP:
   min_neighbours: 10
-  max_dist: 30
+  max_dist: 15
 
 mobie_export: False
 semantic_seg: True
