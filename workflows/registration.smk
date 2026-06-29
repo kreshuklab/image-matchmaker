@@ -42,9 +42,12 @@ beta = config["coherent_point_drift"]["beta"]
 lmd = config["coherent_point_drift"]["lmd"]
 maxiter = config["coherent_point_drift"]["maxiter"]
 
-# ILP matching parameters
-min_neighbours = config["ILP"]["min_neighbours"]
-max_dist = config["ILP"]["max_dist"]
+# matching parameters
+matching_method = config["matching"].get("method", "ilp")
+min_neighbours = config["matching"]["min_neighbours"]
+max_dist = config["matching"]["max_dist"]
+sinkhorn_tau = config["matching"].get("tau", 1.0)
+sinkhorn_max_iter = config["matching"].get("max_iter", 500)
 
 if config["mobie_export"]:
     mobie_outputs = [
@@ -250,7 +253,7 @@ rule ilp_matching:
     log: f"{log_dir}/matchmaker.log"
     conda: "matchmaker_env"
     shell:
-        f"python matchmaker/match_pointclouds.py --fixed_pcd {{input.fixed_pcd}} --moving_pcd {{input.moving_pcd}} -o {{params.log_dir}} --min_neighbours {min_neighbours} --max_dist {max_dist};"
+        f"python matchmaker/match_pointclouds.py --fixed_pcd {{input.fixed_pcd}} --moving_pcd {{input.moving_pcd}} -o {{params.log_dir}} --min_neighbours {min_neighbours} --max_dist {max_dist} --method {matching_method} --tau {sinkhorn_tau} --sinkhorn_max_iter {sinkhorn_max_iter};"
 
 
 rule elastix_deformable_pointset:

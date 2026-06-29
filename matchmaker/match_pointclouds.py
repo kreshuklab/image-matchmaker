@@ -7,12 +7,27 @@ import pandas as pd
 
 import open3d as o3d
 
-from matchmaker.utils import sparse_ilp_matching, write_index_pairs, plot_matching_qc
+from matchmaker.utils import (
+    sparse_ilp_matching,
+    hungarian_matching,
+    sinkhorn_matching,
+    write_index_pairs,
+    plot_matching_qc,
+)
 
 
 
 
-def match_points(fixed_pcd, registered_pcd, output_dir, max_dist, min_neighbours):
+def match_points(
+    fixed_pcd,
+    registered_pcd,
+    output_dir,
+    max_dist,
+    min_neighbours,
+    method="ilp",
+    tau=1.0,
+    sinkhorn_max_iter=500,
+):
 
     logging.info(f"Number of points in fixed pcd: {len(fixed_pcd.point.positions)}")
     logging.info(
@@ -29,8 +44,19 @@ def match_points(fixed_pcd, registered_pcd, output_dir, max_dist, min_neighbours
         pos_2 = fixed_pcd.point.positions.numpy()
         swap_order = True
 
-    matched_idx_pairs = sparse_ilp_matching(pos_1, pos_2, max_dist=max_dist, min_neighbours=min_neighbours)
-    matched_idx_pairs = sparse_ilp_matching(pos_1, pos_2, max_dist=max_dist, min_neighbours=min_neighbours)
+    logging.info(f"Matching method: {method}")
+    if method == "ilp":
+        matched_idx_pairs = sparse_ilp_matching(
+            pos_1, pos_2, max_dist=max_dist, min_neighbours=min_neighbours
+        )
+    elif method == "hungarian":
+        matched_idx_pairs = hungarian_matching(pos_1, pos_2, max_dist=max_dist)
+    elif method == "sinkhorn":
+        matched_idx_pairs = sinkhorn_matching(
+            pos_1, pos_2, max_dist=max_dist, tau=tau, max_iter=sinkhorn_max_iter
+        )
+    else:
+        raise ValueError(f"Unknown matching method: {method}")
 
     if swap_order:
         matched_idx_pairs = [(p2, p1) for p1, p2 in matched_idx_pairs]
@@ -78,7 +104,37 @@ def match_points(fixed_pcd, registered_pcd, output_dir, max_dist, min_neighbours
     type=float,
     help="Maximum distance between neighbours to consider for matching",
 )
-def main(fixed_pcd, moving_pcd, output_dir, min_neighbours, max_dist):
+@click.option(
+    "--method",
+    type=click.Choice(["ilp", "hungarian", "sinkhorn"]),
+    default="ilp",
+    show_default=True,
+    help="Matching algorithm to use",
+)
+@click.option(
+    "--tau",
+    type=float,
+    default=1.0,
+    show_default=True,
+    help="Sinkhorn entropy regularization parameter (sinkhorn only)",
+)
+@click.option(
+    "--sinkhorn_max_iter",
+    type=int,
+    default=500,
+    show_default=True,
+    help="Maximum number of Sinkhorn iterations (sinkhorn only)",
+)
+def main(
+    fixed_pcd,
+    moving_pcd,
+    output_dir,
+    min_neighbours,
+    max_dist,
+    method,
+    tau,
+    sinkhorn_max_iter,
+):
 
     logging.basicConfig(
         level=logging.INFO,
@@ -100,7 +156,14 @@ def main(fixed_pcd, moving_pcd, output_dir, min_neighbours, max_dist):
     moving_pcd = o3d.t.io.read_point_cloud(moving_pcd)
 
     matched_idx_pairs, matched_label_pairs = match_points(
-        fixed_pcd, moving_pcd, output_dir, max_dist, min_neighbours
+        fixed_pcd,
+        moving_pcd,
+        output_dir,
+        max_dist,
+        min_neighbours,
+        method=method,
+        tau=tau,
+        sinkhorn_max_iter=sinkhorn_max_iter,
     )
 
     write_index_pairs(matched_idx_pairs, str(output_dir / "matched_idx_pairs.txt"))
