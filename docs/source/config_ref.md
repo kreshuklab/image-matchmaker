@@ -179,21 +179,24 @@ results, at the cost of increased runtime.
 
 ### `parameter_map_path`
 
-Path to the Elastix transform parameter file.
-
-Typically:
+Path to the final Elastix B-spline transform parameters produced by the
+registration run. This is the fine B-spline transform,
+typically:
 
 ```text
-TransformParameters.2.txt
+{log_dir}/elastix_deformable_pointset_registration/TransformParameters.2.txt
 ```
 
 ### `prealignment_transform_path` (optional)
 
-Path to the SVD pre-alignment transform:
+Path to the SVD pre-alignment transform produced by the registration run, 
+typically:
 
 ```text
-svd_prealignment_transform.json
+{log_dir}/svd_prealignment/svd_prealignment_transform.json
 ```
 
-If provided, the pre-alignment transform is applied before the Elastix
-transforms.
+If provided, the pre-alignment transform is applied before the Elastix transforms.
+
+See {doc}`Understanding the Outputs <outputs>` for exactly where both files are
+located within `log_dir`.

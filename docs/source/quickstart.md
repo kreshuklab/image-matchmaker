@@ -33,25 +33,52 @@ snakemake -s workflows/registration.smk \
     --cores 8
 ```
 
+To try it immediately on the bundled example data, first generate the example data
+(see {doc}`Example Data <example_data>`) and then run the shipped config:
+
+```bash
+snakemake -s workflows/registration.smk \
+    --configfile examples/register_config_test_rigid.yaml \
+    --cores 8
+```
+
 ### Registration config (example)
 
 ```yaml
 fixed_image:
   path: /path/to/the/fixed/image
-  output_name: "fixed_image"
   x_res: 1
   y_res: 1
   z_res: 1
 
 moving_image:
   path: /path/to/the/moving/image
-  output_name: "moving_image"
   x_res: 1
   y_res: 1
   z_res: 1
 
 log_dir: /path/to/the/log/directory
+final_transform_path: /path/to/the/final_transform.json
+
+prealignment:
+  axis_orientation: "auto"
+
+coherent_point_drift:
+  w: 0.00001
+  lmd: 0.1
+  beta: 100
+  maxiter: 100
+
+ILP:
+  min_neighbours: 10
+  max_dist: 30
+
+mobie_export: False
+mobie_dataset_name: "my_dataset"
 ```
+
+See the {doc}`Configuration Reference <config_ref>` for the meaning of each field
+and all available options.
 
 ### Registration outputs
 
@@ -113,3 +140,13 @@ log_dir: /path/to/the/log/directory
 parameter_map_path: /path/to/the/output/parameter/map
 prealignment_transform_path: /path/to/the/pre-alignment/transform
 ```
+
+Both `parameter_map_path` and `prealignment_transform_path` point to files that the
+registration run in step 2 wrote inside its `log_dir`:
+
+- `parameter_map_path` — the final Elastix B-spline transform parameters.
+- `prealignment_transform_path` — the SVD pre-alignment transform.
+
+See {doc}`Understanding the Outputs <outputs>` for exactly where these files are
+located, and the {doc}`Configuration Reference <config_ref>` for a description of
+every transform config field.
