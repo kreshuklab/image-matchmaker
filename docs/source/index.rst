@@ -60,5 +60,6 @@ The pipeline consists of following steps:
 
    installation
    quickstart
+   outputs
    config_ref
    example_data

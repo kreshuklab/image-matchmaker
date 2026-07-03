@@ -55,22 +55,17 @@ log_dir: /path/to/the/log/directory
 
 ### Registration outputs
 
-The registration workflow generates:
+All results are written under `log_dir`: transformed moving masks, the pre-alignment
+and Elastix transform files, the table of correspondences between instances,
+quality-control plots, and per-stage log files.
 
-* transformed moving segmentation masks
-* pre-alignment transforms
-* Elastix transform parameter files
-* Table of correspondence between instances in moving and fixed masks
-* quality-control plots
-* log files for each registration stage
+The final deformable transformation is stored as three sequential Elastix
+transforms (rigid, rough B-spline, fine B-spline) in
+`{log_dir}/elastix_deformable_pointset_registration/`.
 
-The final deformable transformation is typically stored in:
-
-```text
-{log_dir}/elastix_deformable_pointset_registration/TransformParameters.0.txt
-{log_dir}/elastix_deformable_pointset_registration/TransformParameters.1.txt
-{log_dir}/elastix_deformable_pointset_registration/TransformParameters.2.txt
-```
+For a full description of the output folder structure, the QC plots, and how to
+judge whether the registration succeeded, see
+{doc}`Understanding the Outputs <outputs>`.
 
 ---
 
