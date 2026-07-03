@@ -23,7 +23,7 @@ The workflow begins by taking two segmentation masks from different modalities
 alignment pipeline to progressively refine the spatial correspondence between
 the volumes.
 
-The pipeline consists of following steps:
+The pipeline consists of the following steps:
 
 1. **Pre-alignment (SVD):** The masks undergo an initial global alignment using
    Singular Value Decomposition (SVD). This provides a coarse starting
@@ -46,11 +46,15 @@ The pipeline consists of following steps:
       segmentation masks and the established matching landmarks as direct inputs,
       rather than relying on the intermediate results from the CPD stage
 
- **Final Transformation Application**
- The result of the B-spline registration is a sequential transformation comprising
- three refined stages: rigid, rough B-spline, and fine B-spline. This sequence can
- be applied directly to the target channels of the original volumes (e.g., raw EM
- or fluorescence LM) to bring them into a unified coordinate space.
+**Final Transformation Application**
+
+The result of the B-spline registration is a sequential transformation comprising
+three refined stages: rigid, rough B-spline, and fine B-spline. This sequence can
+be applied directly to the target channels of the original volumes (e.g., raw EM
+or fluorescence LM) to bring them into a unified coordinate space.
+
+**Get started:** see :doc:`installation` to set up the environment, then follow the
+:doc:`quickstart` to run your first registration.
 
 ----
 
