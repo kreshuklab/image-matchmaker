@@ -23,4 +23,24 @@ Run:
 pytest -s
 ```
 
+This runs the full registration and apply-transform pipeline on test data, so it
+takes a few minutes rather than finishing instantly. On the first run it also
+downloads reference data from the project's GitHub release, so an internet
+connection is required.
+
+If the download fails, download the
+reference data manually from the
+[release page](https://github.com/kreshuklab/matchmaker/releases/tag/test_data-v1.0)
+and place it under:
+
+```text
+examples/data/test_data/
+```
+
+To silence warnings during the test, append `-p no:warnings`:
+
+```bash
+pytest -s -p no:warnings
+```
+
 If the command finishes without errors, the installation was successful.
