@@ -20,13 +20,14 @@ Path to the original, undeformed segmentation mask. Only used by the example
 data generation script (`examples/deform_test_data.py`) to synthesize deformed
 moving data; not required for a normal registration run.
 
-#### `output_name`
-
-Output key used within the generated `.n5` folder.
-
 #### `input_key` (optional)
 
 Dataset key to read from when the input `path` is an `.n5` file.
+
+#### `name` (optional)
+
+Base name for the output `.n5` container written under `log_dir`. Defaults to
+`fixed_image` / `moving_image` (producing `fixed_image.n5` / `moving_image.n5`).
 
 #### `x_res`, `y_res`, `z_res`
 
@@ -137,7 +138,8 @@ Configuration file passed to `workflows/apply_transform.smk` via `--configfile`.
 
 ### `fixed_image` (optional)
 
-Optional fixed image used for overlay visualization.
+Optional fixed image used to generate overlay visualizations of the warped result.
+If omitted, the overlay is skipped.
 
 #### `input_path`
 
