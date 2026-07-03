@@ -9,10 +9,10 @@ configfile: "examples/register_config_test_rigid.yaml"
 print(config["fixed_image"])
 print(config["moving_image"])
 
-fixed_name = config["fixed_name"] if "fixed_name" in config else "fixed_image"
+fixed_name = config["fixed_image"]["name"] if "name" in config["fixed_image"] else "fixed_image"
 fixed_input_key = config["fixed_image"]["input_key"] if "input_key" in config["fixed_image"] else None
 fixed_n5_path = f"{config['log_dir']}/{fixed_name}.n5"
-moving_name = config["moving_name"] if "moving_name" in config else "moving_image"
+moving_name = config["moving_image"]["name"] if "name" in config["moving_image"] else "moving_image"
 moving_input_key = config["moving_image"]["input_key"] if "input_key" in config["moving_image"] else None
 moving_n5_path = f"{config['log_dir']}/{moving_name}.n5"
 log_dir = config["log_dir"]
