@@ -64,6 +64,8 @@ or fluorescence LM) to bring them into a unified coordinate space.
 
    installation
    quickstart
+   usage
    config_ref
    outputs
    example_data
+   troubleshooting
