@@ -23,7 +23,8 @@ Run:
 pytest -s
 ```
 
-This runs the full registration and apply-transform pipeline on test data, so it
+This runs the full registration and apply-transform pipeline on test data using the
+rigid example configuration (`examples/register_config_test_rigid.yaml`), so it
 takes a few minutes rather than finishing instantly. On the first run it also
 downloads reference data from the project's GitHub release, so an internet
 connection is required.
