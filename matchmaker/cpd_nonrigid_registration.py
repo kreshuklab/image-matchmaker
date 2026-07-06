@@ -8,12 +8,14 @@ import open3d as o3d
 
 from matchmaker.utils import (
     read_volume,
-    get_attrs
+    get_attrs,
+    setup_logging,
+    overlay_pcds,
+    visualize_displacement_field,
+    extract_centroids,
+    cpd_from_pcds,
+    create_pcd,
 )
-
-
-from matchmaker.utils import overlay_pcds, visualize_displacement_field, extract_centroids, cpd_from_pcds, create_pcd
-
 
 
 def run_cpd(fixed_img, fixed_resolution, moving_img, moving_resolution, output_dir, w, beta, lmd, maxiter):
@@ -72,7 +74,6 @@ def run_cpd(fixed_img, fixed_resolution, moving_img, moving_resolution, output_d
     o3d.t.io.write_point_cloud(str(output_dir / "registered_pcd.pcd"), registered_pcd, write_ascii=True)
 
 
-
 @click.command()
 @click.option("-fi", "--fixed_path", required=True, help="Fixed prealigned input .n5 file")
 @click.option("-fk", "--fixed_key", required=True, help="Fixed input key")
@@ -84,16 +85,7 @@ def run_cpd(fixed_img, fixed_resolution, moving_img, moving_resolution, output_d
 @click.option("-lmd", "--lmd", required=True, type=float, help="Parameter of nonrigid CPD")
 @click.option("-maxiter", "--maxiter", required=True, type=int, help="Parameter of nonrigid CPD")
 def main(fixed_path, fixed_key, moving_path, moving_key, output_dir, w, beta, lmd, maxiter):
-
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s [%(levelname)s] %(message)s",
-        handlers=[
-            logging.FileHandler(f"{output_dir}/cpd_nonrigid_registration.log", mode="w"),
-            logging.StreamHandler(sys.stdout),
-        ],
-        datefmt="%Y-%m-%d %H:%M:%S",
-    )
+    setup_logging(output_dir, "cpd_nonrigid_registration.log")
 
     output_dir = Path(output_dir)
     os.makedirs(output_dir / "plots", exist_ok=True)
@@ -116,9 +108,6 @@ def main(fixed_path, fixed_key, moving_path, moving_key, output_dir, w, beta, lm
         output_dir,
         w, beta, lmd, maxiter
     )
-
-
-    
 
 
 if __name__ == "__main__":
