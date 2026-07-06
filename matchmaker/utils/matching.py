@@ -1,14 +1,10 @@
 import numpy as np
 import cvxpy as cp
-
 from scipy.spatial import cKDTree
 from scipy.spatial.distance import cdist
 from scipy.optimize import linear_sum_assignment
 import matplotlib.pyplot as plt
-
-import matplotlib.pyplot as plt
 import seaborn as sns
-import numpy as np
 import logging
 
 
