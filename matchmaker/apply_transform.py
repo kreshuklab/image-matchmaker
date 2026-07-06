@@ -6,7 +6,7 @@ import numpy as np
 import tifffile as tiff
 from pathlib import Path
 
-from utils import (
+from matchmaker.utils import (
     setup_logging,
     read_volume,
     write_volume,
@@ -46,6 +46,36 @@ def save_data(data, output_path, output_key=None, **kwargs):
 
 def apply_transform(moving_img, moving_resolution, parameter_object, interpolation_order,
                     T_fixed=None, output_shape=None):
+    """
+    Apply a (registration) transform to a moving image.
+
+    Warps ``moving_img`` channel-wise using the Elastix ``parameter_object``. If a
+    pre-alignment transform ``T_fixed`` is given, the warped image is additionally
+    rotated into the pre-alignment space.
+
+    Parameters
+    ----------
+    moving_img : numpy.ndarray
+        Image to warp.
+    moving_resolution : sequence of float
+        Voxel spacing of ``moving_img``.
+    parameter_object : itk.ParameterObject
+        Elastix transform parameters to apply.
+    interpolation_order : int
+        Final B-spline interpolation order (use ``0`` for label masks).
+    T_fixed : numpy.ndarray, optional
+        Pre-alignment transform; if given, ``output_shape`` is required.
+    output_shape : sequence of int, optional
+        Output shape for the pre-alignment rotation.
+
+    Returns
+    -------
+    warped : numpy.ndarray
+        The warped image.
+    warp_prealigned : numpy.ndarray or None
+        The warped image in pre-alignment space, or ``None`` if ``T_fixed`` was
+        not given.
+    """
     if T_fixed is not None:
         assert output_shape is not None
 

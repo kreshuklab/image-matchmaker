@@ -14,6 +14,7 @@ I/O
 .. autofunction:: matchmaker.utils.read_volume
 .. autofunction:: matchmaker.utils.write_volume
 .. autofunction:: matchmaker.utils.get_attrs
+.. autofunction:: matchmaker.utils.set_attrs
 .. autofunction:: matchmaker.utils.load_config
 .. autofunction:: matchmaker.utils.download_file
 
@@ -31,7 +32,6 @@ Point clouds
 
 .. autofunction:: matchmaker.utils.extract_centroids
 .. autofunction:: matchmaker.utils.create_pcd
-.. autofunction:: matchmaker.utils.cpd_from_pcds
 .. autofunction:: matchmaker.utils.sparse_ilp_matching
 
 Visualization
@@ -40,6 +40,8 @@ Visualization
 .. autofunction:: matchmaker.utils.plot_three_slices
 .. autofunction:: matchmaker.utils.plot_overlay
 .. autofunction:: matchmaker.utils.overlay_pcds
+.. autofunction:: matchmaker.utils.visualize_displacement_field
+.. autofunction:: matchmaker.utils.plot_matching_qc
 .. autofunction:: matchmaker.mobie_export.export_to_mobie
 
 Pipeline stages
@@ -52,3 +54,8 @@ The main entry function for each registration stage, in pipeline order:
 .. autofunction:: matchmaker.cpd_nonrigid_registration.run_cpd
 .. autofunction:: matchmaker.match_pointclouds.run_matching
 .. autofunction:: matchmaker.elastix_deformable_pointset_registration.run_pointset_registration
+
+Applying transforms
+-------------------
+
+.. autofunction:: matchmaker.apply_transform.apply_transform

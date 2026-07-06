@@ -74,6 +74,18 @@ def get_attrs(f: z5py.File, key: str):
 
 
 def set_attrs(f, key: str, attrs_dict: dict):
+    """
+    Set (or update) attributes on a dataset in an n5/zarr container.
+
+    Parameters
+    ----------
+    f : z5py.File or str or pathlib.Path
+        An open container, or a path to an ``.n5`` file.
+    key : str
+        Dataset key whose attributes are set.
+    attrs_dict : dict
+        Attributes to write; existing keys are overwritten.
+    """
     if isinstance(f, (str, PurePath)):
         f = z5py.File(f, "a")
 

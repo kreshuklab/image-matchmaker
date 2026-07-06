@@ -345,6 +345,27 @@ def visualize_displacement_field(
     center_slice=True,
     max_points=2000,
 ):
+    """
+    Plot the displacement field between a point cloud and its registered version.
+
+    Draws a line from each moving point to its registered position in a 2D
+    projection, so the deformation can be inspected for smoothness.
+
+    Parameters
+    ----------
+    moving_pcd : open3d.t.geometry.PointCloud
+        Point cloud before registration.
+    registered_pcd : open3d.t.geometry.PointCloud
+        The same points after registration.
+    save_path : str, optional
+        If given, the figure is written here; otherwise it is shown.
+    projection : str, optional
+        Two-axis projection plane, e.g. ``"xy"``, ``"yz"`` (default ``"xy"``).
+    center_slice : bool, optional
+        If ``True``, only plot points near the centre-of-mass slice.
+    max_points : int, optional
+        Maximum number of points to plot (default ``2000``).
+    """
     assert (
         len(projection) == 2
     ), f"Projection should be xy, yz or something like that of length 2, not {projection}"
@@ -375,7 +396,30 @@ def visualize_displacement_field(
 def plot_matching_qc(
     fixed_np, moving_np, fig_name, pairs=None, projection="xz", center_slice=True, max_points=500
 ):
+    """
+    Plot matched point-cloud correspondences for quality control.
 
+    Scatters the fixed and moving points in a 2D projection and draws a line
+    between each matched pair, so incorrect (long, crossing) matches are easy to
+    spot.
+
+    Parameters
+    ----------
+    fixed_np : numpy.ndarray
+        ``(N, 3)`` coordinates of the fixed point set.
+    moving_np : numpy.ndarray
+        ``(M, 3)`` coordinates of the moving point set.
+    fig_name : str
+        Path where the figure is saved.
+    pairs : list of tuple of int, optional
+        Matched index pairs ``(i, j)`` into ``fixed_np`` and ``moving_np``.
+    projection : str, optional
+        Two-axis projection plane, e.g. ``"xz"`` (default ``"xz"``).
+    center_slice : bool, optional
+        If ``True``, only plot points near the centre-of-mass slice.
+    max_points : int, optional
+        Maximum number of points to plot (default ``500``).
+    """
     axis_order = {"x": 0, "y": 1, "z": 2}
     d1 = axis_order[projection[0]]
     d2 = axis_order[projection[1]]
