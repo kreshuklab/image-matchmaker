@@ -6,7 +6,7 @@ import numpy as np
 from pathlib import Path
 
 from matchmaker.utils import (read_volume, write_volume, get_attrs, plot_overlay, itk_scalar_img,
-                                run_registration, itk_to_np_order, apply_transform_chanwise,
+                                elastix_registration, itk_to_np_order, apply_transform_chanwise,
                                 setup_logging)
 
 
@@ -38,7 +38,7 @@ def elastix_segm_rigid_alignment(
     ]
 
     logging.info("Run rigid registration with elastix")
-    result_image, result_transform_parameters = run_registration(
+    result_image, result_transform_parameters = elastix_registration(
         fixed_img,
         moving_img,
         parameter_map_paths,
@@ -85,11 +85,11 @@ def run_rigid_alignment(
     is also exported to a MoBIE project.
 
     Args:
-        fixed_path (str): Path to the fixed image .n5 file.
-        fixed_key (str): Key to the fixed image data in the .n5 file.
-        moving_path (str): Path to the moving image .n5 file.
-        moving_key (str): Key to the moving image data in the .n5 file.
-        output_dir (str): Directory where the aligned image should be saved.
+        fixed_img (np.ndarray): Fixed (prealigned) image volume.
+        fixed_resolution (sequence of float): Voxel spacing of the fixed image.
+        moving_img (np.ndarray): Moving (prealigned) image volume.
+        moving_resolution (sequence of float): Voxel spacing of the moving image.
+        output_dir (str): Directory where the aligned image and plots are saved.
 
     Returns:
         np.ndarray: The rigidly aligned moving image.
@@ -161,5 +161,3 @@ def main(fixed_path, fixed_key, moving_path, moving_key, output_dir, output_key,
 
 if __name__ == "__main__":
     main()
-
-# python rigid_alignment_elastix.py -fi ../examples/data/test/platy1_muscles_stardist_fixed_prealigned.n5 -fk seg -mi ../examples/data/test/platy1_muscles_stardist_moving_prealigned.n5 -mk seg -o ../examples/data/test -ok rigid -trans ../examples/data/test/rigid_transform.json

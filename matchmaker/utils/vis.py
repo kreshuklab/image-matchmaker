@@ -163,7 +163,20 @@ def plot_three_slices(
 def plot_overlay(img1, img2, save_path=None, x_pos=None, y_pos=None, z_pos=None,
                  gc1=None, Vt1=None, gc2=None, Vt2=None):
     """
-    Plot slices of two 3D images along each axis.
+    Plot an overlay of two 3D images, sliced along each axis.
+
+    ``img1`` is drawn in pink and ``img2`` in cyan.
+
+    Parameters
+    ----------
+    img1, img2 : numpy.ndarray
+        The two 3D volumes to overlay (must have the same number of dimensions).
+    save_path : str, optional
+        If given, the figure is written here; otherwise it is shown.
+    x_pos, y_pos, z_pos : int, optional
+        Slice indices per axis (default to the centre of mass).
+    gc1, Vt1, gc2, Vt2 : optional
+        Optional centre of mass and principal axes to overlay for each image.
     """
     assert img1.ndim == 3 and img2.ndim == 3
 
@@ -258,7 +271,27 @@ def overlay_pcds(
     max_points=2000,
 ):
     """
-    Overlay two point clouds. Optionally only plot points around COM slice of the point cloud to make it easier to see/
+    Overlay two point clouds in a 2D projection.
+
+    Optionally restricts the plot to points near the centre-of-mass slice to
+    make dense clouds easier to read.
+
+    Parameters
+    ----------
+    fixed_pcd, moving_pcd : open3d.t.geometry.PointCloud
+        Point clouds to overlay (drawn in ``fixed_col`` / ``moving_col``).
+    fixed_col, moving_col : optional
+        Colours for the fixed and moving clouds (default pink / cyan).
+    projection : str, optional
+        Two-axis projection plane, e.g. ``"xy"``, ``"yz"`` (default ``"xy"``).
+    save_path : str, optional
+        If given, the figure is written here; otherwise it is shown.
+    title : str, optional
+        Plot title.
+    center_slice : bool, optional
+        If ``True``, only plot points near the centre-of-mass slice.
+    max_points : int, optional
+        Maximum number of points to plot per cloud (default ``2000``).
     """
     assert (
         len(projection) == 2
