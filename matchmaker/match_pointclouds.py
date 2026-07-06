@@ -7,13 +7,38 @@ import pandas as pd
 
 import open3d as o3d
 
-from matchmaker.utils import sparse_ilp_matching, write_index_pairs, plot_matching_qc
+from matchmaker.utils import sparse_ilp_matching, write_index_pairs, plot_matching_qc, setup_logging
 
 
 
 
-def match_points(fixed_pcd, registered_pcd, output_dir, max_dist, min_neighbours):
+def run_matching(fixed_pcd, registered_pcd, output_dir, max_dist, min_neighbours):
+    """
+    Establish instance correspondences between two point clouds.
 
+    Solves a sparse ILP assignment between the fixed and (CPD-)registered moving
+    point clouds and writes point-matching QC plots to ``output_dir``.
+
+    Parameters
+    ----------
+    fixed_pcd : open3d.t.geometry.PointCloud
+        Fixed point cloud (with a ``label`` attribute).
+    registered_pcd : open3d.t.geometry.PointCloud
+        Registered moving point cloud (with a ``label`` attribute).
+    output_dir : pathlib.Path
+        Directory where the ``point_matching_*`` plots are written.
+    max_dist : float
+        Maximum distance between candidate neighbours.
+    min_neighbours : int
+        Minimum number of neighbours considered per point.
+
+    Returns
+    -------
+    matched_idx_pairs : list of tuple of int
+        Matched index pairs into the two point clouds.
+    matched_label_pairs : list of tuple
+        The corresponding ``(fixed_label, moving_label)`` id pairs.
+    """
     logging.info(f"Number of points in fixed pcd: {len(fixed_pcd.point.positions)}")
     logging.info(
         f"Number of points in moving pcd: {len(registered_pcd.point.positions)}"
@@ -79,16 +104,7 @@ def match_points(fixed_pcd, registered_pcd, output_dir, max_dist, min_neighbours
     help="Maximum distance between neighbours to consider for matching",
 )
 def main(fixed_pcd, moving_pcd, output_dir, min_neighbours, max_dist):
-
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s [%(levelname)s] %(message)s",
-        handlers=[
-            logging.FileHandler(f"{output_dir}/match_pointclouds.log", mode="w"),
-            logging.StreamHandler(sys.stdout),
-        ],
-        datefmt="%Y-%m-%d %H:%M:%S",
-    )
+    setup_logging(output_dir, "match_pointclouds.log")
 
     output_dir = Path(output_dir)
     os.makedirs(output_dir / "plots", exist_ok=True)
@@ -99,7 +115,7 @@ def main(fixed_pcd, moving_pcd, output_dir, min_neighbours, max_dist):
     logging.info("Reading moving point cloud")
     moving_pcd = o3d.t.io.read_point_cloud(moving_pcd)
 
-    matched_idx_pairs, matched_label_pairs = match_points(
+    matched_idx_pairs, matched_label_pairs = run_matching(
         fixed_pcd, moving_pcd, output_dir, max_dist, min_neighbours
     )
 
