@@ -69,3 +69,4 @@ or fluorescence LM) to bring them into a unified coordinate space.
    outputs
    example_data
    troubleshooting
+   api

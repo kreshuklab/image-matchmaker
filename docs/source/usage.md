@@ -129,7 +129,7 @@ from matchmaker.utils import (
 
 Higher-level stage functions are available from their modules, e.g.
 `prealign_samples` / `run_prealignment` (`matchmaker.prealignment`),
-`cpd_from_images` (`matchmaker.cpd_nonrigid_registration`), and `match_points`
+`run_cpd` (`matchmaker.cpd_nonrigid_registration`), and `run_matching`
 (`matchmaker.match_pointclouds`).
 
 A minimal example — pre-align two masks and save an overlay:
