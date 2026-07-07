@@ -30,8 +30,8 @@ moving_spacing = [config["moving_image"]["z_res"], config["moving_image"]["y_res
 
 rule all:
     input:
-        best_params   = f"{log_dir}/best_cpd_params.yaml",
-        study_results = f"{log_dir}/study_results.csv",
+        best_params   = f"{log_dir}/cpd_optimization/best_cpd_params.yaml",
+        study_results = f"{log_dir}/cpd_optimization/study_results.csv",
 
 
 rule input_to_n5:
@@ -153,12 +153,12 @@ rule optimize_cpd:
         config            = workflow.configfiles[0],
         landmark_ids_json = landmark_ids_json,
     output:
-        best_params   = f"{log_dir}/best_cpd_params.yaml",
-        study_results = f"{log_dir}/study_results.csv",
+        best_params   = f"{log_dir}/cpd_optimization/best_cpd_params.yaml",
+        study_results = f"{log_dir}/cpd_optimization/study_results.csv",
     params:
         fixed_path  = fixed_n5_path,
         moving_path = moving_n5_path,
-    log: f"{log_dir}/cpd_optimization.log"
+    log: f"{log_dir}/cpd_optimization/cpd_optimization.log"
     shell:
         "python matchmaker/cpd_parameter_tuning/cpd_optimization.py "
         "--config {input.config} "

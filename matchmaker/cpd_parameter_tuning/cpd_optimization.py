@@ -1,4 +1,7 @@
 import json
+import os
+import shutil
+import tempfile
 import threading
 import click
 import logging
@@ -111,7 +114,28 @@ def run_optimization(fixed_pcd, moving_pcd, fixed_labels, moving_labels,
     plots_dir = output_dir / "plots"
     plots_dir.mkdir(exist_ok=True)
 
-    storage = f"sqlite:///{output_dir}/optuna_study.db"
+    # SQLite does not tolerate concurrent writers on a network filesystem:
+    # with n_jobs>1 the parallel trial workers collide on Lustre's unreliable
+    # file locking and every commit dies with "database is locked". Keep the
+    # study DB on node-local disk during the run, then copy it back to
+    # output_dir for provenance.
+    final_db_path = output_dir / "optuna_study.db"
+    local_base = os.environ.get("LOCAL_TMPDIR") or tempfile.gettempdir()
+    local_db_dir = Path(tempfile.mkdtemp(prefix="optuna_", dir=local_base))
+    local_db_path = local_db_dir / "optuna_study.db"
+    # Preserve load_if_exists resume semantics: seed the local DB from a prior run.
+    if final_db_path.exists():
+        shutil.copy2(final_db_path, local_db_path)
+        logging.info(f"Seeded local study DB from existing {final_db_path}")
+    # Even on local disk SQLite throws "database is locked" during the initial
+    # burst when all n_jobs workers register their trials at once. A long
+    # busy-timeout makes a blocked writer wait for the lock (up to 100 s) instead
+    # of erroring out immediately.
+    storage = optuna.storages.RDBStorage(
+        url=f"sqlite:///{local_db_path}",
+        engine_kwargs={"connect_args": {"timeout": 100}},
+    )
+
     sampler = GridSampler(search_space)
     study = optuna.create_study(
         study_name=study_name,
@@ -120,9 +144,17 @@ def run_optimization(fixed_pcd, moving_pcd, fixed_labels, moving_labels,
         storage=storage,
         load_if_exists=True,
     )
-    logging.info(f"Optuna study stored at {output_dir}/optuna_study.db")
+    logging.info(f"Optuna study stored on local disk at {local_db_path}")
     logging.info(f"Running {n_trials} trials with n_jobs={n_jobs}")
-    study.optimize(objective, n_trials=n_trials, n_jobs=n_jobs)
+    try:
+        study.optimize(objective, n_trials=n_trials, n_jobs=n_jobs)
+    finally:
+        # Copy the study DB back (even on failure) so partial runs stay inspectable.
+        try:
+            shutil.copy2(local_db_path, final_db_path)
+            logging.info(f"Copied study DB to {final_db_path}")
+        except OSError as e:
+            logging.warning(f"Could not copy study DB to {final_db_path}: {e}")
 
     best = study.best_trial
     logging.info(
@@ -183,7 +215,8 @@ def main(config, landmark_ids_json, fixed_path, moving_path):
     with open(config) as f:
         cfg = yaml.safe_load(f)
 
-    output_dir = Path(cfg["log_dir"])
+    log_dir = Path(cfg["log_dir"])
+    output_dir = log_dir / "cpd_optimization"
     output_dir.mkdir(parents=True, exist_ok=True)
     setup_logging(str(output_dir), "cpd_optimization.log")
 
@@ -193,7 +226,7 @@ def main(config, landmark_ids_json, fixed_path, moving_path):
     moving_path = moving_path or cfg["moving_image"]["path"]
     moving_key = cfg["moving_image"]["aligned_key"]
 
-    landmark_ids_path = Path(landmark_ids_json) if landmark_ids_json else output_dir / "landmark_label_ids.json"
+    landmark_ids_path = Path(landmark_ids_json) if landmark_ids_json else log_dir / "landmark_label_ids.json"
     with open(landmark_ids_path) as f:
         id_map = {name: int(lbl) for name, lbl in json.load(f).items()}
     logging.info(f"Loaded {len(id_map)} landmark label IDs from {landmark_ids_path}")
