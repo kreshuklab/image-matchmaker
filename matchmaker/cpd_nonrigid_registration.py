@@ -3,15 +3,17 @@ import sys
 import click
 import logging
 from pathlib import Path
-
 import open3d as o3d
 
 from matchmaker.utils import (
     read_volume,
-    get_attrs
+    get_attrs,
+    overlay_pcds,
+    visualize_displacement_field,
+    extract_centroids,
+    run_cpd,
+    create_pcd,
 )
-
-from matchmaker.utils import overlay_pcds, visualize_displacement_field, extract_centroids, run_cpd, create_pcd
 
 
 def cpd_from_images(fixed_img, fixed_resolution, moving_img, moving_resolution, output_dir, w, beta, lmd, maxiter):
@@ -57,12 +59,6 @@ def cpd_from_images(fixed_img, fixed_resolution, moving_img, moving_resolution, 
     visualize_displacement_field(
         moving_pcd,
         registered_pcd,
-        projection="xz",
-        save_path=output_dir / "plots/displacement_field_xz.pdf",
-    )
-    visualize_displacement_field(
-        moving_pcd,
-        registered_pcd,
         projection="yz",
         save_path=output_dir / "plots/displacement_field_yz.png",
     )
@@ -76,7 +72,6 @@ def cpd_from_images(fixed_img, fixed_resolution, moving_img, moving_resolution, 
     o3d.t.io.write_point_cloud(str(output_dir / "fixed_pcd.pcd"), fixed_pcd, write_ascii=True)
     o3d.t.io.write_point_cloud(str(output_dir / "moving_pcd.pcd"), moving_pcd, write_ascii=True)
     o3d.t.io.write_point_cloud(str(output_dir / "registered_pcd.pcd"), registered_pcd, write_ascii=True)
-
 
 
 @click.command()
