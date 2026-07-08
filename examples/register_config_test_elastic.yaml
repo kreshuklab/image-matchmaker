@@ -29,7 +29,7 @@ coherent_point_drift:
 
 ILP:
   min_neighbours: 10
-  max_dist: 30
+  max_dist: 30  # reduce if matching step runs out of memory
 
 mobie_export: False
 semantic_seg: True

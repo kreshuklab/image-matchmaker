@@ -4,8 +4,19 @@ import open3d as o3d
 import seaborn as sns
 import matplotlib.colors as mcolors
 import logging
+from pathlib import Path
+from skimage.color import label2rgb
 
 from matchmaker.preprocessing import percentile_norm
+
+# Change to 'png' or None (infer from path extension) to switch output format
+PLOT_FORMAT = 'pdf'
+
+
+def _savefig(save_path, dpi=300):
+    if PLOT_FORMAT is not None and save_path is not None:
+        save_path = Path(save_path).with_suffix(f'.{PLOT_FORMAT}')
+    plt.savefig(save_path, dpi=dpi)
 
 
 PINK_HEX = '#FF3E96'
@@ -47,6 +58,13 @@ def get_cyan_cmap():
 
 PINK = get_pink_cmap()
 CYAN = get_cyan_cmap()
+
+
+class _LabelCmap:
+    pass
+
+
+LABEL = _LabelCmap()
 
 
 def _slice_gc_coords(gc, axis):
@@ -143,9 +161,13 @@ def plot_three_slices(
     for i, (axis, pos, s, a) in enumerate(slices, 1):
         plt.subplot(1, 3, i)
         plt.title(f"{'zyx'[axis]} slice at {pos}")
-        semantic = cmap is PINK or cmap is CYAN
-        display = (s > 0).astype(np.float32) if semantic else s
-        plt.imshow(display, cmap=cmap, alpha=a, vmin=0 if semantic else None, vmax=1 if semantic else None)
+        if cmap is LABEL:
+            display = label2rgb(s, bg_label=0, bg_color=(1, 1, 1))
+            plt.imshow(display)
+        else:
+            semantic = cmap is PINK or cmap is CYAN
+            display = (s > 0).astype(np.float32) if semantic else s
+            plt.imshow(display, cmap=cmap, alpha=a, vmin=0 if semantic else None, vmax=1 if semantic else None)
 
         if gc is not None:
             px, py = _slice_gc_coords(gc, axis)
@@ -155,7 +177,7 @@ def plot_three_slices(
     if save_path is None:
         plt.show()
     else:
-        plt.savefig(save_path, dpi=300)
+        _savefig(save_path)
 
     plt.close()
 
@@ -205,7 +227,7 @@ def plot_overlay(img1, img2, save_path=None, x_pos=None, y_pos=None, z_pos=None,
     if save_path is None:
         plt.show()
     else:
-        plt.savefig(save_path, dpi=300)
+        _savefig(save_path)
 
     plt.close()
 
@@ -300,7 +322,7 @@ def overlay_pcds(
     if save_path is None:
         plt.show()
     else:
-        plt.savefig(save_path, dpi=300)
+        _savefig(save_path)
     plt.close()
 
 
@@ -335,7 +357,7 @@ def visualize_displacement_field(
     if save_path is None:
         plt.show()
     else:
-        plt.savefig(save_path, dpi=300)
+        _savefig(save_path)
     plt.close()
 
 
@@ -390,7 +412,7 @@ def plot_matching_qc(
     plt.axis("equal")
     plt.gca().invert_yaxis()
 
-    plt.savefig(fig_name, dpi=300)
+    _savefig(fig_name)
     plt.close()
 
 
