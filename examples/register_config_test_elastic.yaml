@@ -25,9 +25,10 @@ coherent_point_drift:
   w: 0.00001
   lmd: 0.1
   beta: 100
-  maxiter: 100 # Can be set to 10-20 for debugging purpose, should be 100-150
+  maxiter: 10 # Can be set to 10-20 for debugging purpose, should be 100-150
 
-ILP:
+matching:
+  method: ilp        # ilp | hungarian | sinkhorn
   min_neighbours: 10
   max_dist: 30  # reduce if matching step runs out of memory
 

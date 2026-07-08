@@ -1,12 +1,10 @@
 import numpy as np
 import cvxpy as cp
-
 from scipy.spatial import cKDTree
-import matplotlib.pyplot as plt
-
+from scipy.spatial.distance import cdist
+from scipy.optimize import linear_sum_assignment
 import matplotlib.pyplot as plt
 import seaborn as sns
-import numpy as np
 import logging
 
 
@@ -108,4 +106,68 @@ def write_index_pairs(pairs, pairs_path):
 def read_index_pairs(pairs_path):
     with open(pairs_path, "r") as f:
         pairs = [(int(l.split(",")[0]), int(l.split(",")[1])) for l in f.readlines()]
+    return pairs
+
+
+def hungarian_matching(pos_1, pos_2, max_dist, **_):
+    """
+    Optimal one-to-one matching via the Hungarian algorithm
+    (scipy.optimize.linear_sum_assignment) on the dense euclidean distance
+    matrix. Pairs farther apart than max_dist are dropped afterwards, so the
+    result is a partial matching like the ILP matcher.
+
+    Returns a list of (idx_in_pos_1, idx_in_pos_2) tuples.
+    """
+    logging.info("Calculate cost matrix (dense euclidean distance)")
+    cost = cdist(pos_1, pos_2).astype(np.float32)
+    logging.info(f"Cost matrix shape: {cost.shape}")
+
+    logging.info("Solve one-to-one assignment (Hungarian)")
+    row, col = linear_sum_assignment(cost)
+
+    pairs = [
+        (int(r), int(c))
+        for r, c in zip(row, col)
+        if cost[r, c] <= max_dist
+    ]
+    logging.info(
+        f"Matched {len(pairs)} pairs (dropped {len(row) - len(pairs)} above max_dist={max_dist})"
+    )
+    return pairs
+
+
+def sinkhorn_matching(pos_1, pos_2, max_dist, tau=1.0, max_iter=500, **_):
+    """
+    Soft assignment via the Sinkhorn algorithm (pygmtools.linear_solvers.sinkhorn)
+    on a similarity matrix derived from euclidean distances, discretized to a
+    one-to-one matching with the Hungarian algorithm. Pairs farther apart than
+    max_dist are dropped afterwards.
+
+    Returns a list of (idx_in_pos_1, idx_in_pos_2) tuples.
+    """
+    import pygmtools as pygm
+
+    pygm.BACKEND = "numpy"
+
+    logging.info("Calculate cost matrix (dense euclidean distance)")
+    dist = cdist(pos_1, pos_2).astype(np.float32)
+    logging.info(f"Cost matrix shape: {dist.shape}")
+
+    # distance -> similarity (higher = better), scaled by the mean distance
+    s = np.exp(-dist / (tau * dist.mean()))
+
+    logging.info(f"Run Sinkhorn (tau={tau}, max_iter={max_iter})")
+    soft = np.asarray(pygm.sinkhorn(s, max_iter=max_iter, tau=tau))
+
+    logging.info("Discretize soft assignment (Hungarian)")
+    row, col = linear_sum_assignment(-soft)
+
+    pairs = [
+        (int(r), int(c))
+        for r, c in zip(row, col)
+        if dist[r, c] <= max_dist
+    ]
+    logging.info(
+        f"Matched {len(pairs)} pairs (dropped {len(row) - len(pairs)} above max_dist={max_dist})"
+    )
     return pairs
