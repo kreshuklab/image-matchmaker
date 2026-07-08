@@ -177,13 +177,16 @@ cython_debug/
 examples/data/test/
 examples/data/deformed_data/
 examples/data/test_data/
-data
+/data
 
 # huge data
 *.tif
 *.n5/
 *.png
 *.ome.zarr/
+
+# allow example tif files
+!examples/data/platy1_muscles_stardist_fixed.tif
 
 .DS_Store
 
