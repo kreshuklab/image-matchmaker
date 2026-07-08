@@ -42,7 +42,7 @@ lmd = config["coherent_point_drift"]["lmd"]
 maxiter = config["coherent_point_drift"]["maxiter"]
 
 # matching parameters
-matching_method = config["matching"].get("method", "ilp")
+matching_method = config["matching"].get("method", "hungarian")
 min_neighbours = config["matching"]["min_neighbours"]
 max_dist = config["matching"]["max_dist"]
 sinkhorn_tau = config["matching"].get("tau", 1.0)
