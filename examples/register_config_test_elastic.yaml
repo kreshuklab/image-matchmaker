@@ -28,7 +28,7 @@ coherent_point_drift:
   maxiter: 10 # Can be set to 10-20 for debugging purpose, should be 100-150
 
 matching:
-  method: sinkhorn        # ilp | hungarian | sinkhorn
+  method: ilp        # ilp | hungarian | sinkhorn
   min_neighbours: 10
   max_dist: 30  # reduce if matching step runs out of memory
 
