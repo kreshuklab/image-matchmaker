@@ -4,8 +4,19 @@ import open3d as o3d
 import seaborn as sns
 import matplotlib.colors as mcolors
 import logging
+from pathlib import Path
+from skimage.color import label2rgb
 
 from matchmaker.preprocessing import percentile_norm
+
+# Change to 'png' or None (infer from path extension) to switch output format
+PLOT_FORMAT = 'pdf'
+
+
+def _savefig(save_path, dpi=300):
+    if PLOT_FORMAT is not None and save_path is not None:
+        save_path = Path(save_path).with_suffix(f'.{PLOT_FORMAT}')
+    plt.savefig(save_path, dpi=dpi)
 
 
 PINK_HEX = '#FF3E96'
@@ -47,6 +58,13 @@ def get_cyan_cmap():
 
 PINK = get_pink_cmap()
 CYAN = get_cyan_cmap()
+
+
+class _LabelCmap:
+    pass
+
+
+LABEL = _LabelCmap()
 
 
 def _slice_gc_coords(gc, axis):
@@ -143,9 +161,13 @@ def plot_three_slices(
     for i, (axis, pos, s, a) in enumerate(slices, 1):
         plt.subplot(1, 3, i)
         plt.title(f"{'zyx'[axis]} slice at {pos}")
-        semantic = cmap is PINK or cmap is CYAN
-        display = (s > 0).astype(np.float32) if semantic else s
-        plt.imshow(display, cmap=cmap, alpha=a, vmin=0 if semantic else None, vmax=1 if semantic else None)
+        if cmap is LABEL:
+            display = label2rgb(s, bg_label=0, bg_color=(1, 1, 1))
+            plt.imshow(display)
+        else:
+            semantic = cmap is PINK or cmap is CYAN
+            display = (s > 0).astype(np.float32) if semantic else s
+            plt.imshow(display, cmap=cmap, alpha=a, vmin=0 if semantic else None, vmax=1 if semantic else None)
 
         if gc is not None:
             px, py = _slice_gc_coords(gc, axis)
@@ -155,8 +177,65 @@ def plot_three_slices(
     if save_path is None:
         plt.show()
     else:
-        plt.savefig(save_path, dpi=300)
+        _savefig(save_path)
 
+    plt.close()
+
+
+def plot_landmark_qc(
+    seg_with_lm,
+    id_map,
+    save_path=None,
+    cell_cmap=None,
+    landmark_color="red",
+):
+    """Three-slice QC plot: cells in cell_cmap, each landmark centroid as a labeled scatter dot.
+
+    Landmark positions are projected onto the mid-slice of each axis so all landmarks
+    are visible regardless of depth, making it easy to confirm placements visually.
+
+    Args:
+        seg_with_lm: ZYX integer array with landmark spheres embedded at label IDs from id_map
+        id_map: {landmark_name: label_id}
+        save_path: output path; shows interactively if None
+        cell_cmap: colormap for regular cells (default: PINK)
+        landmark_color: scatter / text color for landmarks (default: "red")
+    """
+    if cell_cmap is None:
+        cell_cmap = PINK
+
+    min_lm_id = min(id_map.values())
+    cells = (seg_with_lm > 0) & (seg_with_lm < min_lm_id)
+
+    lm_centroids = {}
+    for name, lbl in id_map.items():
+        voxels = np.argwhere(seg_with_lm == lbl)
+        if len(voxels) == 0:
+            logging.warning(f"Landmark {name!r} (id={lbl}) not found in segmentation")
+            continue
+        lm_centroids[name] = voxels.mean(axis=0)  # [z, y, x]
+
+    fig, axes = plt.subplots(1, 3, figsize=(18, 6))
+    proj_specs = [
+        (0, "xy projection", cells.max(axis=0)),
+        (1, "xz projection", cells.max(axis=1)),
+        (2, "yz projection", cells.max(axis=2)),
+    ]
+
+    for ax, (axis, title, s) in zip(axes, proj_specs):
+        ax.set_title(title)
+        ax.imshow(s.astype(np.float32), cmap=cell_cmap, vmin=0, vmax=1, alpha=0.5)
+        for name, c in lm_centroids.items():
+            col, row = _slice_gc_coords(c, axis)
+            ax.scatter(col, row, c=landmark_color, s=15, zorder=5, linewidths=0)
+            ax.text(col + 2, row, name, fontsize=4, color=landmark_color, zorder=6, va="center")
+        ax.invert_yaxis()
+
+    plt.tight_layout()
+    if save_path is None:
+        plt.show()
+    else:
+        plt.savefig(save_path, dpi=300, bbox_inches="tight")
     plt.close()
 
 
@@ -205,7 +284,7 @@ def plot_overlay(img1, img2, save_path=None, x_pos=None, y_pos=None, z_pos=None,
     if save_path is None:
         plt.show()
     else:
-        plt.savefig(save_path, dpi=300)
+        _savefig(save_path)
 
     plt.close()
 
@@ -300,7 +379,7 @@ def overlay_pcds(
     if save_path is None:
         plt.show()
     else:
-        plt.savefig(save_path, dpi=300)
+        _savefig(save_path)
     plt.close()
 
 
@@ -311,6 +390,7 @@ def visualize_displacement_field(
     projection="xy",
     center_slice=True,
     max_points=2000,
+    title=None,
 ):
     assert (
         len(projection) == 2
@@ -332,10 +412,12 @@ def visualize_displacement_field(
 
     plt.axis("equal")
     plt.gca().invert_yaxis()
+    if title is not None:
+        plt.title(title, fontsize=8)
     if save_path is None:
         plt.show()
     else:
-        plt.savefig(save_path, dpi=300)
+        _savefig(save_path)
     plt.close()
 
 
@@ -390,7 +472,7 @@ def plot_matching_qc(
     plt.axis("equal")
     plt.gca().invert_yaxis()
 
-    plt.savefig(fig_name, dpi=300)
+    _savefig(fig_name)
     plt.close()
 
 

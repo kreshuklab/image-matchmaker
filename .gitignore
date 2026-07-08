@@ -192,3 +192,6 @@ data
 
 # Ignore temporary files from mobie
 tmp*
+
+hpc_configs/
+*.out
