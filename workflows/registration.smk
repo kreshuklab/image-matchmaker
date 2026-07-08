@@ -4,7 +4,6 @@ from pathlib import Path
 root_dir = f"{Path(workflow.basedir).resolve().parent}/"
 print(f"working directory: {root_dir}")
 workdir: root_dir
-configfile: "examples/register_config_test_rigid.yaml"
 
 print(config["fixed_image"])
 print(config["moving_image"])
@@ -90,7 +89,6 @@ rule input_to_n5:
     params:
         output_key = raw_n5_key
     log: f"{log_dir}/matchmaker.log"
-    conda: "matchmaker_env"
     shell:
         f"rm -r {{output.fixed_image_n5}};"
         f"rm -r {{output.moving_image_n5}};"
@@ -116,7 +114,6 @@ rule SVD_prealignment:
         output_key = prealignment_n5_key,
         axis_orientation = config["prealignment"]["axis_orientation"]
     log: f"{log_dir}/matchmaker.log"
-    conda: "matchmaker_env"
     shell:
         f"python matchmaker/prealignment.py --fixed_path {{input.fixed_image_n5}} --fixed_key {{params.input_key}} --fixed_spacing {{fixed_spacing}} --moving_path {{input.moving_image_n5}} --moving_key {{params.input_key}} --moving_spacing {{moving_spacing}} --output_dir {log_dir}/{{params.output_key}}  --output_key {{params.output_key}} --output_transform_path {{output.output_transform}} --axis_orientation {{params.axis_orientation}};"
 
@@ -137,7 +134,6 @@ rule rigid_alignment:
         input_key = prealignment_n5_key,
         output_key = rigid_alignment_n5_key
     log: f"{log_dir}/matchmaker.log"
-    conda: "matchmaker_env"
     shell:
         f"python matchmaker/rigid_alignment_elastix.py --fixed_path {{input.fixed_image_n5}} --fixed_key {{params.input_key}} --moving_path {{input.moving_image_n5}} --moving_key {{params.input_key}} --output_dir {log_dir}/{{params.output_key}} --output_key {{params.output_key}};"
 
@@ -157,7 +153,6 @@ rule create_mobie_project:
     params:
         input_key = raw_n5_key
     log: f"{log_dir}/matchmaker.log"
-    conda: "matchmaker_env"
     shell:
         f"python matchmaker/mobie_export.py --input_path {{input.fixed_image_n5}} --input_key {{params.input_key}} --input_type {fixed_type} {'--semantic_seg' if semantic_seg else ''} --dataset_name {dataset_name} --output_dir {log_dir};"
         f"touch {{output.fixed_check}};"
@@ -186,7 +181,6 @@ rule add_prealignment_to_mobie:
     params:
         input_key = prealignment_n5_key
     log: f"{log_dir}/matchmaker.log"
-    conda: "matchmaker_env"
     shell:
         f"python matchmaker/mobie_export.py --input_path {{input.fixed_image_n5}} --input_key {{params.input_key}} --input_type {fixed_type} {'--semantic_seg' if semantic_seg else ''} --dataset_name {dataset_name} --output_dir {log_dir};"
         f"touch {{output.fixed_check}};"
@@ -212,7 +206,6 @@ rule add_rigid_alignment_to_mobie:
     params:
         input_key = rigid_alignment_n5_key
     log: f"{log_dir}/matchmaker.log"
-    conda: "matchmaker_env"
     shell:
         f"python matchmaker/mobie_export.py --input_path {{input.moving_image_n5}} --input_key {{params.input_key}} --input_type {moving_type} {'--semantic_seg' if semantic_seg else ''} --dataset_name {dataset_name} --output_dir {log_dir};"
         f"touch {{output.moving_check}};"
@@ -234,7 +227,6 @@ rule cpd_nonrigid_registration:
         fixed_key = prealignment_n5_key,
         moving_key = rigid_alignment_n5_key
     log: f"{log_dir}/matchmaker.log"
-    conda: "matchmaker_env"
     shell:
         f"python matchmaker/cpd_nonrigid_registration.py --moving_path {{input.moving_image_n5}} --moving_key {{params.moving_key}} --fixed_path {{input.fixed_image_n5}} --fixed_key {{params.fixed_key}} -o {{params.log_dir}} --w {w} --beta {beta} --lmd {lmd} --maxiter {maxiter};"
 
@@ -248,7 +240,6 @@ rule ilp_matching:
     params:
         log_dir = f"{log_dir}/match_pointclouds"
     log: f"{log_dir}/matchmaker.log"
-    conda: "matchmaker_env"
     shell:
         f"python matchmaker/match_pointclouds.py --fixed_pcd {{input.fixed_pcd}} --moving_pcd {{input.moving_pcd}} -o {{params.log_dir}} --min_neighbours {min_neighbours} --max_dist {max_dist};"
 
@@ -273,7 +264,6 @@ rule elastix_deformable_pointset:
         prealigned_output_key = pointset_alignment_n5_key,
         log_dir = f"{log_dir}/elastix_deformable_pointset_registration"
     log: f"{log_dir}/matchmaker.log"
-    conda: "matchmaker_env"
     shell:
         f"python matchmaker/elastix_deformable_pointset_registration.py --fixed_path {{input.fixed_image_n5}} --fixed_key {{params.input_key}} --moving_path {{input.moving_image_n5}} --moving_key {{params.input_key}} --output_dir {{params.log_dir}}  --output_key {{params.output_key}} --match_path {{input.match_path}} --prealigned_output_key {{params.prealigned_output_key}} --prealignment_transform {{input.prealignment_transform}};"
 
@@ -288,7 +278,6 @@ rule add_elastix_deformable_pointset_to_mobie:
     params:
         input_key = pointset_alignment_input_space_n5_key
     log: f"{log_dir}/matchmaker.log"
-    conda: "matchmaker_env"
     shell:
         f"python matchmaker/mobie_export.py --input_path {{input.moving_image_n5}} --input_key {{params.input_key}} --input_type {moving_type} {'--semantic_seg' if semantic_seg else ''} --dataset_name {dataset_name} --output_dir {log_dir};"
         f"touch {{output.moving_check}};"
