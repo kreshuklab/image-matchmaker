@@ -14,7 +14,7 @@ dependencies:
     - git-lfs
 
     - scikit-image
-    # - optuna
+    - optuna
     # - proxsuite
     - cvxpy
     - transforms3d
@@ -39,4 +39,5 @@ dependencies:
         - itk
         - snakemake
         - probreg
+        - pygmtools
         - -e .

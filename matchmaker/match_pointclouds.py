@@ -7,13 +7,27 @@ import pandas as pd
 
 import open3d as o3d
 
-from matchmaker.utils import sparse_ilp_matching, write_index_pairs, plot_matching_qc, setup_logging
+from matchmaker.utils import (
+    sparse_ilp_matching,
+    hungarian_matching,
+    sinkhorn_matching,
+    write_index_pairs,
+    plot_matching_qc,
+    setup_logging,
+)
 
 
-
-
-def run_matching(fixed_pcd, registered_pcd, output_dir, max_dist, min_neighbours):
+def run_matching(
+    fixed_pcd,
+    registered_pcd,
+    output_dir,
+    max_dist,
+    min_neighbours,
+    method="ilp",
+    tau=1.0,
+    sinkhorn_max_iter=500,):
     """
+    #TODO: update docstring
     Establish instance correspondences between two point clouds.
 
     Solves a sparse ILP assignment between the fixed and (CPD-)registered moving
@@ -54,8 +68,19 @@ def run_matching(fixed_pcd, registered_pcd, output_dir, max_dist, min_neighbours
         pos_2 = fixed_pcd.point.positions.numpy()
         swap_order = True
 
-    matched_idx_pairs = sparse_ilp_matching(pos_1, pos_2, max_dist=max_dist, min_neighbours=min_neighbours)
-    matched_idx_pairs = sparse_ilp_matching(pos_1, pos_2, max_dist=max_dist, min_neighbours=min_neighbours)
+    logging.info(f"Matching method: {method}")
+    if method == "ilp":
+        matched_idx_pairs = sparse_ilp_matching(
+            pos_1, pos_2, max_dist=max_dist, min_neighbours=min_neighbours
+        )
+    elif method == "hungarian":
+        matched_idx_pairs = hungarian_matching(pos_1, pos_2, max_dist=max_dist)
+    elif method == "sinkhorn":
+        matched_idx_pairs = sinkhorn_matching(
+            pos_1, pos_2, max_dist=max_dist, tau=tau, max_iter=sinkhorn_max_iter
+        )
+    else:
+        raise ValueError(f"Unknown matching method: {method}")
 
     if swap_order:
         matched_idx_pairs = [(p2, p1) for p1, p2 in matched_idx_pairs]
@@ -69,16 +94,14 @@ def run_matching(fixed_pcd, registered_pcd, output_dir, max_dist, min_neighbours
     ]
 
     if swap_order:
-        plot_matching_qc(pos_2, pos_1, output_dir / "point_matching_xz.png", pairs=matched_idx_pairs, projection="xz")
-        plot_matching_qc(pos_2, pos_1, output_dir / "point_matching_yz.png", pairs=matched_idx_pairs, projection="yz")
-        plot_matching_qc(pos_2, pos_1, output_dir / "point_matching_xy.png", pairs=matched_idx_pairs, projection="xy")
+        plot_matching_qc(pos_2, pos_1, output_dir / "plots/point_matching_xz.png", pairs=matched_idx_pairs, projection="xz")
+        plot_matching_qc(pos_2, pos_1, output_dir / "plots/point_matching_yz.png", pairs=matched_idx_pairs, projection="yz")
+        plot_matching_qc(pos_2, pos_1, output_dir / "plots/point_matching_xy.png", pairs=matched_idx_pairs, projection="xy")
 
     else:
-        plot_matching_qc(pos_1, pos_2, output_dir / "point_matching_xz.png", pairs=matched_idx_pairs, projection="xz")
-        plot_matching_qc(pos_1, pos_2, output_dir / "point_matching_yz.png", pairs=matched_idx_pairs, projection="yz")
-        plot_matching_qc(pos_1, pos_2, output_dir / "point_matching_xy.png", pairs=matched_idx_pairs, projection="xy")
-
-    
+        plot_matching_qc(pos_1, pos_2, output_dir / "plots/point_matching_xz.png", pairs=matched_idx_pairs, projection="xz")
+        plot_matching_qc(pos_1, pos_2, output_dir / "plots/point_matching_yz.png", pairs=matched_idx_pairs, projection="yz")
+        plot_matching_qc(pos_1, pos_2, output_dir / "plots/point_matching_xy.png", pairs=matched_idx_pairs, projection="xy")
 
     return matched_idx_pairs, matched_label_pairs
 
@@ -103,7 +126,38 @@ def run_matching(fixed_pcd, registered_pcd, output_dir, max_dist, min_neighbours
     type=float,
     help="Maximum distance between neighbours to consider for matching",
 )
-def main(fixed_pcd, moving_pcd, output_dir, min_neighbours, max_dist):
+@click.option(
+    "--method",
+    type=click.Choice(["ilp", "hungarian", "sinkhorn"]),
+    default="ilp",
+    show_default=True,
+    help="Matching algorithm to use",
+)
+@click.option(
+    "--tau",
+    type=float,
+    default=1.0,
+    show_default=True,
+    help="Sinkhorn entropy regularization parameter (sinkhorn only)",
+)
+@click.option(
+    "--sinkhorn_max_iter",
+    type=int,
+    default=500,
+    show_default=True,
+    help="Maximum number of Sinkhorn iterations (sinkhorn only)",
+)
+def main(
+    fixed_pcd,
+    moving_pcd,
+    output_dir,
+    min_neighbours,
+    max_dist,
+    method,
+    tau,
+    sinkhorn_max_iter,
+):
+
     setup_logging(output_dir, "match_pointclouds.log")
 
     output_dir = Path(output_dir)
@@ -116,7 +170,14 @@ def main(fixed_pcd, moving_pcd, output_dir, min_neighbours, max_dist):
     moving_pcd = o3d.t.io.read_point_cloud(moving_pcd)
 
     matched_idx_pairs, matched_label_pairs = run_matching(
-        fixed_pcd, moving_pcd, output_dir, max_dist, min_neighbours
+        fixed_pcd,
+        moving_pcd,
+        output_dir,
+        max_dist,
+        min_neighbours,
+        method=method,
+        tau=tau,
+        sinkhorn_max_iter=sinkhorn_max_iter,
     )
 
     write_index_pairs(matched_idx_pairs, str(output_dir / "matched_idx_pairs.txt"))

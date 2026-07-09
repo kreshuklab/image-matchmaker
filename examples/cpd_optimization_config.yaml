@@ -1,0 +1,41 @@
+fixed_image:
+  path: "data/test_elastic_registration/fixed_image.n5"
+  input_key: "input"
+  aligned_key: "svd_prealignment_with_lm"
+  x_res: 1.0
+  y_res: 1.0
+  z_res: 1.0
+
+moving_image:
+  path: "data/test_elastic_registration/moving_image.n5"
+  input_key: "input"
+  aligned_key: "rigid_alignment_with_lm"
+  x_res: 1.0
+  y_res: 1.0
+  z_res: 1.0
+
+landmarks:
+  fixed: "examples/data/fixed_landmarks.csv"
+  moving: "examples/data/moving_landmarks.csv"
+
+prealignment:
+  axis_orientation: "auto"
+
+log_dir: "data/test_elastic_registration/cpd_optimization"
+
+optuna:
+  study_name: "cpd_optimization"
+  # search_space controls which parameter ranges are used. Three options:
+  #
+  #   "default"          — load ranges from default_cpd_ranges.yaml
+  #   "dataset-specific" — compute beta from extent of aligned fixed image via
+  #                        suggest_cpd_ranges.py (run automatically by Snakemake
+  #                        after pre- and rigid alignment); other params from defaults
+  #   explicit dict      — specify ranges directly, e.g.:
+  #
+  # search_space:
+  #   w: [1.0e-5, 1.0e-4, 1.0e-3, 1.0e-2]
+  #   beta: [50.0, 100.0, 200.0]
+  #   lmd: [0.01, 0.1, 1.0]
+  #   maxiter: [150]
+  search_space: "default"
