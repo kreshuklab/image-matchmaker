@@ -6,12 +6,27 @@ Common problems and how to resolve them. For how to read the diagnostic plots, s
 
 ## Running the workflow
 
+### `WorkflowError: No config file` / missing config values
+
+The workflows no longer ship with a default config file, so `--configfile` must be
+passed on every run. Point it at your registration or transform config (see the
+{doc}`Quick Start <quickstart>`).
+
+### `command not found` / import errors when a rule runs
+
+The workflows no longer manage a conda environment per rule. Activate the
+environment yourself before invoking Snakemake:
+
+```bash
+conda activate matchmaker_env
+```
+
 ### `KeyError` when starting a run
 
 The config is missing a key the workflow requires. Compare your config against the
 {doc}`Configuration Reference <config_ref>` and the complete example in the
 {doc}`Quick Start <quickstart>` — every registration run needs `prealignment`,
-`coherent_point_drift`, `ILP`, `final_transform_path`, `mobie_export`, and
+`coherent_point_drift`, `matching`, `final_transform_path`, `mobie_export`, and
 `mobie_dataset_name`, in addition to the image blocks and `log_dir`.
 
 ### "Directory cannot be locked"
@@ -42,11 +57,11 @@ and place it under `examples/data/test_data/` (see {doc}`Installation <installat
 
 ### Feature matching runs out of memory
 
-The `ILP` matching step builds candidate matches from each point's neighbours, so its
-memory use grows with how many candidates are considered. If the `match_pointclouds`
-step runs out of memory, lower `ILP.max_dist` (smaller search radius) and/or
-`ILP.min_neighbours` to reduce the number of candidates (see
-{doc}`Configuration Reference <config_ref>`).
+The `ilp` matching method builds candidate matches from each point's neighbours, so
+its memory use grows with how many candidates are considered. If the
+`match_pointclouds` step runs out of memory, lower `matching.max_dist` (smaller
+search radius) and/or `matching.min_neighbours` to reduce the number of candidates
+(see {doc}`Configuration Reference <config_ref>`).
 
 ## Alignment quality
 
@@ -60,16 +75,19 @@ value instead of `auto` (see {doc}`Configuration Reference <config_ref>`).
 
 ### Point matches look wrong (long, crossing lines)
 
-Inspect `point_matching_*` in `match_pointclouds/plots/`. Adjust the `ILP` matching
+Inspect `point_matching_*` in `match_pointclouds/plots/`. Adjust the `matching`
 parameters — lower `max_dist` to reject distant matches, or change `min_neighbours`
-(see {doc}`Configuration Reference <config_ref>`).
+— or try a different `matching.method` (`ilp`, `hungarian`, `sinkhorn`) (see
+{doc}`Configuration Reference <config_ref>`).
 
 ### CPD does not converge / the displacement field is erratic
 
 Inspect `displacement_field_*` in `cpd_nonrigid_registration/plots/`. Increase
 `coherent_point_drift.maxiter` (100–150 is typical), and tune `w`, `beta`, and `lmd`.
 Large, discontinuous displacements often mean an earlier step (pre-alignment or rigid)
-did not align well — fix that first.
+did not align well — fix that first. If you have corresponding landmarks, the
+{doc}`CPD Parameter Tuning <cpd_tuning>` workflow can search for good `w`, `beta`,
+`lmd`, and `maxiter` values automatically.
 
 ### Volumes are at the wrong scale or orientation
 

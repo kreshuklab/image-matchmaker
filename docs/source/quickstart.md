@@ -25,7 +25,8 @@ You can either:
 
 ## 2. Run registration
 
-Run the registration workflow with:
+With the conda environment activated (e.g. `conda activate matchmaker_env`), run the
+registration workflow. `--configfile` is required — there is no default config:
 
 ```bash
 snakemake -s workflows/registration.smk \
@@ -69,7 +70,8 @@ coherent_point_drift:
   beta: 100
   maxiter: 100
 
-ILP:
+matching:
+  method: ilp        # ilp | hungarian | sinkhorn
   min_neighbours: 10
   max_dist: 30
 

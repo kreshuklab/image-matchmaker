@@ -125,7 +125,9 @@ Outputs:
 
 **3. Coherent point drift**
 
-**4. Matching points with mixed integer programming**
+**4. Matching points** — establishes correspondences between instances. Selectable
+via `matching.method`: `ilp` (sparse mixed integer program), `hungarian` (optimal
+one-to-one assignment), or `sinkhorn` (entropy-regularized soft assignment).
 
 **5. Deformable registration with Elastix** \
 with distance between keypoints in loss and rigidity penalty ---> **B-spline coefficients**

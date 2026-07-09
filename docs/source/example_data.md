@@ -2,11 +2,14 @@
 
 The repository ships a small example dataset and ready-made configuration files
 under `examples/`, so you can try the pipeline without preparing your own data.
+The example data is committed directly to the repository (no git-lfs), so a plain
+`git clone` includes it.
 
 ## What is included
 
 - `examples/data/platy1_muscles_stardist_fixed.tif` — a base 3D instance
-  segmentation mask (also provided as `.n5`).
+  segmentation mask. The moving datasets and the `.n5` copies are generated locally
+  by the deformation script below.
 - Ready-to-use registration configs in `examples/`:
   - `register_config_test_rigid.yaml`
   - `register_config_test_elastic.yaml`

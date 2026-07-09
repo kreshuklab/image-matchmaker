@@ -115,10 +115,12 @@ Matching algorithm to use. One of:
 Defaults to `hungarian` if the key is omitted, both when run through the Snakemake
 workflow and via `match_pointclouds.py` directly.
 
-#### `max_dist`
+#### `max_dist` (optional)
 
 Maximum distance between neighbours considered for matching. Used by all methods.
-Example: `30`.
+Default: `30`. Note this is a distance in the data's physical units, so the right
+value depends on your voxel resolution and object spacing — the `30` default suits
+the example data and is not universally appropriate.
 
 #### `min_neighbours` (optional, `ilp` only)
 
