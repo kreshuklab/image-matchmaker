@@ -96,18 +96,46 @@ Maximum number of EM iterations. Typically `100`–`150`; can be lowered
 
 ---
 
-### `ILP`
+### `matching`
 
 Parameters for the feature-matching step that establishes correspondences
 between instances.
 
-#### `min_neighbours`
+#### `method` (optional)
 
-Minimum number of neighbours considered when matching a point. Example: `10`.
+Matching algorithm to use. One of:
+
+- `hungarian` — optimal one-to-one assignment over the full cost matrix
+  (uses `max_dist`; `min_neighbours` is ignored).
+- `ilp` — sparse integer linear program; a one-to-many candidate matching built
+  from each point's nearest neighbours (uses `min_neighbours` and `max_dist`).
+- `sinkhorn` — soft (entropy-regularized) assignment, then discretized to a
+  one-to-one matching (uses `max_dist`, `tau`, and `max_iter`).
+
+Defaults to `hungarian` if the key is omitted, both when run through the Snakemake
+workflow and via `match_pointclouds.py` directly.
 
 #### `max_dist`
 
-Maximum distance between neighbours considered for matching. Example: `30`.
+Maximum distance between neighbours considered for matching. Used by all methods.
+Example: `30`.
+
+#### `min_neighbours` (optional, `ilp` only)
+
+Minimum number of neighbours considered when matching a point. Required when
+`method` is `ilp`; ignored (and not needed) by `hungarian` and `sinkhorn`.
+Example: `10`.
+
+#### `tau` (optional, `sinkhorn` only)
+
+Sinkhorn entropy-regularization parameter scaling distances into similarities.
+Default: `1.0`.
+
+#### `max_iter` (optional, `sinkhorn` only)
+
+Maximum number of Sinkhorn iterations. Default: `500`. Note the config key is
+`max_iter`, while the corresponding CLI flag on `match_pointclouds.py` is
+`--sinkhorn_max_iter`.
 
 ---
 

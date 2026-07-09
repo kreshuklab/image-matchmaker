@@ -33,6 +33,8 @@ Point clouds
 .. autofunction:: matchmaker.utils.extract_centroids
 .. autofunction:: matchmaker.utils.create_pcd
 .. autofunction:: matchmaker.utils.sparse_ilp_matching
+.. autofunction:: matchmaker.utils.hungarian_matching
+.. autofunction:: matchmaker.utils.sinkhorn_matching
 
 Visualization
 -------------

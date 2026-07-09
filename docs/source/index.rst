@@ -37,8 +37,11 @@ The pipeline consists of the following steps:
    registration results using *probreg*, allowing for more nuanced local
    adjustments.
 4. **Feature Matching:** The workflow then identifies specific correspondences
-   (e.g., matching individual nuclei) between the two volumes using *cvxpy*
-   to establish a set of definitive landmarks shared by both datasets.
+   (e.g., matching individual nuclei) between the two volumes to establish a set
+   of definitive landmarks shared by both datasets. Three matching algorithms are
+   available: a sparse integer linear program (``ilp``, via *cvxpy*), an optimal
+   one-to-one assignment (``hungarian``), and an entropy-regularized soft
+   assignment (``sinkhorn``).
 5. **B-Spline Registration (Elastix):** The final deformable alignment is
    performed using a B-spline transformation.
 
@@ -68,5 +71,6 @@ or fluorescence LM) to bring them into a unified coordinate space.
    config_ref
    outputs
    example_data
+   cpd_tuning
    troubleshooting
    api

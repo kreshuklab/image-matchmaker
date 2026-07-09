@@ -6,8 +6,9 @@ and, for each registration step, the files it produces and the quality-control
 (QC) plots it generates.
 
 Throughout the plots, the **fixed** image is shown in **pink** and the **moving**
-image in **cyan**. Plots are saved as vector PDFs in a `plots/` subfolder of each
-stage.
+image in **cyan** (semantic coloring); instance segmentations are rendered with a
+distinct color per label. Plots are saved in a `plots/` subfolder of each stage.
+The output format is configurable (all PDF or PNG or individually per plot).
 
 ## Output directory layout
 
@@ -170,8 +171,9 @@ Finds correspondences between instances.
 
 - `point_matching_{xz,yz,xy}` — fixed and moving point clouds with lines drawn
   between matched instances. Lines should connect nearby, corresponding structures;
-  long crossing lines suggest incorrect matches (consider tuning the `ILP`
-  parameters — see {doc}`Configuration Reference <config_ref>`).
+  long crossing lines suggest incorrect matches (consider tuning the `matching`
+  parameters or switching `matching.method` — see
+  {doc}`Configuration Reference <config_ref>`).
 
 ### Deformable B-spline registration (Elastix)
 
@@ -222,5 +224,5 @@ A registration has likely succeeded when:
 
 If any of these look wrong, revisit the relevant stage's parameters in the
 {doc}`Configuration Reference <config_ref>` — most commonly `axis_orientation`
-(pre-alignment), the `coherent_point_drift` parameters (CPD), or the `ILP`
-parameters (matching).
+(pre-alignment), the `coherent_point_drift` parameters (CPD), or the `matching`
+parameters (feature matching).

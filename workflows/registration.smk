@@ -43,10 +43,13 @@ maxiter = config["coherent_point_drift"]["maxiter"]
 
 # matching parameters
 matching_method = config["matching"].get("method", "hungarian")
-min_neighbours = config["matching"]["min_neighbours"]
-max_dist = config["matching"]["max_dist"]
+min_neighbours = config["matching"].get("min_neighbours")
+max_dist = config["matching"].get("max_dist", 30)
 sinkhorn_tau = config["matching"].get("tau", 1.0)
 sinkhorn_max_iter = config["matching"].get("max_iter", 500)
+
+# min_neighbours is only used by the ilp method; only pass it when provided
+min_neighbours_opt = f"--min_neighbours {min_neighbours}" if min_neighbours is not None else ""
 
 if config["mobie_export"]:
     mobie_outputs = [
@@ -244,7 +247,7 @@ rule matching:
         log_dir = f"{log_dir}/match_pointclouds"
     log: f"{log_dir}/matchmaker.log"
     shell:
-        f"python matchmaker/match_pointclouds.py --fixed_pcd {{input.fixed_pcd}} --moving_pcd {{input.moving_pcd}} -o {{params.log_dir}} --min_neighbours {min_neighbours} --max_dist {max_dist} --method {matching_method} --tau {sinkhorn_tau} --sinkhorn_max_iter {sinkhorn_max_iter};"
+        f"python matchmaker/match_pointclouds.py --fixed_pcd {{input.fixed_pcd}} --moving_pcd {{input.moving_pcd}} -o {{params.log_dir}} {min_neighbours_opt} --max_dist {max_dist} --method {matching_method} --tau {sinkhorn_tau} --sinkhorn_max_iter {sinkhorn_max_iter};"
 
 
 rule elastix_deformable_pointset:

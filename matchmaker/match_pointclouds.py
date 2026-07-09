@@ -21,18 +21,17 @@ def run_matching(
     fixed_pcd,
     registered_pcd,
     output_dir,
-    max_dist,
-    min_neighbours,
     method="hungarian",
+    max_dist=30,
+    min_neighbours=None,
     tau=1.0,
     sinkhorn_max_iter=500,
 ):
     """
-    #TODO: update docstring
     Establish instance correspondences between two point clouds.
 
-    Solves a sparse ILP assignment between the fixed and (CPD-)registered moving
-    point clouds and writes point-matching QC plots to ``output_dir``.
+    Matches the fixed and (CPD-)registered moving point clouds using the selected
+    ``method`` and writes ``point_matching_*`` QC plots to ``output_dir``.
 
     Parameters
     ----------
@@ -42,10 +41,27 @@ def run_matching(
         Registered moving point cloud (with a ``label`` attribute).
     output_dir : pathlib.Path
         Directory where the ``point_matching_*`` plots are written.
-    max_dist : float
-        Maximum distance between candidate neighbours.
-    min_neighbours : int
-        Minimum number of neighbours considered per point.
+    method : {"hungarian", "ilp", "sinkhorn"}, optional
+        Matching algorithm (default ``"hungarian"``):
+
+        - ``"hungarian"`` — optimal one-to-one assignment over the full cost
+          matrix (uses ``max_dist``).
+        - ``"ilp"`` — sparse integer linear program over each point's nearest
+          neighbours (uses ``max_dist`` and ``min_neighbours``).
+        - ``"sinkhorn"`` — entropy-regularized soft assignment, discretized to a
+          one-to-one matching (uses ``max_dist``, ``tau`` and
+          ``sinkhorn_max_iter``).
+    max_dist : float, optional
+        Maximum distance between candidate neighbours. Used by all methods.
+        Default ``30``.
+    min_neighbours : int, optional
+        Minimum number of neighbours considered per point. Only used by (and
+        required for) ``method="ilp"``; ignored by the other methods.
+    tau : float, optional
+        Sinkhorn entropy-regularization parameter (``sinkhorn`` only).
+        Default ``1.0``.
+    sinkhorn_max_iter : int, optional
+        Maximum number of Sinkhorn iterations (``sinkhorn`` only). Default ``500``.
 
     Returns
     -------
@@ -53,6 +69,12 @@ def run_matching(
         Matched index pairs into the two point clouds.
     matched_label_pairs : list of tuple
         The corresponding ``(fixed_label, moving_label)`` id pairs.
+
+    Raises
+    ------
+    ValueError
+        If ``method="ilp"`` and ``min_neighbours`` is not provided, or if
+        ``method`` is not one of the supported values.
     """
     logging.info(f"Number of points in fixed pcd: {len(fixed_pcd.point.positions)}")
     logging.info(
@@ -71,6 +93,8 @@ def run_matching(
 
     logging.info(f"Matching method: {method}")
     if method == "ilp":
+        if min_neighbours is None:
+            raise ValueError("min_neighbours is required when method='ilp'")
         matched_idx_pairs = sparse_ilp_matching(
             pos_1, pos_2, max_dist=max_dist, min_neighbours=min_neighbours
         )
@@ -114,25 +138,28 @@ def run_matching(
 )
 @click.option("-o", "--output_dir", required=True, help="Output directory")
 @click.option(
-    "-min_knn",
-    "--min_neighbours",
-    required=True,
-    type=int,
-    help="Minimum number of neighbours to consider for matching",
-)
-@click.option(
-    "-max_d",
-    "--max_dist",
-    required=True,
-    type=float,
-    help="Maximum distance between neighbours to consider for matching",
-)
-@click.option(
     "--method",
     type=click.Choice(["ilp", "hungarian", "sinkhorn"]),
     default="hungarian",
     show_default=True,
     help="Matching algorithm to use",
+)
+@click.option(
+    "-max_d",
+    "--max_dist",
+    required=False,
+    default=30,
+    show_default=True,
+    type=float,
+    help="Maximum distance between neighbours to consider for matching",
+)
+@click.option(
+    "-min_knn",
+    "--min_neighbours",
+    required=False,
+    default=None,
+    type=int,
+    help="Minimum number of neighbours to consider for matching (required for --method ilp)",
 )
 @click.option(
     "--tau",
@@ -174,9 +201,9 @@ def main(
         fixed_pcd,
         moving_pcd,
         output_dir,
-        max_dist,
-        min_neighbours,
         method=method,
+        max_dist=max_dist,
+        min_neighbours=min_neighbours,
         tau=tau,
         sinkhorn_max_iter=sinkhorn_max_iter,
     )

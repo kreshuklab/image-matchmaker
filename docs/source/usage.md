@@ -10,7 +10,10 @@ Matchmaker can be used in three ways:
 ## 1. Snakemake workflow (recommended)
 
 This is the recommended way to run matchmaker and is covered in the
-{doc}`Quick Start <quickstart>`. The two workflows are:
+{doc}`Quick Start <quickstart>`. Activate the conda environment first
+(e.g. `conda activate matchmaker_env`); the workflows do not manage the environment
+for you. `--configfile` is required — the workflows no longer ship with a default
+config. The two workflows are:
 
 ```bash
 # full registration
@@ -85,8 +88,14 @@ python matchmaker/raw_to_n5.py --input_path <img> --output_path <out.n5> \
 | `--fixed_pcd` (`-fcd`) | yes | Fixed point cloud |
 | `--moving_pcd` (`-mpcd`) | yes | Registered moving point cloud |
 | `--output_dir` (`-o`) | yes | Output directory |
-| `--min_neighbours` | yes | Minimum neighbours to consider for matching |
-| `--max_dist` | yes | Maximum distance between neighbours to consider |
+| `--method` | no | Matching algorithm: `hungarian` (default), `ilp`, or `sinkhorn` |
+| `--min_neighbours` | `ilp` only | Minimum neighbours to consider for matching (required for `--method ilp`, ignored otherwise) |
+| `--max_dist` | no | Maximum distance between neighbours to consider (default `30`) |
+| `--tau` | no | Sinkhorn entropy regularization (default `1.0`, `sinkhorn` only) |
+| `--sinkhorn_max_iter` | no | Maximum Sinkhorn iterations (default `500`, `sinkhorn` only) |
+
+The three matching plots (`point_matching_{xz,yz,xy}`) are written to a `plots/`
+subfolder of the output directory.
 
 ### `elastix_deformable_pointset_registration.py` — deformable B-spline
 
