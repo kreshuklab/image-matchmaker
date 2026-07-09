@@ -23,9 +23,10 @@ def run_matching(
     output_dir,
     max_dist,
     min_neighbours,
-    method="ilp",
+    method="hungarian",
     tau=1.0,
-    sinkhorn_max_iter=500,):
+    sinkhorn_max_iter=500,
+):
     """
     #TODO: update docstring
     Establish instance correspondences between two point clouds.
@@ -129,7 +130,7 @@ def run_matching(
 @click.option(
     "--method",
     type=click.Choice(["ilp", "hungarian", "sinkhorn"]),
-    default="ilp",
+    default="hungarian",
     show_default=True,
     help="Matching algorithm to use",
 )
