@@ -8,7 +8,7 @@ from pathlib import Path
 
 from examples.deform_test_data import deform_test_data
 from tests.compare_results import assert_arrays_equal
-from matchmaker.utils import (load_config, read_volume, download_file, check_no_new_ids,
+from image_matchmaker.utils import (load_config, read_volume, download_file, check_no_new_ids,
                             compute_centroid_distances,)
 
 

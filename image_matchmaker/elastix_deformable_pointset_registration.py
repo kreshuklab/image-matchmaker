@@ -10,7 +10,7 @@ from pathlib import Path
 
 import open3d as o3d
 
-from matchmaker.utils import (
+from image_matchmaker.utils import (
     rotate_img,
     read_volume,
     get_attrs,

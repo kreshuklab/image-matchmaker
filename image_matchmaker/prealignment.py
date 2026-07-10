@@ -4,8 +4,8 @@ import numpy as np
 from pathlib import Path
 import matplotlib.pyplot as plt
 
-from matchmaker.data import create_point_cloud
-from matchmaker.utils import (
+from image_matchmaker.data import create_point_cloud
+from image_matchmaker.utils import (
     get_transformation_matrix,
     rotate_img,
     read_volume,
@@ -19,7 +19,7 @@ from matchmaker.utils import (
     transform_axes_vis,
 )
 
-from matchmaker.utils.vis import CYAN_HEX, PINK, CYAN, PINK_HEX, LABEL, _savefig
+from image_matchmaker.utils.vis import CYAN_HEX, PINK, CYAN, PINK_HEX, LABEL, _savefig
 
 
 def get_SVD_transform(img, spacing, save_path=None):
@@ -294,7 +294,7 @@ def prealign_samples(fixed_img, moving_img, fixed_spacing, moving_spacing, new_s
         moving_rot, T_moving = mirror_img(moving_rot, T_moving)
 
     return {"fixed": [fixed_rot, T_fixed, gc_fixed, Vt_fixed, fixed_shape],
-            "moving": [moving_rot, T_moving, gc_moving, Vt_moving, moving_shape],}
+            "moving": [moving_rot, T_moving, gc_moving, Vt_moving, moving_shape]}
 
 
 def run_prealignment(
@@ -510,7 +510,8 @@ def run_prealignment(
 @click.option("-o", "--output_dir", required=True, help="Output directory")
 @click.option("-ok", "--output_key", required=True, help="Output key (same in both n5)")
 @click.option("-trans", "--output_transform_path", required=True, help="Path to write the final transform")
-@click.option("-axis_orientation", "--axis_orientation", required=True, help="How to find the correct orientation along the principal axes")
+@click.option("-axis_orientation", "--axis_orientation", required=True, 
+              help="How to find the correct orientation along the principal axes")
 @click.option("-tif", "--save_tif", is_flag=True, help="Whether to save tif or not")
 def main(fixed_path, fixed_key, fixed_spacing, moving_path, moving_key, moving_spacing,
          output_dir, output_key, output_transform_path, axis_orientation, save_tif=False):

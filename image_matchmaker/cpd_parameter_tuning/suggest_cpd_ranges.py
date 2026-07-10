@@ -6,7 +6,7 @@ import numpy as np
 import yaml
 from scipy.spatial import cKDTree
 
-from matchmaker.utils import read_volume, get_attrs, extract_centroids
+from image_matchmaker.utils import read_volume, get_attrs, extract_centroids
 
 _DEFAULT_RANGES_FILE = Path(__file__).parent / "default_cpd_ranges.yaml"
 

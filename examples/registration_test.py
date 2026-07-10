@@ -1,8 +1,8 @@
 import z5py
 import numpy as np
 
-from matchmaker.prealignment import prealign_samples
-from matchmaker.utils import (rotate_img, plot_three_slices, plot_overlay)
+from image_matchmaker.prealignment import prealign_samples
+from image_matchmaker.utils import (rotate_img, plot_three_slices, plot_overlay)
 
 
 def main():

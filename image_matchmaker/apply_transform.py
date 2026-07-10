@@ -6,9 +6,17 @@ import numpy as np
 import tifffile as tiff
 from pathlib import Path
 
-from utils import (setup_logging, read_volume, write_volume, get_attrs, rotate_img,
-                    read_transform_dict, apply_transform_chanwise, plot_three_slices,
-                    plot_overlay,)
+from image_matchmaker.utils import (
+    setup_logging,
+    read_volume,
+    write_volume,
+    get_attrs,
+    rotate_img,
+    read_transform_dict,
+    apply_transform_chanwise,
+    plot_three_slices,
+    plot_overlay,
+)
 
 
 def load_data(path, key=None):
@@ -72,9 +80,20 @@ def apply_transform(moving_img, moving_resolution, parameter_object, interpolati
 @click.option("-fi", "--fixed_path", default=None, help="Fixed input .n5 file")
 @click.option("-fk", "--fixed_key", default=None, help="Fixed input key")
 @click.option("-vb", "--verbose", is_flag=True, default=False, help="Show verbose logs")
-def apply_transforms(moving_path, moving_key, moving_resolution, output_path, output_key,
-                    interpolation_order, log_dir, parameter_map_path,
-                    prealignment_transform_path, fixed_path, fixed_key, verbose):
+def apply_transforms(
+    moving_path,
+    moving_key,
+    moving_resolution,
+    output_path,
+    output_key,
+    interpolation_order,
+    log_dir,
+    parameter_map_path,
+    prealignment_transform_path,
+    fixed_path,
+    fixed_key,
+    verbose,
+):
     log_dir = Path(log_dir)
     log_dir.mkdir(exist_ok=True)
 
@@ -118,12 +137,14 @@ def apply_transforms(moving_path, moving_key, moving_resolution, output_path, ou
         chunks = (1, 128, 512, 512)
 
     logging.info("Start transformation")
-    warped, warp_prealigned = apply_transform(moving_img,
-                                                moving_resolution,
-                                                parameter_object,
-                                                interpolation_order,
-                                                T_fixed=T_fixed,
-                                                output_shape=output_shape)
+    warped, warp_prealigned = apply_transform(
+        moving_img,
+        moving_resolution,
+        parameter_object,
+        interpolation_order,
+        T_fixed=T_fixed,
+        output_shape=output_shape,
+    )
 
     resolution = [float(res) for res in parameter_object.GetParameter(0, "Spacing")]
 

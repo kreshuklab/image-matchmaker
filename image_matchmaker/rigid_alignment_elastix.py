@@ -1,13 +1,20 @@
-import sys
 import itk
 import click
 import logging
 import numpy as np
 from pathlib import Path
 
-from matchmaker.utils import (read_volume, write_volume, get_attrs, plot_overlay, itk_scalar_img,
-                                run_registration, itk_to_np_order, apply_transform_chanwise,
-                                setup_logging)
+from image_matchmaker.utils import (
+    read_volume,
+    write_volume,
+    get_attrs,
+    plot_overlay,
+    itk_scalar_img,
+    run_registration,
+    itk_to_np_order,
+    apply_transform_chanwise,
+    setup_logging,
+)
 
 
 def elastix_segm_rigid_alignment(
@@ -161,5 +168,3 @@ def main(fixed_path, fixed_key, moving_path, moving_key, output_dir, output_key,
 
 if __name__ == "__main__":
     main()
-
-# python rigid_alignment_elastix.py -fi ../examples/data/test/platy1_muscles_stardist_fixed_prealigned.n5 -fk seg -mi ../examples/data/test/platy1_muscles_stardist_moving_prealigned.n5 -mk seg -o ../examples/data/test -ok rigid -trans ../examples/data/test/rigid_transform.json

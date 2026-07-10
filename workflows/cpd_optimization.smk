@@ -49,8 +49,8 @@ rule input_to_n5:
     shell:
         f"rm -rf {{output.fixed_image_n5}};"
         f"rm -rf {{output.moving_image_n5}};"
-        f"python matchmaker/raw_to_n5.py --input_path {{input.fixed_image_path}} --input_key {fixed_input_key} --output_path {{output.fixed_image_n5}} --output_key {{params.output_key}} --log_dir {log_dir} --x_res {config['fixed_image']['x_res']} --y_res {config['fixed_image']['y_res']} --z_res {config['fixed_image']['z_res']};"
-        f"python matchmaker/raw_to_n5.py --input_path {{input.moving_image_path}} --input_key {moving_input_key} --output_path {{output.moving_image_n5}} --output_key {{params.output_key}} --log_dir {log_dir} --x_res {config['moving_image']['x_res']} --y_res {config['moving_image']['y_res']} --z_res {config['moving_image']['z_res']};"
+        f"python image_matchmaker/raw_to_n5.py --input_path {{input.fixed_image_path}} --input_key {fixed_input_key} --output_path {{output.fixed_image_n5}} --output_key {{params.output_key}} --log_dir {log_dir} --x_res {config['fixed_image']['x_res']} --y_res {config['fixed_image']['y_res']} --z_res {config['fixed_image']['z_res']};"
+        f"python image_matchmaker/raw_to_n5.py --input_path {{input.moving_image_path}} --input_key {moving_input_key} --output_path {{output.moving_image_n5}} --output_key {{params.output_key}} --log_dir {log_dir} --x_res {config['moving_image']['x_res']} --y_res {config['moving_image']['y_res']} --z_res {config['moving_image']['z_res']};"
 
 
 rule add_landmarks:
@@ -73,7 +73,7 @@ rule add_landmarks:
         log_dir          = f"{log_dir}/prepare_landmarks",
     log: f"{log_dir}/prepare_landmarks/add_landmarks.log"
     shell:
-        "python matchmaker/cpd_parameter_tuning/add_landmarks.py "
+        "python image_matchmaker/cpd_parameter_tuning/add_landmarks.py "
         "--fixed_path {input.fixed_n5} "
         "--fixed_key {params.fixed_input_key} "
         "--fixed_output_key {params.lm_input_key} "
@@ -105,7 +105,7 @@ rule prealignment_with_lm:
         output_dir       = f"{log_dir}/prealignment_with_lm",
     log: f"{log_dir}/prealignment_with_lm/prealignment.log"
     shell:
-        "python matchmaker/prealignment.py "
+        "python image_matchmaker/prealignment.py "
         "--fixed_path {params.fixed_path} "
         "--fixed_key {params.input_key} "
         "--fixed_spacing {params.fixed_spacing} "
@@ -133,7 +133,7 @@ rule rigid_alignment_with_lm:
         output_dir  = f"{log_dir}/rigid_alignment_with_lm",
     log: f"{log_dir}/rigid_alignment_with_lm/rigid_alignment.log"
     shell:
-        "python matchmaker/rigid_alignment_elastix.py "
+        "python image_matchmaker/rigid_alignment_elastix.py "
         "--fixed_path {params.fixed_path} "
         "--fixed_key {params.input_key} "
         "--moving_path {params.moving_path} "
@@ -160,7 +160,7 @@ rule optimize_cpd:
         moving_path = moving_n5_path,
     log: f"{log_dir}/cpd_optimization/cpd_optimization.log"
     shell:
-        "python matchmaker/cpd_parameter_tuning/cpd_optimization.py "
+        "python image_matchmaker/cpd_parameter_tuning/cpd_optimization.py "
         "--config {input.config} "
         "--landmark_ids_json {input.landmark_ids_json} "
         "--fixed_path {params.fixed_path} "
