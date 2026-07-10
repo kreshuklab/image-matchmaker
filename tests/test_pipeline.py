@@ -30,7 +30,7 @@ def run_pipline(registration_config_path, registration_snakefile, transform_conf
 
     registration_config["log_dir"] = str(test_dir)
     registration_config["final_transform_path"] = str(final_transform_path)
-    registration_config["ILP"]["max_dist"] = 10
+    registration_config["matching"]["max_dist"] = 10
 
     tmp_config_path = test_dir / "registration.yaml"
     with open(tmp_config_path, "w") as f:
