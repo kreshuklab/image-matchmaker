@@ -1,10 +1,10 @@
-bio_matchmaker documentation
-============================
+image-matchmaker documentation
+==============================
 
-**Matchmaker** is a framework that leverages segmentation masks to achieve
+**Image-Matchmaker** is a framework that leverages segmentation masks to achieve
 alignment between two volumetric datasets of different modalities.
 
-Matchmaker is designed to optimize a transformation that maps a moving
+Image-Matchmaker is designed to optimize a transformation that maps a moving
 image/volume to align with a fixed image/volume.
 
 - Moving Volume: The source dataset that is spatially transformed (warped)
@@ -16,7 +16,7 @@ image/volume to align with a fixed image/volume.
    :width: 90%
    :align: center
 
-   Overview of the Matchmaker registration workflow.
+   Overview of the Image-Matchmaker registration workflow.
 
 The workflow begins by taking two segmentation masks from different modalities
 (e.g., EM and LM) as the primary inputs. Then these masks enter a sequential
