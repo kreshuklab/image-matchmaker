@@ -1,6 +1,6 @@
 # Usage
 
-Matchmaker can be used in three ways:
+Image-Matchmaker can be used in three ways:
 
 1. **The Snakemake workflow** — run the whole pipeline from a config file
    (recommended).
@@ -9,7 +9,7 @@ Matchmaker can be used in three ways:
 
 ## 1. Snakemake workflow (recommended)
 
-This is the recommended way to run matchmaker and is covered in the
+This is the recommended way to run image-matchmaker and is covered in the
 {doc}`Quick Start <quickstart>`. Activate the conda environment first
 (e.g. `conda activate matchmaker_env`); the workflows do not manage the environment
 for you. `--configfile` is required — the workflows no longer ship with a default
@@ -28,7 +28,7 @@ See the {doc}`Configuration Reference <config_ref>` for the config fields and
 
 ## 2. Running individual scripts
 
-Each pipeline stage is a standalone command-line script under `matchmaker/`. The
+Each pipeline stage is a standalone command-line script under `image_matchmaker/`. The
 Snakemake workflow simply chains them together, but you can also run a single stage
 yourself. Every script accepts `--help` for the full list of options.
 
@@ -37,7 +37,7 @@ The stages, in pipeline order:
 ### `raw_to_n5.py` — convert inputs to `.n5`
 
 ```bash
-python matchmaker/raw_to_n5.py --input_path <img> --output_path <out.n5> \
+python image_matchmaker/raw_to_n5.py --input_path <img> --output_path <out.n5> \
     --output_key input --log_dir <dir> --x_res 1 --y_res 1 --z_res 1
 ```
 
@@ -125,10 +125,10 @@ subfolder of the output directory.
 ## 3. Python API
 
 The package namespace is empty, so import from the submodules directly. Reusable
-helpers are re-exported from `matchmaker.utils`:
+helpers are re-exported from `image_matchmaker.utils`:
 
 ```python
-from matchmaker.utils import (
+from image_matchmaker.utils import (
     read_volume, write_volume, get_attrs,   # .n5 / zarr I/O
     load_config,                            # parse a YAML config
     plot_three_slices, plot_overlay,        # visualization
@@ -137,15 +137,15 @@ from matchmaker.utils import (
 ```
 
 Higher-level stage functions are available from their modules, e.g.
-`prealign_samples` / `run_prealignment` (`matchmaker.prealignment`),
-`run_cpd` (`matchmaker.cpd_nonrigid_registration`), and `run_matching`
-(`matchmaker.match_pointclouds`).
+`prealign_samples` / `run_prealignment` (`image_matchmaker.prealignment`),
+`run_cpd` (`image_matchmaker.cpd_nonrigid_registration`), and `run_matching`
+(`image_matchmaker.match_pointclouds`).
 
 A minimal example — pre-align two masks and save an overlay:
 
 ```python
-from matchmaker.prealignment import prealign_samples
-from matchmaker.utils import read_volume, plot_overlay
+from image_matchmaker.prealignment import prealign_samples
+from image_matchmaker.utils import read_volume, plot_overlay
 
 seg_fixed = read_volume("fixed_image.n5", key="seg")
 seg_moving = read_volume("moving_image.n5", key="seg")

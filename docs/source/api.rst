@@ -1,11 +1,11 @@
 API Reference
 =============
 
-This page documents the most useful functions for calling matchmaker from
+This page documents the most useful functions for calling image-matchmaker from
 Python. For usage patterns and examples, see the Python API section of the
 :doc:`Usage <usage>` page.
 
-The helpers below are re-exported from ``matchmaker.utils``; the pipeline-stage
+The helpers below are re-exported from ``image_matchmaker.utils``; the pipeline-stage
 functions live in their respective modules.
 
 I/O

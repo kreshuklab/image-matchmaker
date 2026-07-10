@@ -1,7 +1,7 @@
 # CPD Parameter Tuning
 
 The Coherent Point Drift (CPD) step has four parameters (`w`, `beta`, `lmd`,
-`maxiter`) whose best values depend on the data. Matchmaker ships an
+`maxiter`) whose best values depend on the data. Image-Matchmaker ships an
 [Optuna](https://optuna.org/)-based grid search that tunes them automatically by
 minimizing the mean **Landmark Registration Error (LRE)** between user-provided
 corresponding landmarks after CPD.
@@ -11,7 +11,7 @@ part of the main registration pipeline. Its output, `best_cpd_params.yaml`, is a
 drop-in replacement for the `coherent_point_drift` section of your registration
 config.
 
-The source and defaults live under `matchmaker/cpd_parameter_tuning/`.
+The source and defaults live under `image_matchmaker/cpd_parameter_tuning/`.
 
 ## Input landmarks
 
@@ -107,7 +107,7 @@ Controls which parameter ranges the grid search uses. Three options:
 be run standalone to print a YAML block you can paste into `search_space`:
 
 ```bash
-python matchmaker/cpd_parameter_tuning/suggest_cpd_ranges.py \
+python image_matchmaker/cpd_parameter_tuning/suggest_cpd_ranges.py \
     --path <segmentation>.n5 \
     --key svd_prealignment \
     --x_res 0.4 --y_res 0.4 --z_res 0.4

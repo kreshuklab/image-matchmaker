@@ -3,8 +3,8 @@
 ## Clone the repository
 
 ```bash
-git clone https://github.com/kreshuklab/matchmaker.git
-cd matchmaker
+git clone https://github.com/kreshuklab/image-matchmaker.git
+cd image-matchmaker
 ```
 ---
 
@@ -31,7 +31,7 @@ connection is required.
 
 If the download fails, download the
 reference data manually from the
-[release page](https://github.com/kreshuklab/matchmaker/releases/tag/test_data-v1.0)
+[release page](https://github.com/kreshuklab/image-matchmaker/releases/tag/test_data-v1.0)
 and place it under:
 
 ```text
