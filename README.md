@@ -66,13 +66,13 @@ snakemake -s workflows/registration.smk --configfile examples/register_config_te
 prealignment.py --fixed_path ... --fixed_key ... --moving_path ... --moving_key ... --output_dir ... --mobie_export --dataset_name ...
 ```
 
-- Importing individual functions from matchmaker:
+- Importing individual functions from image_matchmaker:
 ```
-import matchmaker as mm
+import image_matchmaker as imm
 
 ...
 
-mm.n5-utils.read_volume(...)
+imm.n5_utils.read_volume(...)
 ```
 
 

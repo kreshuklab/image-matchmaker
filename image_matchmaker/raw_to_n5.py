@@ -4,7 +4,7 @@ import logging
 import tifffile as tif
 from pathlib import Path
 
-from matchmaker.utils import (read_volume, write_volume, plot_three_slices, convert_to_int, LABEL)
+from image_matchmaker.utils import (read_volume, write_volume, plot_three_slices, convert_to_int, LABEL)
 
 
 def preprocess_tif_input(input_path, output_path, output_key, log_dir, x_res, y_res, z_res):

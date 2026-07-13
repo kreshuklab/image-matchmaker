@@ -23,5 +23,5 @@ moving_images:
     interpolation_order: 0
 
 log_dir: "data/test_apply_transform"
-parameter_map_path: "data/test_rigid_registration/elastix_deformable_pointset_registration/TransformParameters.2.txt"
-prealignment_transform_path: "data/test_rigid_registration/svd_prealignment/svd_prealignment_transform.json"
+parameter_map_path: "data/test_rigid_registration/05_elastix_deformable_pointset_registration/TransformParameters.2.txt"
+prealignment_transform_path: "data/test_rigid_registration/01_svd_prealignment/svd_prealignment_transform.json"
