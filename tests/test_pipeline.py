@@ -1,4 +1,3 @@
-import sys
 import subprocess
 import yaml
 import shutil
@@ -8,13 +7,25 @@ from pathlib import Path
 
 from examples.deform_test_data import deform_test_data
 from tests.compare_results import assert_arrays_equal
-from image_matchmaker.utils import (load_config, read_volume, download_file, check_no_new_ids,
-                            compute_centroid_distances,)
+from image_matchmaker.utils import (
+    load_config,
+    read_volume,
+    download_file,
+    check_no_new_ids,
+    compute_centroid_distances,
+)
 
 
-def run_pipline(registration_config_path, registration_snakefile, transform_config_path,
-                transform_snakefile, cores=8, test_dir="tmp_pytest", enable_aniso=False,
-                enable_elastic=False):
+def run_pipline(
+    registration_config_path,
+    registration_snakefile,
+    transform_config_path,
+    transform_snakefile,
+    cores=8,
+    test_dir="tmp_pytest",
+    enable_aniso=False,
+    enable_elastic=False,
+):
     test_dir = Path(test_dir)
     final_transform_path = test_dir / "final_transform.json"
 
@@ -30,7 +41,7 @@ def run_pipline(registration_config_path, registration_snakefile, transform_conf
 
     registration_config["log_dir"] = str(test_dir)
     registration_config["final_transform_path"] = str(final_transform_path)
-    registration_config["ILP"]["max_dist"] = 10
+    registration_config["matching"]["max_dist"] = 10
 
     tmp_config_path = test_dir / "registration.yaml"
     with open(tmp_config_path, "w") as f:
@@ -53,8 +64,12 @@ def run_pipline(registration_config_path, registration_snakefile, transform_conf
         moving_img["output_path"] = moving_img["output_path"].replace(log_dir, str(test_dir))
     transform_config["log_dir"] = str(test_dir)
     transform_config["final_transform_path"] = str(final_transform_path)
-    transform_config["parameter_map_path"] = transform_config["parameter_map_path"].replace("data/test_rigid_registration", str(test_dir))
-    transform_config["prealignment_transform_path"] = transform_config["prealignment_transform_path"].replace("data/test_rigid_registration", str(test_dir))
+    transform_config["parameter_map_path"] = transform_config[
+        "parameter_map_path"
+    ].replace("data/test_rigid_registration", str(test_dir))
+    transform_config["prealignment_transform_path"] = transform_config[
+        "prealignment_transform_path"
+    ].replace("data/test_rigid_registration", str(test_dir))
 
     tmp_config_path = test_dir / "apply_transform.yaml"
     with open(tmp_config_path, "w") as f:
@@ -74,7 +89,7 @@ def run_pipline(registration_config_path, registration_snakefile, transform_conf
     # Compare results
     moving_path = test_dir / f"{registration_config['moving_image']['output_name']}.n5"
 
-    result_img = read_volume(moving_path, "pointset_alignment")
+    result_img = read_volume(moving_path, "pointset_alignment_prealignment_space")
     warped_img = read_volume(moving_path, "pointset_alignment_transform")
 
     assert_arrays_equal(result_img, warped_img)

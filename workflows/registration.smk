@@ -26,7 +26,7 @@ raw_n5_key = "input"
 prealignment_n5_key = "svd_prealignment"
 rigid_alignment_n5_key = "rigid_alignment"
 pointset_alignment_n5_key = "pointset_alignment"
-pointset_alignment_input_space_n5_key = "pointset_alignment_input_space"
+pointset_alignment_prealignment_space_n5_key = "pointset_alignment_prealignment_space"
 
 # log_dir output subfolders — ordinal-prefixed so they sort in pipeline order
 prealignment_dir = "01_svd_prealignment"
@@ -62,7 +62,7 @@ if config["mobie_export"]:
         f"{log_dir}/mobie_project/{dataset_name}/images/ome-zarr/{fixed_name}_{prealignment_n5_key}.done",
         f"{log_dir}/mobie_project/{dataset_name}/images/ome-zarr/{moving_name}_{prealignment_n5_key}.done",
         f"{log_dir}/mobie_project/{dataset_name}/images/ome-zarr/{moving_name}_{rigid_alignment_n5_key}.done",
-        f"{log_dir}/mobie_project/{dataset_name}/images/ome-zarr/{moving_name}_{pointset_alignment_input_space_n5_key}.done"
+        f"{log_dir}/mobie_project/{dataset_name}/images/ome-zarr/{moving_name}_{pointset_alignment_n5_key}.done"
     ]
 else:
     mobie_outputs = []
@@ -80,7 +80,7 @@ rule all:
         fixed_pcd = f"{log_dir}/{cpd_dir}/fixed_pcd.pcd",
         registered_pcd = f"{log_dir}/{cpd_dir}/registered_pcd.pcd",
         match_path = f"{log_dir}/{matching_dir}/matched_labels.csv",
-        pointset_alignment = f"{moving_n5_path}/{pointset_alignment_input_space_n5_key}",
+        pointset_alignment = f"{moving_n5_path}/{pointset_alignment_n5_key}",
         mobie_outputs = mobie_outputs
 
 
@@ -263,15 +263,15 @@ rule elastix_deformable_pointset:
         moving_image_n5 = moving_n5_path,
         prealignment_transform = f"{log_dir}/{prealignment_dir}/{prealignment_n5_key}_transform.json"
     output:
+        directory(f"{moving_n5_path}/{pointset_alignment_prealignment_space_n5_key}"),
         directory(f"{moving_n5_path}/{pointset_alignment_n5_key}"),
-        directory(f"{moving_n5_path}/{pointset_alignment_input_space_n5_key}"),
         f"{log_dir}/{elastix_dir}/TransformParameters.0.txt",
         f"{log_dir}/{elastix_dir}/TransformParameters.1.txt",
         f"{log_dir}/{elastix_dir}/TransformParameters.2.txt"
     params:
         input_key = raw_n5_key,
-        output_key = pointset_alignment_input_space_n5_key,
-        prealigned_output_key = pointset_alignment_n5_key,
+        output_key = pointset_alignment_n5_key,
+        prealigned_output_key = pointset_alignment_prealignment_space_n5_key,
         log_dir = f"{log_dir}/{elastix_dir}"
     log: f"{log_dir}/matchmaker.log"
     shell:
@@ -280,13 +280,13 @@ rule elastix_deformable_pointset:
 
 rule add_elastix_deformable_pointset_to_mobie:
     input:
-        moving_input_ds = f"{moving_n5_path}/{pointset_alignment_input_space_n5_key}",
+        moving_input_ds = f"{moving_n5_path}/{pointset_alignment_n5_key}",
         moving_image_n5 = moving_n5_path,
         moving_uploaded = f"{log_dir}/mobie_project/{dataset_name}/images/ome-zarr/{moving_name}_{rigid_alignment_n5_key}.done"
     output:
-        moving_check = f"{log_dir}/mobie_project/{dataset_name}/images/ome-zarr/{moving_name}_{pointset_alignment_input_space_n5_key}.done"
+        moving_check = f"{log_dir}/mobie_project/{dataset_name}/images/ome-zarr/{moving_name}_{pointset_alignment_n5_key}.done"
     params:
-        input_key = pointset_alignment_input_space_n5_key
+        input_key = pointset_alignment_n5_key
     log: f"{log_dir}/matchmaker.log"
     shell:
         f"python image_matchmaker/mobie_export.py --input_path {{input.moving_image_n5}} --input_key {{params.input_key}} --input_type {moving_type} {'--semantic_seg' if semantic_seg else ''} --dataset_name {dataset_name} --output_dir {log_dir};"
