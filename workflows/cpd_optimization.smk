@@ -22,7 +22,14 @@ moving_n5_path = f"{log_dir}/{moving_name}.n5"
 
 raw_n5_key        = "input"
 lm_input_key      = "input_with_lm"
-landmark_ids_json = f"{log_dir}/prepare_landmarks/landmark_label_ids.json"
+
+# log_dir output subfolders — ordinal-prefixed so they sort in pipeline order
+prepare_landmarks_dir = "01_prepare_landmarks"
+prealignment_dir      = "02_prealignment_with_lm"
+rigid_alignment_dir   = "03_rigid_alignment_with_lm"
+cpd_optimization_dir  = "04_cpd_optimization"
+
+landmark_ids_json = f"{log_dir}/{prepare_landmarks_dir}/landmark_label_ids.json"
 
 fixed_spacing  = [config["fixed_image"]["z_res"], config["fixed_image"]["y_res"], config["fixed_image"]["x_res"]]
 moving_spacing = [config["moving_image"]["z_res"], config["moving_image"]["y_res"], config["moving_image"]["x_res"]]
@@ -30,8 +37,8 @@ moving_spacing = [config["moving_image"]["z_res"], config["moving_image"]["y_res
 
 rule all:
     input:
-        best_params   = f"{log_dir}/cpd_optimization/best_cpd_params.yaml",
-        study_results = f"{log_dir}/cpd_optimization/study_results.csv",
+        best_params   = f"{log_dir}/{cpd_optimization_dir}/best_cpd_params.yaml",
+        study_results = f"{log_dir}/{cpd_optimization_dir}/study_results.csv",
 
 
 rule input_to_n5:
@@ -70,8 +77,8 @@ rule add_landmarks:
         fixed_input_key  = raw_n5_key,
         moving_input_key = raw_n5_key,
         lm_input_key     = lm_input_key,
-        log_dir          = f"{log_dir}/prepare_landmarks",
-    log: f"{log_dir}/prepare_landmarks/add_landmarks.log"
+        log_dir          = f"{log_dir}/{prepare_landmarks_dir}",
+    log: f"{log_dir}/{prepare_landmarks_dir}/add_landmarks.log"
     shell:
         "python image_matchmaker/cpd_parameter_tuning/add_landmarks.py "
         "--fixed_path {input.fixed_n5} "
@@ -93,7 +100,7 @@ rule prealignment_with_lm:
     output:
         directory(f"{fixed_n5_path}/{fixed_aligned_key}"),
         directory(f"{moving_n5_path}/{fixed_aligned_key}"),
-        transform = f"{log_dir}/prealignment_with_lm/prealignment_transform.json",
+        transform = f"{log_dir}/{prealignment_dir}/prealignment_transform.json",
     params:
         fixed_path       = fixed_n5_path,
         moving_path      = moving_n5_path,
@@ -102,8 +109,8 @@ rule prealignment_with_lm:
         fixed_spacing    = f"{config['fixed_image']['z_res']} {config['fixed_image']['y_res']} {config['fixed_image']['x_res']}",
         moving_spacing   = f"{config['moving_image']['z_res']} {config['moving_image']['y_res']} {config['moving_image']['x_res']}",
         axis_orientation = axis_orientation,
-        output_dir       = f"{log_dir}/prealignment_with_lm",
-    log: f"{log_dir}/prealignment_with_lm/prealignment.log"
+        output_dir       = f"{log_dir}/{prealignment_dir}",
+    log: f"{log_dir}/{prealignment_dir}/prealignment.log"
     shell:
         "python image_matchmaker/prealignment.py "
         "--fixed_path {params.fixed_path} "
@@ -130,8 +137,8 @@ rule rigid_alignment_with_lm:
         moving_path = moving_n5_path,
         input_key   = fixed_aligned_key,
         output_key  = moving_aligned_key,
-        output_dir  = f"{log_dir}/rigid_alignment_with_lm",
-    log: f"{log_dir}/rigid_alignment_with_lm/rigid_alignment.log"
+        output_dir  = f"{log_dir}/{rigid_alignment_dir}",
+    log: f"{log_dir}/{rigid_alignment_dir}/rigid_alignment.log"
     shell:
         "python image_matchmaker/rigid_alignment_elastix.py "
         "--fixed_path {params.fixed_path} "
@@ -153,12 +160,12 @@ rule optimize_cpd:
         config            = workflow.configfiles[0],
         landmark_ids_json = landmark_ids_json,
     output:
-        best_params   = f"{log_dir}/cpd_optimization/best_cpd_params.yaml",
-        study_results = f"{log_dir}/cpd_optimization/study_results.csv",
+        best_params   = f"{log_dir}/{cpd_optimization_dir}/best_cpd_params.yaml",
+        study_results = f"{log_dir}/{cpd_optimization_dir}/study_results.csv",
     params:
         fixed_path  = fixed_n5_path,
         moving_path = moving_n5_path,
-    log: f"{log_dir}/cpd_optimization/cpd_optimization.log"
+    log: f"{log_dir}/{cpd_optimization_dir}/cpd_optimization.log"
     shell:
         "python image_matchmaker/cpd_parameter_tuning/cpd_optimization.py "
         "--config {input.config} "

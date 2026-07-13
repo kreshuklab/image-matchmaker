@@ -28,6 +28,13 @@ rigid_alignment_n5_key = "rigid_alignment"
 pointset_alignment_n5_key = "pointset_alignment"
 pointset_alignment_input_space_n5_key = "pointset_alignment_input_space"
 
+# log_dir output subfolders — ordinal-prefixed so they sort in pipeline order
+prealignment_dir = "01_svd_prealignment"
+rigid_alignment_dir = "02_rigid_alignment"
+cpd_dir = "03_cpd_nonrigid_registration"
+matching_dir = "04_match_pointclouds"
+elastix_dir = "05_elastix_deformable_pointset_registration"
+
 # define global MoBIE variables
 fixed_type = "fixed"
 moving_type = "moving"
@@ -67,12 +74,12 @@ rule all:
         input_to_n5_fixed = fixed_n5_path,
         input_to_n5_moving = moving_n5_path,
         svd_prealignment = f"{fixed_n5_path}/{prealignment_n5_key}",
-        svd_transform = f"{log_dir}/{prealignment_n5_key}/{prealignment_n5_key}_transform.json",
+        svd_transform = f"{log_dir}/{prealignment_dir}/{prealignment_n5_key}_transform.json",
         rigid_alignment = f"{moving_n5_path}/{rigid_alignment_n5_key}",
-        rigid_transform = f"{log_dir}/{rigid_alignment_n5_key}/TransformParameters.0.txt",
-        fixed_pcd = f"{log_dir}/cpd_nonrigid_registration/fixed_pcd.pcd",
-        registered_pcd = f"{log_dir}/cpd_nonrigid_registration/registered_pcd.pcd",
-        match_path = f"{log_dir}/match_pointclouds/matched_labels.csv",
+        rigid_transform = f"{log_dir}/{rigid_alignment_dir}/TransformParameters.0.txt",
+        fixed_pcd = f"{log_dir}/{cpd_dir}/fixed_pcd.pcd",
+        registered_pcd = f"{log_dir}/{cpd_dir}/registered_pcd.pcd",
+        match_path = f"{log_dir}/{matching_dir}/matched_labels.csv",
         pointset_alignment = f"{moving_n5_path}/{pointset_alignment_input_space_n5_key}",
         mobie_outputs = mobie_outputs
 
@@ -111,14 +118,14 @@ rule SVD_prealignment:
     output:
         directory(f"{fixed_n5_path}/{prealignment_n5_key}"),
         directory(f"{moving_n5_path}/{prealignment_n5_key}"),
-        output_transform = f"{log_dir}/{prealignment_n5_key}/{prealignment_n5_key}_transform.json"
+        output_transform = f"{log_dir}/{prealignment_dir}/{prealignment_n5_key}_transform.json"
     params:
         input_key = raw_n5_key,
         output_key = prealignment_n5_key,
         axis_orientation = config["prealignment"]["axis_orientation"]
     log: f"{log_dir}/matchmaker.log"
     shell:
-        f"python image_matchmaker/prealignment.py --fixed_path {{input.fixed_image_n5}} --fixed_key {{params.input_key}} --fixed_spacing {{fixed_spacing}} --moving_path {{input.moving_image_n5}} --moving_key {{params.input_key}} --moving_spacing {{moving_spacing}} --output_dir {log_dir}/{{params.output_key}}  --output_key {{params.output_key}} --output_transform_path {{output.output_transform}} --axis_orientation {{params.axis_orientation}};"
+        f"python image_matchmaker/prealignment.py --fixed_path {{input.fixed_image_n5}} --fixed_key {{params.input_key}} --fixed_spacing {{fixed_spacing}} --moving_path {{input.moving_image_n5}} --moving_key {{params.input_key}} --moving_spacing {{moving_spacing}} --output_dir {log_dir}/{prealignment_dir}  --output_key {{params.output_key}} --output_transform_path {{output.output_transform}} --axis_orientation {{params.axis_orientation}};"
 
 
 """
@@ -132,13 +139,13 @@ rule rigid_alignment:
         moving_image_n5 = moving_n5_path
     output:
         directory(f"{moving_n5_path}/{rigid_alignment_n5_key}"),
-        output_transform = f"{log_dir}/{rigid_alignment_n5_key}/TransformParameters.0.txt"
+        output_transform = f"{log_dir}/{rigid_alignment_dir}/TransformParameters.0.txt"
     params:
         input_key = prealignment_n5_key,
         output_key = rigid_alignment_n5_key
     log: f"{log_dir}/matchmaker.log"
     shell:
-        f"python image_matchmaker/rigid_alignment_elastix.py --fixed_path {{input.fixed_image_n5}} --fixed_key {{params.input_key}} --moving_path {{input.moving_image_n5}} --moving_key {{params.input_key}} --output_dir {log_dir}/{{params.output_key}} --output_key {{params.output_key}};"
+        f"python image_matchmaker/rigid_alignment_elastix.py --fixed_path {{input.fixed_image_n5}} --fixed_key {{params.input_key}} --moving_path {{input.moving_image_n5}} --moving_key {{params.input_key}} --output_dir {log_dir}/{rigid_alignment_dir} --output_key {{params.output_key}};"
 
 
 """
@@ -223,10 +230,10 @@ rule cpd_nonrigid_registration:
         fixed_image_n5 = fixed_n5_path,
         moving_image_n5 = moving_n5_path,
     output:
-        fixed_pcd = f"{log_dir}/cpd_nonrigid_registration/fixed_pcd.pcd",
-        registered_pcd = f"{log_dir}/cpd_nonrigid_registration/registered_pcd.pcd"
+        fixed_pcd = f"{log_dir}/{cpd_dir}/fixed_pcd.pcd",
+        registered_pcd = f"{log_dir}/{cpd_dir}/registered_pcd.pcd"
     params:
-        log_dir = f"{log_dir}/cpd_nonrigid_registration",
+        log_dir = f"{log_dir}/{cpd_dir}",
         fixed_key = prealignment_n5_key,
         moving_key = rigid_alignment_n5_key
     log: f"{log_dir}/matchmaker.log"
@@ -236,12 +243,12 @@ rule cpd_nonrigid_registration:
 
 rule matching:
     input:
-        fixed_pcd = f"{log_dir}/cpd_nonrigid_registration/fixed_pcd.pcd",
-        moving_pcd = f"{log_dir}/cpd_nonrigid_registration/registered_pcd.pcd"
+        fixed_pcd = f"{log_dir}/{cpd_dir}/fixed_pcd.pcd",
+        moving_pcd = f"{log_dir}/{cpd_dir}/registered_pcd.pcd"
     output:
-        match_path = f"{log_dir}/match_pointclouds/matched_labels.csv"
+        match_path = f"{log_dir}/{matching_dir}/matched_labels.csv"
     params:
-        log_dir = f"{log_dir}/match_pointclouds"
+        log_dir = f"{log_dir}/{matching_dir}"
     log: f"{log_dir}/matchmaker.log"
     shell:
         f"python image_matchmaker/match_pointclouds.py --fixed_pcd {{input.fixed_pcd}} --moving_pcd {{input.moving_pcd}} -o {{params.log_dir}} --min_neighbours {min_neighbours} --max_dist {max_dist} --method {matching_method} --tau {sinkhorn_tau} --sinkhorn_max_iter {sinkhorn_max_iter};"
@@ -249,23 +256,23 @@ rule matching:
 
 rule elastix_deformable_pointset:
     input:
-        match_path = f"{log_dir}/match_pointclouds/matched_labels.csv",
+        match_path = f"{log_dir}/{matching_dir}/matched_labels.csv",
         fixed_input_ds = f"{fixed_n5_path}/{raw_n5_key}",
         moving_input_ds = f"{moving_n5_path}/{raw_n5_key}",
         fixed_image_n5 = fixed_n5_path,
         moving_image_n5 = moving_n5_path,
-        prealignment_transform = f"{log_dir}/{prealignment_n5_key}/{prealignment_n5_key}_transform.json"
+        prealignment_transform = f"{log_dir}/{prealignment_dir}/{prealignment_n5_key}_transform.json"
     output:
         directory(f"{moving_n5_path}/{pointset_alignment_n5_key}"),
         directory(f"{moving_n5_path}/{pointset_alignment_input_space_n5_key}"),
-        f"{log_dir}/elastix_deformable_pointset_registration/TransformParameters.0.txt",
-        f"{log_dir}/elastix_deformable_pointset_registration/TransformParameters.1.txt",
-        f"{log_dir}/elastix_deformable_pointset_registration/TransformParameters.2.txt"
+        f"{log_dir}/{elastix_dir}/TransformParameters.0.txt",
+        f"{log_dir}/{elastix_dir}/TransformParameters.1.txt",
+        f"{log_dir}/{elastix_dir}/TransformParameters.2.txt"
     params:
         input_key = raw_n5_key,
         output_key = pointset_alignment_input_space_n5_key,
         prealigned_output_key = pointset_alignment_n5_key,
-        log_dir = f"{log_dir}/elastix_deformable_pointset_registration"
+        log_dir = f"{log_dir}/{elastix_dir}"
     log: f"{log_dir}/matchmaker.log"
     shell:
         f"python image_matchmaker/elastix_deformable_pointset_registration.py --fixed_path {{input.fixed_image_n5}} --fixed_key {{params.input_key}} --moving_path {{input.moving_image_n5}} --moving_key {{params.input_key}} --output_dir {{params.log_dir}}  --output_key {{params.output_key}} --match_path {{input.match_path}} --prealigned_output_key {{params.prealigned_output_key}} --prealignment_transform {{input.prealignment_transform}};"
