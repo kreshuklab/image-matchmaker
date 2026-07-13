@@ -90,7 +90,7 @@ quality-control plots, and per-stage log files.
 
 The final deformable transformation is stored as three sequential Elastix
 transforms (rigid, rough B-spline, fine B-spline) in
-`{log_dir}/elastix_deformable_pointset_registration/`.
+`{log_dir}/05_elastix_deformable_pointset_registration/`.
 
 For a full description of the output folder structure, the QC plots, and how to
 judge whether the registration succeeded, see

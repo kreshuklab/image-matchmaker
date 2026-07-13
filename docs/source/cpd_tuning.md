@@ -11,7 +11,7 @@ part of the main registration pipeline. Its output, `best_cpd_params.yaml`, is a
 drop-in replacement for the `coherent_point_drift` section of your registration
 config.
 
-The source and defaults live under `matchmaker/cpd_parameter_tuning/`.
+The source and defaults live under `image_matchmaker/cpd_parameter_tuning/`.
 
 ## Input landmarks
 
@@ -107,7 +107,7 @@ Controls which parameter ranges the grid search uses. Three options:
 be run standalone to print a YAML block you can paste into `search_space`:
 
 ```bash
-python matchmaker/cpd_parameter_tuning/suggest_cpd_ranges.py \
+python image_matchmaker/cpd_parameter_tuning/suggest_cpd_ranges.py \
     --path <segmentation>.n5 \
     --key svd_prealignment \
     --x_res 0.4 --y_res 0.4 --z_res 0.4
@@ -132,7 +132,7 @@ With `n_jobs > 1` the parallel workers all write to the Optuna SQLite study
 database, and SQLite's file locking is unreliable on shared/network filesystems
 (e.g. Lustre), causing `database is locked` errors. To avoid this, the study DB is
 kept on **node-local disk** during the run and copied back to
-`{log_dir}/cpd_optimization/optuna_study.db` when it finishes (even on failure).
+`{log_dir}/04_cpd_optimization/optuna_study.db` when it finishes (even on failure).
 
 By default the local copy goes under the system temp directory. On a cluster, set
 `LOCAL_TMPDIR` to a node-local scratch path so the DB does not land on the shared
@@ -169,7 +169,7 @@ The workflow:
 
 ## Outputs
 
-Written under `{log_dir}/cpd_optimization/`:
+Written under `{log_dir}/04_cpd_optimization/`:
 
 - `best_cpd_params.yaml` — the best parameters found. Drop it in place of the
   `coherent_point_drift` section of your main registration config.

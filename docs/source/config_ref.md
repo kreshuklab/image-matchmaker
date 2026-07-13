@@ -216,7 +216,7 @@ registration run. This is the fine B-spline transform,
 typically:
 
 ```text
-{log_dir}/elastix_deformable_pointset_registration/TransformParameters.2.txt
+{log_dir}/05_elastix_deformable_pointset_registration/TransformParameters.2.txt
 ```
 
 ### `prealignment_transform_path` (optional)
@@ -225,7 +225,7 @@ Path to the SVD pre-alignment transform produced by the registration run,
 typically:
 
 ```text
-{log_dir}/svd_prealignment/svd_prealignment_transform.json
+{log_dir}/01_svd_prealignment/svd_prealignment_transform.json
 ```
 
 If provided, the pre-alignment transform is applied before the Elastix transforms.

@@ -6,7 +6,7 @@
 import os
 import sys
 
-# Make the ``matchmaker`` package importable for autodoc (repo root).
+# Make the ``image_matchmaker`` package importable for autodoc (repo root).
 sys.path.insert(0, os.path.abspath('../..'))
 
 # -- Project information -----------------------------------------------------
@@ -32,7 +32,7 @@ exclude_patterns = []
 
 # -- Autodoc -----------------------------------------------------------------
 # The package's heavy / compiled / GPU dependencies are not installed in the docs
-# build environment, so mock them out; only ``matchmaker`` itself is imported.
+# build environment, so mock them out; only ``image_matchmaker`` itself is imported.
 autodoc_mock_imports = [
     "numpy", "scipy", "pandas", "matplotlib", "seaborn", "skimage",
     "tifffile", "z5py", "itk", "cvxpy", "transforms3d",

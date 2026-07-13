@@ -67,22 +67,22 @@ search radius) and/or `matching.min_neighbours` to reduce the number of candidat
 
 ### The moving volume is flipped after pre-alignment
 
-Check `overlay_after_prealignment` in `svd_prealignment/plots/`. If the automatic
+Check `overlay_after_prealignment` in `01_svd_prealignment/plots/`. If the automatic
 axis orientation chose the wrong flip, inspect the overlays in
-`svd_prealignment/manual_prealignment_options/` (`IDENTITY`, `X`, `Y`, `Z`) to see
+`01_svd_prealignment/manual_prealignment_options/` (`IDENTITY`, `X`, `Y`, `Z`) to see
 which rotation lines the volumes up, then set `prealignment.axis_orientation` to that
 value instead of `auto` (see {doc}`Configuration Reference <config_ref>`).
 
 ### Point matches look wrong (long, crossing lines)
 
-Inspect `point_matching_*` in `match_pointclouds/plots/`. Adjust the `matching`
+Inspect `point_matching_*` in `04_match_pointclouds/plots/`. Adjust the `matching`
 parameters — lower `max_dist` to reject distant matches, or change `min_neighbours`
 — or try a different `matching.method` (`ilp`, `hungarian`, `sinkhorn`) (see
 {doc}`Configuration Reference <config_ref>`).
 
 ### CPD does not converge / the displacement field is erratic
 
-Inspect `displacement_field_*` in `cpd_nonrigid_registration/plots/`. Increase
+Inspect `displacement_field_*` in `03_cpd_nonrigid_registration/plots/`. Increase
 `coherent_point_drift.maxiter` (100–150 is typical), and tune `w`, `beta`, and `lmd`.
 Large, discontinuous displacements often mean an earlier step (pre-alignment or rigid)
 did not align well — fix that first. If you have corresponding landmarks, the
