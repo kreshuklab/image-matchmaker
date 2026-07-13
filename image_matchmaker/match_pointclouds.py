@@ -7,7 +7,7 @@ import pandas as pd
 
 import open3d as o3d
 
-from matchmaker.utils import (
+from image_matchmaker.utils import (
     sparse_ilp_matching,
     hungarian_matching,
     sinkhorn_matching,

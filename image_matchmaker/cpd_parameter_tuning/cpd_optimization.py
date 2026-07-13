@@ -14,11 +14,11 @@ from pathlib import Path
 import optuna
 from optuna.samplers import GridSampler
 
-from matchmaker.utils import (
+from image_matchmaker.utils import (
     read_volume, get_attrs, extract_centroids, run_cpd, create_pcd, setup_logging,
     visualize_displacement_field,
 )
-from matchmaker.cpd_parameter_tuning.suggest_cpd_ranges import suggest_beta_ranges
+from image_matchmaker.cpd_parameter_tuning.suggest_cpd_ranges import suggest_beta_ranges
 
 import matplotlib
 matplotlib.use("agg")  # non-interactive backend required for worker threads
