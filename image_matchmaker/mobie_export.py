@@ -1,24 +1,22 @@
 import os
 import logging
 import click
-import sys
 from shutil import rmtree
 import pandas as pd
 import numpy as np
 from elf.io import open_file
 import mobie
-from matchmaker.utils import (get_attrs, setup_logging)
+
 from mobie import add_segmentation
 from mobie.import_data import import_segmentation
 from mobie.metadata import read_dataset_metadata
 from mobie.utils import get_data_key
 from mobie.tables import compute_default_table
-from matchmaker.utils import read_volume, write_volume, get_attrs
+
+from image_matchmaker.utils import read_volume, write_volume, get_attrs, setup_logging
 
 
-def instance_to_semantic(
-    input_path, input_key, output_key
-):
+def instance_to_semantic(input_path, input_key, output_key):
     """
     Convert instance segmentation (.n5) to semantic segmentation (.n5).
     """
@@ -160,7 +158,6 @@ def export_to_mobie(input_path, input_key, mobie_folder, dataset_name, segmentat
         add_to_mobie(input_path, input_key, mobie_folder, dataset_name, segmentation_name, menu_name)
 
 
-
 @click.command()
 @click.option("-i", "--input_path", required=True, help="Input .n5 file")
 @click.option("-k", "--input_key", required=True, help="Input key")
@@ -170,15 +167,8 @@ def export_to_mobie(input_path, input_key, mobie_folder, dataset_name, segmentat
 @click.option("-o", "--output_dir", required=True, help="Output directory")
 def main(input_path, input_key, input_type, semantic_seg, dataset_name, output_dir):
 
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s [%(levelname)s] %(message)s",
-        handlers=[
-            logging.FileHandler(f"{output_dir}/mobie_export.log", mode="w"),
-            logging.StreamHandler(sys.stdout),
-        ],
-        datefmt="%Y-%m-%d %H:%M:%S",
-    )
+    setup_logging(output_dir, "mobie_export.log")
+
     logging.info(f"MoBIE upload semantic segmentation: {semantic_seg}")
     if semantic_seg:
         output_key = f"{input_key}_binary"

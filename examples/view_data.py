@@ -1,5 +1,5 @@
 import napari
-from matchmaker.utils import read_volume
+from image_matchmaker.utils import read_volume
 
 
 seg_fixed = read_volume("./data/test/fixed_prealigned.n5", key="seg")

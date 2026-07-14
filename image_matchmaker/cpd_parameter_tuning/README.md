@@ -63,7 +63,7 @@ When the config sets `search_space: "dataset-specific"`, the Snakemake workflow 
 step automatically on the aligned fixed segmentation. It can also run manually:
 
 ```
-python matchmaker/cpd_parameter_tuning/suggest_cpd_ranges.py \
+python image_matchmaker/cpd_parameter_tuning/suggest_cpd_ranges.py \
     --path <segmentation>.n5 \
     --key svd_prealignment \
     --x_res 0.4 --y_res 0.4 --z_res 0.4

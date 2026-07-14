@@ -1,13 +1,20 @@
-import sys
 import itk
 import click
 import logging
 import numpy as np
 from pathlib import Path
 
-from matchmaker.utils import (read_volume, write_volume, get_attrs, plot_overlay, itk_scalar_img,
-                                elastix_registration, itk_to_np_order, apply_transform_chanwise,
-                                setup_logging)
+from image_matchmaker.utils import (
+    read_volume,
+    write_volume,
+    get_attrs,
+    plot_overlay,
+    itk_scalar_img,
+    elastix_registration,
+    itk_to_np_order,
+    apply_transform_chanwise,
+    setup_logging,
+)
 
 
 def elastix_segm_rigid_alignment(

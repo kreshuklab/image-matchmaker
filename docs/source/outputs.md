@@ -12,6 +12,10 @@ The output format is configurable (all PDF or PNG or individually per plot).
 
 ## Output directory layout
 
+Each registration step writes to its own subfolder of `log_dir`. These subfolders
+are prefixed with a two-digit ordinal (`01_`, `02_`, …) so they list in pipeline
+order.
+
 ```text
 {log_dir}/
 ├── fixed_image.n5                     # fixed image, one key per stage (+ *_binary keys)
@@ -20,29 +24,29 @@ The output format is configurable (all PDF or PNG or individually per plot).
 ├── matchmaker.log                     # main Snakemake log
 ├── raw_to_n5.log
 ├── mobie_export.log
-├── svd_prealignment/
+├── 01_svd_prealignment/
 │   ├── svd_prealignment_transform.json
 │   ├── prealignment.log
 │   ├── manual_prealignment_options/   # 180° rotation overlays (IDENTITY/X/Y/Z)
 │   └── plots/
-├── rigid_alignment/
+├── 02_rigid_alignment/
 │   ├── TransformParameters.0.txt
 │   ├── result.0.{mhd,raw}             # Elastix warped result (intermediate)
 │   ├── rigid_alignment.log
 │   ├── elastix_log_rigid.log
 │   └── plots/
-├── cpd_nonrigid_registration/
+├── 03_cpd_nonrigid_registration/
 │   ├── fixed_pcd.pcd
 │   ├── moving_pcd.pcd
 │   ├── registered_pcd.pcd
 │   ├── cpd_nonrigid_registration.log
 │   └── plots/
-├── match_pointclouds/
+├── 04_match_pointclouds/
 │   ├── matched_labels.csv
 │   ├── matched_idx_pairs.txt
 │   ├── match_pointclouds.log
 │   └── plots/
-├── elastix_deformable_pointset_registration/
+├── 05_elastix_deformable_pointset_registration/
 │   ├── TransformParameters.0.txt      # rigid
 │   ├── TransformParameters.1.txt      # rough B-spline
 │   ├── TransformParameters.2.txt      # fine B-spline
@@ -87,11 +91,11 @@ Global alignment of centroids and principal axes.
 
 **Output files**
 
-- `svd_prealignment/svd_prealignment_transform.json` — the pre-alignment transform
+- `01_svd_prealignment/svd_prealignment_transform.json` — the pre-alignment transform
   (see structure below). The prealigned volumes are stored under the
   `svd_prealignment` key of both `.n5` files.
 
-**QC plots** (in `svd_prealignment/plots/`, except where noted)
+**QC plots** (in `01_svd_prealignment/plots/`, except where noted)
 
 - `fixed_input` / `moving_input` (and `*_semantic` variants) — slices of each input
   with the PCA centre of mass and principal axes overlaid.
@@ -109,7 +113,7 @@ Global alignment of centroids and principal axes.
   effect of a 180° rotation around each axis. If `auto` picks the wrong orientation,
   use these to choose the correct `axis_orientation` value (see
   {doc}`Configuration Reference <config_ref>`). Saved directly in
-  `svd_prealignment/manual_prealignment_options/`, not in `plots/`.
+  `01_svd_prealignment/manual_prealignment_options/`, not in `plots/`.
 
 The transform JSON holds a 4×4 affine matrix and output shape for both volumes:
 
@@ -129,12 +133,12 @@ Corrects remaining rotation and translation differences.
 
 **Output files**
 
-- `rigid_alignment/TransformParameters.0.txt` — Elastix rigid transform
+- `02_rigid_alignment/TransformParameters.0.txt` — Elastix rigid transform
   (ITK/Elastix format). The aligned moving volume is stored under the
   `rigid_alignment` key of `moving_image.n5`. Elastix also writes an intermediate
   warped image (`result.0.mhd`/`result.0.raw`).
 
-**QC plots** (in `rigid_alignment/plots/`)
+**QC plots** (in `02_rigid_alignment/plots/`)
 
 - `overlay_after_rigid_alignment` — overlay after the rigid step; offsets remaining
   after pre-alignment should be corrected here.
@@ -143,12 +147,12 @@ Corrects remaining rotation and translation differences.
 
 Non-rigid alignment of the point clouds.
 
-**Output files** (in `cpd_nonrigid_registration/`)
+**Output files** (in `03_cpd_nonrigid_registration/`)
 
 - `fixed_pcd.pcd`, `moving_pcd.pcd`, `registered_pcd.pcd` — point clouds in Open3D
   ASCII PCD format (`x y z label`).
 
-**QC plots** (in `cpd_nonrigid_registration/plots/`)
+**QC plots** (in `03_cpd_nonrigid_registration/plots/`)
 
 - `pcds_before_registration_{xz,yz,xy}` / `pcds_after_registration_{xz,yz,xy}` —
   fixed and moving point clouds projected onto each plane before and after CPD; the
@@ -161,13 +165,13 @@ Non-rigid alignment of the point clouds.
 
 Finds correspondences between instances.
 
-**Output files** (in `match_pointclouds/`)
+**Output files** (in `04_match_pointclouds/`)
 
 - `matched_labels.csv` — correspondence table with columns `fixed_label_id`,
   `moving_label_id`; the central result linking instances across the two volumes.
 - `matched_idx_pairs.txt` — the same matches as index pairs, one per line.
 
-**QC plots** (in `match_pointclouds/plots/`)
+**QC plots** (in `04_match_pointclouds/plots/`)
 
 - `point_matching_{xz,yz,xy}` — fixed and moving point clouds with lines drawn
   between matched instances. Lines should connect nearby, corresponding structures;
@@ -179,19 +183,20 @@ Finds correspondences between instances.
 
 Final deformable alignment using the matched landmarks.
 
-**Output files** (in `elastix_deformable_pointset_registration/`)
+**Output files** (in `05_elastix_deformable_pointset_registration/`)
 
 - `TransformParameters.0.txt`, `TransformParameters.1.txt`,
   `TransformParameters.2.txt` — sequential transforms: `0` rigid, `1` rough
   B-spline, `2` fine B-spline. The aligned moving volume is stored under two keys of
-  `moving_image.n5`: `pointset_alignment` (in pre-alignment space) and
-  `pointset_alignment_input_space` (back in the original input space).
+  `moving_image.n5`: `pointset_alignment` — the final result, back in the original
+  input space (this is the key exported to MoBIE) — and
+  `pointset_alignment_prealignment_space` (the same result in pre-alignment space).
 - `fixed_pointset.{csv,txt}`, `moving_pointset.{csv,txt}` and
   `fixed_pcd.pcd`, `moving_pcd.pcd` — the matched instance centroids used as Elastix
   corresponding points. Elastix also writes intermediate warped images
   (`result.*`) and optimization logs (`IterationInfo.*.txt`).
 
-**QC plots** (in `elastix_deformable_pointset_registration/plots/`)
+**QC plots** (in `05_elastix_deformable_pointset_registration/plots/`)
 
 - `deformable_pointset_alignment_before` / `deformable_pointset_alignment_final` —
   overlays before and after the final deformable step (a `*_semantic` and a
@@ -208,7 +213,7 @@ The combined final transform is also written to the path set by
 To warp additional images (e.g. raw EM or extra LM channels) with these results,
 use the transform workflow described in the {doc}`Quick Start <quickstart>`. The
 fine B-spline `TransformParameters.2.txt` is typically the `parameter_map_path`,
-and `svd_prealignment/svd_prealignment_transform.json` the
+and `01_svd_prealignment/svd_prealignment_transform.json` the
 `prealignment_transform_path` (see {doc}`Configuration Reference <config_ref>`).
 
 ## Quality checklist

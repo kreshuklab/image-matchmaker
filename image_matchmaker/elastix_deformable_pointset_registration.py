@@ -7,7 +7,8 @@ import itk
 from pathlib import Path
 import open3d as o3d
 
-from matchmaker.utils import (
+from image_matchmaker.utils import (
+    rotate_img,
     read_volume,
     get_attrs,
     write_volume,
@@ -16,7 +17,6 @@ from matchmaker.utils import (
     itk_to_np_order,
     apply_transform_chanwise,
     read_transform_dict,
-    rotate_img,
     pcd_to_elastix,
     create_matched_pcds,
     setup_logging,

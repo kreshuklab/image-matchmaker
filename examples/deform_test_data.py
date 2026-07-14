@@ -6,7 +6,7 @@ import transforms3d as tf3d
 from scipy.ndimage import zoom
 from skimage.filters import gaussian
 
-from matchmaker.utils import (get_transformation_matrix, rotate_img, write_volume,
+from image_matchmaker.utils import (get_transformation_matrix, rotate_img, write_volume,
                                 plot_three_slices, plot_overlay, grid_sample3d, load_config,
                                 crop_to_bbox, resample_volume)
 
