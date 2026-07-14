@@ -4,9 +4,19 @@ import open3d as o3d
 import seaborn as sns
 import matplotlib.colors as mcolors
 import logging
+from pathlib import Path
 from skimage.color import label2rgb
 
-from matchmaker.preprocessing import percentile_norm
+from image_matchmaker.preprocessing import percentile_norm
+
+# Change to 'png' or None (infer from path extension) to switch output format
+PLOT_FORMAT = 'pdf'
+
+
+def _savefig(save_path, dpi=300):
+    if PLOT_FORMAT is not None and save_path is not None:
+        save_path = Path(save_path).with_suffix(f'.{PLOT_FORMAT}')
+    plt.savefig(save_path, dpi=dpi)
 
 
 PINK_HEX = '#FF3E96'
@@ -167,7 +177,7 @@ def plot_three_slices(
     if save_path is None:
         plt.show()
     else:
-        plt.savefig(save_path, dpi=300)
+        _savefig(save_path)
 
     plt.close()
 
@@ -274,7 +284,7 @@ def plot_overlay(img1, img2, save_path=None, x_pos=None, y_pos=None, z_pos=None,
     if save_path is None:
         plt.show()
     else:
-        plt.savefig(save_path, dpi=300)
+        _savefig(save_path)
 
     plt.close()
 
@@ -369,7 +379,7 @@ def overlay_pcds(
     if save_path is None:
         plt.show()
     else:
-        plt.savefig(save_path, dpi=300)
+        _savefig(save_path)
     plt.close()
 
 
@@ -407,7 +417,7 @@ def visualize_displacement_field(
     if save_path is None:
         plt.show()
     else:
-        plt.savefig(save_path, dpi=300, bbox_inches="tight")
+        _savefig(save_path)
     plt.close()
 
 
@@ -462,7 +472,7 @@ def plot_matching_qc(
     plt.axis("equal")
     plt.gca().invert_yaxis()
 
-    plt.savefig(fig_name, dpi=300)
+    _savefig(fig_name)
     plt.close()
 
 

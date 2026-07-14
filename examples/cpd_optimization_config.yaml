@@ -18,7 +18,8 @@ landmarks:
   fixed: "examples/data/fixed_landmarks.csv"
   moving: "examples/data/moving_landmarks.csv"
 
-axis_orientation: "auto"
+prealignment:
+  axis_orientation: "auto"
 
 log_dir: "data/test_elastic_registration/cpd_optimization"
 

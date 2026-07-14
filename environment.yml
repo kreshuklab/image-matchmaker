@@ -40,4 +40,5 @@ dependencies:
         - itk
         - snakemake
         - probreg
+        - pygmtools
         - -e .

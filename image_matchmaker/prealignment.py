@@ -1,12 +1,11 @@
-import sys
 import click
 import logging
 import numpy as np
 from pathlib import Path
 import matplotlib.pyplot as plt
 
-from matchmaker.data import create_point_cloud
-from matchmaker.utils import (
+from image_matchmaker.data import create_point_cloud
+from image_matchmaker.utils import (
     get_transformation_matrix,
     rotate_img,
     read_volume,
@@ -17,11 +16,10 @@ from matchmaker.utils import (
     plot_overlay,
     setup_logging,
     get_axis_orient_matrix,
-    resample_volume,
     transform_axes_vis,
 )
 
-from matchmaker.utils.vis import CYAN_HEX, PINK, CYAN, PINK_HEX, LABEL
+from image_matchmaker.utils.vis import CYAN_HEX, PINK, CYAN, PINK_HEX, LABEL, _savefig
 
 
 def get_SVD_transform(img, spacing, save_path=None):
@@ -67,27 +65,48 @@ def get_SVD_transform(img, spacing, save_path=None):
         plt.subplot(1, 2, 2)
         plt.title("Rotated Vertices")
         plt.scatter(vr[:, 0], vr[:, 1], alpha=0.1)
-        plt.savefig(save_path, dpi=300)
+        _savefig(save_path)
 
     return gc, Vt
 
 
 def orient_axis(fixed_prealigned, moving_prealigned, output_dir):
-    int_prof_z = np.sum(moving_prealigned > 0, axis=(1, 2)) / np.sum(moving_prealigned > 0)
-    asymm_coeff_z = np.corrcoef(int_prof_z, int_prof_z)[0, 1] - np.corrcoef(int_prof_z, int_prof_z[::-1])[0, 1]
-    int_prof_y = np.sum(moving_prealigned > 0, axis=(0, 2)) / np.sum(moving_prealigned > 0)
-    asymm_coeff_y = np.corrcoef(int_prof_y, int_prof_y)[0, 1] - np.corrcoef(int_prof_y, int_prof_y[::-1])[0, 1]
-    int_prof_x = np.sum(moving_prealigned > 0, axis=(1, 0)) / np.sum(moving_prealigned > 0)
-    asymm_coeff_x = np.corrcoef(int_prof_x, int_prof_x)[0, 1] - np.corrcoef(int_prof_x, int_prof_x[::-1])[0, 1]
+    int_prof_z = np.sum(moving_prealigned > 0, axis=(1, 2)) / np.sum(
+        moving_prealigned > 0
+    )
+    asymm_coeff_z = (
+        np.corrcoef(int_prof_z, int_prof_z)[0, 1]
+        - np.corrcoef(int_prof_z, int_prof_z[::-1])[0, 1]
+    )
+    int_prof_y = np.sum(moving_prealigned > 0, axis=(0, 2)) / np.sum(
+        moving_prealigned > 0
+    )
+    asymm_coeff_y = (
+        np.corrcoef(int_prof_y, int_prof_y)[0, 1]
+        - np.corrcoef(int_prof_y, int_prof_y[::-1])[0, 1]
+    )
+    int_prof_x = np.sum(moving_prealigned > 0, axis=(1, 0)) / np.sum(
+        moving_prealigned > 0
+    )
+    asymm_coeff_x = (
+        np.corrcoef(int_prof_x, int_prof_x)[0, 1]
+        - np.corrcoef(int_prof_x, int_prof_x[::-1])[0, 1]
+    )
 
     logging.info("Asymmetry coefficients in moving image:")
     logging.info(f"Z: {asymm_coeff_z}")
     logging.info(f"Y: {asymm_coeff_y}")
     logging.info(f"X: {asymm_coeff_x}")
 
-    int_prof_z_fixed = np.sum(fixed_prealigned > 0, axis=(1, 2)) / np.sum(fixed_prealigned > 0)
-    int_prof_y_fixed = np.sum(fixed_prealigned > 0, axis=(0, 2)) / np.sum(fixed_prealigned > 0)
-    int_prof_x_fixed = np.sum(fixed_prealigned > 0, axis=(1, 0)) / np.sum(fixed_prealigned > 0)
+    int_prof_z_fixed = np.sum(fixed_prealigned > 0, axis=(1, 2)) / np.sum(
+        fixed_prealigned > 0
+    )
+    int_prof_y_fixed = np.sum(fixed_prealigned > 0, axis=(0, 2)) / np.sum(
+        fixed_prealigned > 0
+    )
+    int_prof_x_fixed = np.sum(fixed_prealigned > 0, axis=(1, 0)) / np.sum(
+        fixed_prealigned > 0
+    )
 
     plt.figure()
     plt.plot(int_prof_z_fixed, label="fixed", color=PINK_HEX)
@@ -95,7 +114,7 @@ def orient_axis(fixed_prealigned, moving_prealigned, output_dir):
     plt.xlabel("Axis Z Coordinate")
     plt.ylabel("Sum intensity along axis = Z")
     plt.legend()
-    plt.savefig(f"{output_dir}/plots/axis_int_profile_Z.png", dpi=300)
+    _savefig(f"{output_dir}/plots/axis_int_profile_Z.png")
 
     plt.figure()
     plt.plot(int_prof_y_fixed, label="fixed", color=PINK_HEX)
@@ -103,7 +122,7 @@ def orient_axis(fixed_prealigned, moving_prealigned, output_dir):
     plt.xlabel("Axis Y Coordinate")
     plt.ylabel("Sum intensity along axis = Y")
     plt.legend()
-    plt.savefig(f"{output_dir}/plots/axis_int_profile_Y.png", dpi=300)
+    _savefig(f"{output_dir}/plots/axis_int_profile_Y.png")
 
     plt.figure()
     plt.plot(int_prof_x_fixed, label="fixed", color=PINK_HEX)
@@ -111,24 +130,35 @@ def orient_axis(fixed_prealigned, moving_prealigned, output_dir):
     plt.xlabel("Axis X Coordinate")
     plt.ylabel("Sum intensity along axis = X")
     plt.legend()
-    plt.savefig(f"{output_dir}/plots/axis_int_profile_X.png", dpi=300)
+    _savefig(f"{output_dir}/plots/axis_int_profile_X.png")
 
-    if np.corrcoef(int_prof_z, int_prof_z_fixed)[0, 1] > np.corrcoef(int_prof_z[::-1], int_prof_z_fixed)[0, 1]:
+    if (
+        np.corrcoef(int_prof_z, int_prof_z_fixed)[0, 1]
+        > np.corrcoef(int_prof_z[::-1], int_prof_z_fixed)[0, 1]
+    ):
         z_correct = True
     else:
         z_correct = False
 
-    if np.corrcoef(int_prof_y, int_prof_y_fixed)[0, 1] > np.corrcoef(int_prof_y[::-1], int_prof_y_fixed)[0, 1]:
+    if (
+        np.corrcoef(int_prof_y, int_prof_y_fixed)[0, 1]
+        > np.corrcoef(int_prof_y[::-1], int_prof_y_fixed)[0, 1]
+    ):
         y_correct = True
     else:
         y_correct = False
 
-    if np.corrcoef(int_prof_x, int_prof_x_fixed)[0, 1] > np.corrcoef(int_prof_x[::-1], int_prof_x_fixed)[0, 1]:
+    if (
+        np.corrcoef(int_prof_x, int_prof_x_fixed)[0, 1]
+        > np.corrcoef(int_prof_x[::-1], int_prof_x_fixed)[0, 1]
+    ):
         x_correct = True
     else:
         x_correct = False
 
-    logging.info(f"Orientations are correct: Z - {z_correct}, Y - {y_correct}, X - {x_correct}")
+    logging.info(
+        f"Orientations are correct: Z - {z_correct}, Y - {y_correct}, X - {x_correct}"
+    )
 
     if (asymm_coeff_x < asymm_coeff_y) and (asymm_coeff_x < asymm_coeff_z):
         logging.info("Using axes Y and Z for determining orientation")
@@ -265,7 +295,7 @@ def prealign_samples(fixed_img, moving_img, fixed_spacing, moving_spacing, new_s
         moving_rot, T_moving = mirror_img(moving_rot, T_moving)
 
     return {"fixed": [fixed_rot, T_fixed, gc_fixed, Vt_fixed, fixed_shape],
-            "moving": [moving_rot, T_moving, gc_moving, Vt_moving, moving_shape],}
+            "moving": [moving_rot, T_moving, gc_moving, Vt_moving, moving_shape]}
 
 
 def run_prealignment(
@@ -344,24 +374,10 @@ def run_prealignment(
         Vt=Vt_fixed,
         cmap=LABEL
     )
-    plot_three_slices(
-        fixed_img,
-        save_path=f"{output_dir}/plots/fixed_input.png",
-        gc=gc_fixed,
-        Vt=Vt_fixed,
-        cmap=LABEL
-    )
 
     plot_three_slices(
         moving_img,
         save_path=f"{output_dir}/plots/moving_input.pdf",
-        gc=gc_moving,
-        Vt=Vt_moving,
-        cmap=LABEL
-    )
-    plot_three_slices(
-        moving_img,
-        save_path=f"{output_dir}/plots/moving_input.png",
         gc=gc_moving,
         Vt=Vt_moving,
         cmap=LABEL
@@ -374,24 +390,10 @@ def run_prealignment(
         Vt=Vt_fixed,
         cmap=PINK,
     )
-    plot_three_slices(
-        fixed_img,
-        save_path=f"{output_dir}/plots/fixed_input_semantic.png",
-        gc=gc_fixed,
-        Vt=Vt_fixed,
-        cmap=PINK,
-    )
 
     plot_three_slices(
         moving_img,
         save_path=f"{output_dir}/plots/moving_input_semantic.pdf",
-        gc=gc_moving,
-        Vt=Vt_moving,
-        cmap=CYAN
-    )
-    plot_three_slices(
-        moving_img,
-        save_path=f"{output_dir}/plots/moving_input_semantic.png",
         gc=gc_moving,
         Vt=Vt_moving,
         cmap=CYAN
@@ -401,15 +403,6 @@ def run_prealignment(
         fixed_img,
         moving_img,
         save_path=f"{output_dir}/plots/overlay_input.pdf",
-        gc1=gc_fixed,
-        Vt1=Vt_fixed,
-        gc2=gc_moving,
-        Vt2=Vt_moving,
-    )
-    plot_overlay(
-        fixed_img,
-        moving_img,
-        save_path=f"{output_dir}/plots/overlay_input.png",
         gc1=gc_fixed,
         Vt1=Vt_fixed,
         gc2=gc_moving,
@@ -466,7 +459,6 @@ def run_prealignment(
         moving_prealigned = rotate_img(moving_prealigned, R, output_shape=moving_prealigned.shape)
         T_moving = T_moving @ R
 
-
     logging.info("Prealignment done.")
 
     prealignment_transform = {
@@ -482,20 +474,18 @@ def run_prealignment(
 
     plot_three_slices(
         fixed_prealigned,
-        save_path=f"{output_dir}/plots/fixed_prealigned.png",
-        gc = (np.linalg.inv(T_fixed) @ np.append(gc_fixed, 1))[:3],
-        Vt = transform_axes_vis(Vt_fixed, T_fixed),
+        save_path=f"{output_dir}/plots/fixed_prealigned.pdf",
+        gc=(np.linalg.inv(T_fixed) @ np.append(gc_fixed, 1))[:3],
+        Vt=transform_axes_vis(Vt_fixed, T_fixed),
         cmap=PINK,
-
     )
 
     plot_three_slices(
         moving_prealigned,
         save_path=f"{output_dir}/plots/moving_prealigned.pdf",
-        gc = (np.linalg.inv(T_moving) @ np.append(gc_moving, 1))[:3],
-        Vt = transform_axes_vis(Vt_moving, T_moving),
+        gc=(np.linalg.inv(T_moving) @ np.append(gc_moving, 1))[:3],
+        Vt=transform_axes_vis(Vt_moving, T_moving),
         cmap=CYAN,
-
     )
 
     plot_overlay(
@@ -521,7 +511,8 @@ def run_prealignment(
 @click.option("-o", "--output_dir", required=True, help="Output directory")
 @click.option("-ok", "--output_key", required=True, help="Output key (same in both n5)")
 @click.option("-trans", "--output_transform_path", required=True, help="Path to write the final transform")
-@click.option("-axis_orientation", "--axis_orientation", required=True, help="How to find the correct orientation along the principal axes")
+@click.option("-axis_orientation", "--axis_orientation", required=True, 
+              help="How to find the correct orientation along the principal axes")
 @click.option("-tif", "--save_tif", is_flag=True, help="Whether to save tif or not")
 def main(fixed_path, fixed_key, fixed_spacing, moving_path, moving_key, moving_spacing,
          output_dir, output_key, output_transform_path, axis_orientation, save_tif=False):
@@ -538,7 +529,7 @@ def main(fixed_path, fixed_key, fixed_spacing, moving_path, moving_key, moving_s
         moving_path (str): Path to the moving input .n5 file.
         moving_key (str): Key to the moving image data in the .n5 file.
         output_dir (str): Directory where the results should be saved.
-
+        output_key (str): Key to the output image data in the .n5 file.
     Returns:
         None
     """

@@ -1,8 +1,6 @@
 import json
 import re
 
-configfile: "examples/register_config_test_rigid_apply_transform.yaml"
-
 moving_images = config["moving_images"]
 moving_paths = [item["input_path"] for item in moving_images]
 moving_keys = [item["input_key"] for item in moving_images]
@@ -57,10 +55,9 @@ rule apply_transform_file:
         output_path = lambda w: output_paths[TARGET_OUTPUTS.index(w.out_file)],
         output_key = lambda w: output_keys[TARGET_OUTPUTS.index(w.out_file)],
         interpolation_order = lambda w: interpolation_orders[TARGET_OUTPUTS.index(w.out_file)],
-    conda: "matchmaker_env"
     shell:
         """
-        python matchmaker/apply_transform.py \
+        python image_matchmaker/apply_transform.py \
             {params.opts} \
             --moving_path {params.moving_path} \
             --moving_key {params.moving_key} \
@@ -93,10 +90,9 @@ rule apply_transform_n5:
         output_path = lambda w: output_paths[TARGET_OUTPUTS.index(w.out_dir)],
         output_key = lambda w: output_keys[TARGET_OUTPUTS.index(w.out_dir)],
         interpolation_order = lambda w: interpolation_orders[TARGET_OUTPUTS.index(w.out_dir)],
-    conda: "matchmaker_env"
     shell:
         """
-        python matchmaker/apply_transform.py \
+        python image_matchmaker/apply_transform.py \
             {params.opts} \
             --moving_path {params.moving_path} \
             --moving_key {params.moving_key} \
