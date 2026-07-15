@@ -1,7 +1,7 @@
 API Reference
 =============
 
-This page documents the most useful functions for calling matchmaker from
+This page documents the most useful functions for calling image-matchmaker from
 Python. For usage patterns and examples, see the Python API section of the
 :doc:`Usage <usage>` page.
 

@@ -52,7 +52,7 @@ snakemake -s workflows/registration.smk --configfile <config.yaml> \
 The test downloads reference data from the project's GitHub release on first run. If
 the download fails (e.g. no internet), download it
 manually from the
-[release page](https://github.com/kreshuklab/matchmaker/releases/tag/test_data-v1.0)
+[release page](https://github.com/kreshuklab/image-matchmaker/releases/tag/test_data-v1.0)
 and place it under `examples/data/test_data/` (see {doc}`Installation <installation>`).
 
 ### Feature matching runs out of memory

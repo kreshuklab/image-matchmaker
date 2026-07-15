@@ -1,7 +1,7 @@
 # CPD Parameter Tuning
 
 The Coherent Point Drift (CPD) step has four parameters (`w`, `beta`, `lmd`,
-`maxiter`) whose best values depend on the data. Matchmaker ships an
+`maxiter`) whose best values depend on the data. Image-Matchmaker ships an
 [Optuna](https://optuna.org/)-based grid search that tunes them automatically by
 minimizing the mean **Landmark Registration Error (LRE)** between user-provided
 corresponding landmarks after CPD.
