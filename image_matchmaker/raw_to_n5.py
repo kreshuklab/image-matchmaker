@@ -18,7 +18,7 @@ def preprocess_tif_input(input_path, output_path, output_key, log_dir, x_res, y_
         image.ndim == 4
     ), f"Currently pipeline only works with ZYX or CZYX images, input has {image.ndim} dimensions"
 
-    image = convert_to_int(image)    
+    image = convert_to_int(image)
     logging.info(f"Writing output image to {output_path}")
 
     attrs = {"resolution": [z_res, y_res, x_res]}

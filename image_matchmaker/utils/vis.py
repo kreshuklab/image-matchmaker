@@ -6,6 +6,8 @@ import matplotlib.colors as mcolors
 import logging
 from pathlib import Path
 from skimage.color import label2rgb
+from skimage.util import map_array
+from skimage.measure import regionprops_table
 
 from image_matchmaker.preprocessing import percentile_norm
 
@@ -173,6 +175,195 @@ def plot_three_slices(
             px, py = _slice_gc_coords(gc, axis)
             plt.scatter(px, py, c="yellow", s=40)
             _draw_axes(px, py, Vt, img.shape, axis)
+
+    if save_path is None:
+        plt.show()
+    else:
+        _savefig(save_path)
+
+    plt.close()
+
+
+def _matched_instance_lut(fixed_seg, matched_label_df, cmap, gradient_axis):
+    """Build the rainbow color lookup shared by the slice and projection plots.
+
+    Returns ``(lut, moving_ids, fixed_of_moving, gradient_axis)`` where ``lut`` is an
+    RGB lookup table indexed by fixed_label_id (background/unlabeled -> white), and
+    ``moving_ids``/``fixed_of_moving`` map each matched moving label to its fixed
+    partner.
+    """
+    # matched-label mapping (dedupe in case of rare duplicate ids).
+    # Copy the arrays because map_array rejects read-only buffers.
+    m = matched_label_df.drop_duplicates("moving_label_id")
+    moving_ids = np.array(m["moving_label_id"])
+    fixed_of_moving = np.array(m["fixed_label_id"])
+
+    # LUT keyed by fixed_label_id -> rainbow color from the instance centroid's
+    # position along the chosen axis; 0 (background) and unlabeled ids stay white.
+    props = regionprops_table(fixed_seg, properties=("label", "centroid"))
+    fixed_labels = props["label"]
+    centroids = np.column_stack([props[f"centroid-{a}"] for a in range(3)])
+    if gradient_axis is None:
+        gradient_axis = int(np.argmax(centroids.max(axis=0) - centroids.min(axis=0)))
+    coord = centroids[:, gradient_axis]
+    span = coord.max() - coord.min()
+    norm = (coord - coord.min()) / span if span > 0 else np.zeros_like(coord)
+    colors = plt.get_cmap(cmap)(norm)[:, :3]
+
+    max_fixed = int(max(fixed_seg.max(), fixed_of_moving.max(), fixed_labels.max()))
+    lut = np.ones((max_fixed + 1, 3))
+    lut[fixed_labels] = colors
+    lut[0] = (1.0, 1.0, 1.0)
+    return lut, moving_ids, fixed_of_moving, gradient_axis
+
+
+def plot_matched_instances(
+    fixed_seg,
+    moving_seg,
+    matched_label_df,
+    save_path=None,
+    x_pos=None,
+    y_pos=None,
+    z_pos=None,
+    unmatched_color=(0.6, 0.6, 0.6),
+    cmap="gist_rainbow",
+    gradient_axis=None,
+):
+    """Plot matched instances across the fixed and moving segmentations.
+
+    2x3 grid: top row = three orthogonal slices of the fixed segmentation with every
+    instance colored; bottom row = the same slices of the moving segmentation with each
+    matched instance colored like its fixed partner (unmatched instances shown grey).
+    Uses the same slice layout as ``plot_three_slices``.
+
+    Each fixed instance is colored with a rainbow gradient based on its centroid
+    position along one axis, so the color varies smoothly through space. If the
+    matching is good, the moving image shows the same smooth gradient; mismatches
+    stand out as color discontinuities.
+
+    Args:
+        fixed_seg: 3D fixed instance-label volume (ZYX)
+        moving_seg: 3D moving instance-label volume (ZYX), same grid as fixed_seg
+        matched_label_df: DataFrame with columns ``fixed_label_id`` and ``moving_label_id``
+        save_path: path to save figure
+        x_pos: x slice index (defaults to center)
+        y_pos: y slice index (defaults to center)
+        z_pos: z slice index (defaults to center)
+        unmatched_color: RGB for moving instances without a match
+        cmap: matplotlib colormap name used for the gradient
+        gradient_axis: axis (0=z, 1=y, 2=x) along which the gradient runs; defaults
+            to the axis with the largest spread of instance centroids (the long axis)
+    """
+    assert fixed_seg.ndim == 3 and moving_seg.ndim == 3
+    if z_pos is None:
+        z_pos = int(fixed_seg.shape[0] // 2)
+    if y_pos is None:
+        y_pos = int(fixed_seg.shape[1] // 2)
+    if x_pos is None:
+        x_pos = int(fixed_seg.shape[2] // 2)
+
+    lut, moving_ids, fixed_of_moving, gradient_axis = _matched_instance_lut(
+        fixed_seg, matched_label_df, cmap, gradient_axis
+    )
+
+    def fixed_rgb(s):  # s: 2D fixed label slice
+        return lut[s]
+
+    def moving_rgb(s):  # s: 2D moving label slice
+        # np.array(s) forces a writable, contiguous copy for map_array
+        remapped = map_array(np.array(s), moving_ids, fixed_of_moving)  # unmatched -> 0
+        rgb = lut[remapped]
+        unmatched_fg = (s > 0) & (remapped == 0)
+        rgb[unmatched_fg] = unmatched_color
+        return rgb
+
+    fixed_slices = [
+        (0, z_pos, fixed_seg[z_pos, :, :]),
+        (1, y_pos, fixed_seg[:, y_pos, :]),
+        (2, x_pos, fixed_seg[:, :, x_pos]),
+    ]
+    moving_slices = [
+        (0, z_pos, moving_seg[z_pos, :, :]),
+        (1, y_pos, moving_seg[:, y_pos, :]),
+        (2, x_pos, moving_seg[:, :, x_pos]),
+    ]
+
+    plt.figure(figsize=(15, 10))
+    for col, (axis, pos, s) in enumerate(fixed_slices, 1):
+        plt.subplot(2, 3, col)
+        plt.title(f"fixed {'zyx'[axis]} slice at {pos}")
+        plt.imshow(fixed_rgb(s))
+    for col, (axis, pos, s) in enumerate(moving_slices, 1):
+        plt.subplot(2, 3, 3 + col)
+        plt.title(f"moving {'zyx'[axis]} slice at {pos}")
+        plt.imshow(moving_rgb(s))
+
+    if save_path is None:
+        plt.show()
+    else:
+        _savefig(save_path)
+
+    plt.close()
+
+
+def plot_matched_instances_projection(
+    fixed_seg,
+    moving_seg,
+    matched_label_df,
+    save_path=None,
+    unmatched_color=(0.6, 0.6, 0.6),
+    cmap="gist_rainbow",
+    gradient_axis=None,
+):
+    """Like ``plot_matched_instances`` but projects *all* instances onto each plane.
+
+    Instead of a single central slice per axis, every instance is collapsed onto the
+    plane via a maximum-intensity projection along each axis, so all instances are
+    visible at once. 2x3 grid: top row = fixed projections onto the (xy, xz, yz)
+    planes; bottom row = the same projections of the moving segmentation, each matched
+    instance colored like its fixed partner (unmatched instances shown grey). Colors
+    use the same rainbow gradient as ``plot_matched_instances``.
+
+    Args:
+        fixed_seg: 3D fixed instance-label volume (ZYX)
+        moving_seg: 3D moving instance-label volume (ZYX), same grid as fixed_seg
+        matched_label_df: DataFrame with columns ``fixed_label_id`` and ``moving_label_id``
+        save_path: path to save figure
+        unmatched_color: RGB for moving instances without a match
+        cmap: matplotlib colormap name used for the gradient
+        gradient_axis: axis (0=z, 1=y, 2=x) along which the gradient runs; defaults
+            to the axis with the largest spread of instance centroids (the long axis)
+    """
+    assert fixed_seg.ndim == 3 and moving_seg.ndim == 3
+
+    lut, moving_ids, fixed_of_moving, gradient_axis = _matched_instance_lut(
+        fixed_seg, matched_label_df, cmap, gradient_axis
+    )
+
+    # Relabel the whole moving volume to fixed-partner ids *before* projecting, so the
+    # fixed and moving max-projections select corresponding instances. (Projecting raw
+    # moving ids and remapping afterwards picks the largest moving id per column, an
+    # instance unrelated to the fixed winner, which makes the two views inconsistent.)
+    mov2fix = np.zeros(int(moving_seg.max()) + 1, dtype=np.uint32)
+    mov2fix[moving_ids] = fixed_of_moving
+    moving_as_fixed = mov2fix[moving_seg]  # matched -> fixed id, unmatched/bg -> 0
+    unmatched = (moving_seg > 0) & (moving_as_fixed == 0)
+
+    # Maximum-intensity projection of the (fixed-id) labels onto each plane.
+    planes = ["xy", "xz", "yz"]
+
+    plt.figure(figsize=(15, 10))
+    for col, a in enumerate(range(3), 1):
+        plt.subplot(2, 3, col)
+        plt.title(f"fixed {planes[a]} projection")
+        plt.imshow(lut[fixed_seg.max(axis=a)])
+    for col, a in enumerate(range(3), 1):
+        mproj = moving_as_fixed.max(axis=a)
+        rgb = lut[mproj]
+        rgb[(mproj == 0) & unmatched.max(axis=a)] = unmatched_color
+        plt.subplot(2, 3, 3 + col)
+        plt.title(f"moving {planes[a]} projection")
+        plt.imshow(rgb)
 
     if save_path is None:
         plt.show()
