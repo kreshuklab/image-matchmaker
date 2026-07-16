@@ -87,7 +87,8 @@ def run_pipline(
     )
 
     # Compare results
-    moving_path = test_dir / f"{registration_config['moving_image']['output_name']}.n5"
+    moving_name = registration_config["moving_image"].get("name", "moving_image")
+    moving_path = test_dir / f"{moving_name}.n5"
 
     result_img = read_volume(moving_path, "pointset_alignment_prealignment_space")
     warped_img = read_volume(moving_path, "pointset_alignment_transform")

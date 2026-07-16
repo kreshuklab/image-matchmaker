@@ -1,13 +1,10 @@
 import os
-import sys
 import click
 import logging
 import numpy as np
-import matplotlib.pyplot as plt
 import pandas as pd
 import itk
 from pathlib import Path
-
 import open3d as o3d
 
 from image_matchmaker.utils import (
@@ -16,60 +13,18 @@ from image_matchmaker.utils import (
     get_attrs,
     write_volume,
     plot_overlay,
-    read_volume,
-    write_volume,
-    get_attrs,
     itk_scalar_img,
     itk_to_np_order,
     apply_transform_chanwise,
-    create_parameter_object,
-    extract_centroids,
-    create_pcd,
     read_transform_dict,
-    rotate_img,
     pcd_to_elastix,
     create_matched_pcds,
+    setup_logging,
+    elastix_pointset_registration
 )
 
 
 def run_pointset_registration(
-    fixed_img,
-    moving_img,
-    parameter_map_paths,
-    fixed_pointset,
-    moving_pointset,
-    output_dir,
-    log_name="elastix.log",
-    set_threads=False,
-):
-    logging.info("Start creating parameter object")
-    parameter_object = create_parameter_object(parameter_map_paths)
-    # Load Elastix Image Filter Object
-    elastix_object = itk.ElastixRegistrationMethod.New(fixed_img, moving_img)
-    elastix_object.SetFixedPointSetFileName(fixed_pointset)
-    elastix_object.SetMovingPointSetFileName(moving_pointset)
-    elastix_object.SetParameterObject(parameter_object)
-    if set_threads:
-        elastix_object.SetNumberOfThreads(32)
-    elastix_object.SetLogToConsole(True)
-    elastix_object.SetLogToFile(True)
-    elastix_object.SetOutputDirectory(output_dir)
-    elastix_object.SetLogFileName(log_name)
-
-    logging.info("Created registration object")
-    logging.info(elastix_object)
-    logging.info("Set parameter map")
-
-    logging.info("Start registration")
-    elastix_object.UpdateLargestPossibleRegion()
-
-    result_image = elastix_object.GetOutput()
-    result_transform_parameters = elastix_object.GetTransformParameterObject()
-
-    return result_image, result_transform_parameters
-
-
-def elastix_deformable_pointset_alignment(
     fixed_img_np,
     fixed_resolution,
     moving_img_np,
@@ -78,9 +33,33 @@ def elastix_deformable_pointset_alignment(
     output_dir,
 ):
     """
-    Run deformable alignment using elastix based on a set of key points.
+    Run the deformable B-spline registration stage from segmentation volumes.
+
+    Builds matched fixed/moving point sets from the correspondence table, runs
+    the Elastix point-set registration, applies the resulting transform to all
+    channels, and writes the alignment and grid-deformation QC plots.
+
+    Parameters
+    ----------
+    fixed_img_np : numpy.ndarray
+        Fixed segmentation volume.
+    fixed_resolution : sequence of float
+        Voxel spacing of the fixed volume.
+    moving_img_np : numpy.ndarray
+        Moving segmentation volume.
+    moving_resolution : sequence of float
+        Voxel spacing of the moving volume.
+    matched_label_df : pandas.DataFrame
+        Correspondence table (``fixed_label_id`` / ``moving_label_id``).
+    output_dir : pathlib.Path
+        Directory where point sets, transforms, and QC plots are written.
+
+    Returns
+    -------
+    numpy.ndarray
+        The deformably aligned moving volume.
     """
-    logging.info(f"Extract point clouds")
+    logging.info("Extract point clouds")
     fixed_pcd, moving_pcd, fixed_df, moving_df = create_matched_pcds(
         fixed_img_np,
         fixed_resolution,
@@ -102,7 +81,7 @@ def elastix_deformable_pointset_alignment(
     pcd_to_elastix(str(output_dir / "fixed_pcd.pcd"), fixed_pointset)
     pcd_to_elastix(str(output_dir / "moving_pcd.pcd"), moving_pointset)
 
-    logging.info(f"Do deformable alignment")
+    logging.info("Do deformable alignment")
 
     fixed_img_semantic_np = (fixed_img_np > 0).astype(np.float32)
     moving_img_semantic_np = (moving_img_np > 0).astype(np.float32)
@@ -128,9 +107,9 @@ def elastix_deformable_pointset_alignment(
         f"{SCRIPT_DIR}/ParameterMap_bspline_pointset_fine.txt",
     ]
 
-    print("Start registration")
-    log_name = f"elastix_log_deformable.log"
-    result_image, result_transform_parameters = run_pointset_registration(
+    logging.info("Start registration")
+    log_name = "elastix_log_deformable.log"
+    result_image, result_transform_parameters = elastix_pointset_registration(
         fixed_img,
         moving_img,
         parameter_map_paths,
@@ -152,7 +131,7 @@ def elastix_deformable_pointset_alignment(
         f"{output_dir}/plots/deformable_pointset_alignment_semantic.png",
     )
 
-    logging.info(f"Apply transform to all channels")
+    logging.info("Apply transform to all channels")
     logging.info(f"Moving image shape {moving_img_np.shape}")
     result_img_np = apply_transform_chanwise(
         result_transform_parameters, moving_img_np.astype(np.float32), moving_resolution
@@ -224,30 +203,7 @@ def main(
     prealigned_output_key,
     prealignment_transform,
 ):
-    """
-    Perform alignment of segmentations based on matching instances.
-
-    Args:
-        fixed_path (str): Path to the fixed input .n5 file.
-        fixed_key (str): Key to the fixed image data in the .n5 file.
-        moving_path (str): Path to the moving input .n5 file.
-        moving_key (str): Key to the moving image data in the .n5 file.
-        output_dir (str): Directory where the results should be saved.
-
-    Returns:
-        None
-    """
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s [%(levelname)s] %(message)s",
-        handlers=[
-            logging.FileHandler(
-                f"{output_dir}/elastix_deformable_pointset_registration.log", mode="w"
-            ),
-            logging.StreamHandler(sys.stdout),
-        ],
-        datefmt="%Y-%m-%d %H:%M:%S",
-    )
+    setup_logging(output_dir, "elastix_deformable_pointset_registration.log")
 
     output_dir = Path(output_dir)
     os.makedirs(output_dir / "plots", exist_ok=True)
@@ -265,7 +221,7 @@ def main(
     matched_label_df = pd.read_csv(match_path)
     print(matched_label_df)
 
-    moving_aligned = elastix_deformable_pointset_alignment(
+    moving_aligned = run_pointset_registration(
         fixed_img,
         fixed_resolution,
         moving_img,

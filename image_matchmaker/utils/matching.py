@@ -80,6 +80,28 @@ def problem_setup(sdm):
 
 
 def sparse_ilp_matching(pos_1, pos_2, max_dist=35, min_neighbours=10):
+    """
+    Match two point sets via sparse integer linear programming.
+
+    Builds a sparse cost matrix from each point's neighbours and solves an ILP
+    for the optimal one-to-one assignment.
+
+    Parameters
+    ----------
+    pos_1 : numpy.ndarray
+        ``(N, 3)`` coordinates of the first point set.
+    pos_2 : numpy.ndarray
+        ``(M, 3)`` coordinates of the second point set.
+    max_dist : float, optional
+        Maximum distance between candidate neighbours (default ``35``).
+    min_neighbours : int, optional
+        Minimum number of neighbours considered per point (default ``10``).
+
+    Returns
+    -------
+    list of tuple of int
+        Matched index pairs ``(i, j)`` into ``pos_1`` and ``pos_2``.
+    """
     sdm = create_cost_matrix(
         pos_1, pos_2, max_dist=max_dist, min_neighbours=min_neighbours
     )

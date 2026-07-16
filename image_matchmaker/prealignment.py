@@ -237,12 +237,25 @@ def prealign_samples(fixed_img, moving_img, fixed_spacing, moving_spacing, new_s
     """
     Pre-align two segmentation volumes using PCA.
 
-    Args:
-        fixed_img: fixed segmentation volume
-        moving_img: moving segmentation volume
+    Aligns the centroids and principal axes of both volumes into a common
+    output space, correcting reflections if the PCA rotation includes a mirror.
 
-    Returns:
-        fixed_rot, moving_rot, T_fixed, T_moving
+    Parameters
+    ----------
+    fixed_img : numpy.ndarray
+        Fixed segmentation volume.
+    moving_img : numpy.ndarray
+        Moving segmentation volume.
+    fixed_spacing, moving_spacing : sequence of float
+        Voxel spacing of the fixed and moving volumes.
+    new_spacing : sequence of float
+        Voxel spacing of the shared output space.
+
+    Returns
+    -------
+    dict
+        Mapping with keys ``"fixed"`` and ``"moving"``, each a list
+        ``[prealigned_volume, transform, centroid, Vt, output_shape]``.
     """
     gc_fixed, Vt_fixed = get_SVD_transform(fixed_img, fixed_spacing)
     gc_moving, Vt_moving = get_SVD_transform(moving_img, moving_spacing)
@@ -327,16 +340,19 @@ def run_prealignment(
 
     Parameters
     ----------
-    fixed_path : str
-        Path to the fixed volume file (e.g. N5, OME-Zarr).
-    fixed_key : str
-        Dataset key inside the fixed volume file.
-    moving_path : str
-        Path to the moving volume file (e.g. N5, OME-Zarr).
-    moving_key : str
-        Dataset key inside the moving volume file.
+    fixed_img : numpy.ndarray
+        Fixed segmentation volume.
+    moving_img : numpy.ndarray
+        Moving segmentation volume.
+    fixed_spacing, moving_spacing : sequence of float
+        Voxel spacing of the fixed and moving volumes.
+    new_spacing : sequence of float
+        Voxel spacing of the shared output space.
     output_dir : str
         Directory where outputs (plots, volumes, transformations) will be saved.
+    axis_orientation : str
+        How to orient the principal axes: ``auto``, ``IDENTITY``, ``X``, ``Y``,
+        or ``Z``.
 
     Outputs
     -------
@@ -510,11 +526,22 @@ def run_prealignment(
 @click.option("-o", "--output_dir", required=True, help="Output directory")
 @click.option("-ok", "--output_key", required=True, help="Output key (same in both n5)")
 @click.option("-trans", "--output_transform_path", required=True, help="Path to write the final transform")
-@click.option("-axis_orientation", "--axis_orientation", required=True, 
+@click.option("-axis_orientation", "--axis_orientation", required=True,
               help="How to find the correct orientation along the principal axes")
 @click.option("-tif", "--save_tif", is_flag=True, help="Whether to save tif or not")
-def main(fixed_path, fixed_key, fixed_spacing, moving_path, moving_key, moving_spacing,
-         output_dir, output_key, output_transform_path, axis_orientation, save_tif=False):
+def main(
+    fixed_path,
+    fixed_key,
+    fixed_spacing,
+    moving_path,
+    moving_key,
+    moving_spacing,
+    output_dir,
+    output_key,
+    output_transform_path,
+    axis_orientation,
+    save_tif=False,
+):
     """
     Perform prealignment of moving image to fixed image.
 
