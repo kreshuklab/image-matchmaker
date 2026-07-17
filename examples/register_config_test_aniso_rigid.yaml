@@ -11,7 +11,7 @@ moving_image:
   y_res: 1
   z_res: 1
   ref_path: "examples/data/test_data/moving_aniso_rigid_aligned.tif"
-  ref_url: "https://github.com/kreshuklab/matchmaker/releases/download/test_data-v0.3/moving_aniso_rigid_aligned.tif"
+  ref_url: "https://github.com/kreshuklab/image-matchmaker/releases/download/test_data-v0.3/moving_aniso_rigid_aligned.tif"
 
 log_dir: "data/test_rigid_registration"
 final_transform_path: "data/test_rigid_registration/final_transform.json"
