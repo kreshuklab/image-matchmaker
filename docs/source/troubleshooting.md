@@ -18,7 +18,7 @@ The workflows no longer manage a conda environment per rule. Activate the
 environment yourself before invoking Snakemake:
 
 ```bash
-conda activate matchmaker_env
+conda activate imm_env
 ```
 
 ### `KeyError` when starting a run
