@@ -45,7 +45,7 @@ def save_data(data, output_path, output_key=None, **kwargs):
         raise NotImplementedError
 
 
-def apply_transform(moving_img, moving_resolution, parameter_object, interpolation_order,
+def apply_transform(moving_img, input_resolution, parameter_object, interpolation_order,
                     T_fixed=None, output_shape=None):
     """
     Apply a (registration) transform to a moving image.
@@ -58,7 +58,7 @@ def apply_transform(moving_img, moving_resolution, parameter_object, interpolati
     ----------
     moving_img : numpy.ndarray
         Image to warp.
-    moving_resolution : sequence of float
+    input_resolution : sequence of float
         Voxel spacing of ``moving_img``.
     parameter_object : itk.ParameterObject
         Elastix transform parameters to apply.
@@ -83,7 +83,7 @@ def apply_transform(moving_img, moving_resolution, parameter_object, interpolati
     logging.info(f"Set interpolation order {interpolation_order}")
     parameter_object.SetParameter("FinalBSplineInterpolationOrder", str(interpolation_order))
 
-    warped = apply_transform_chanwise(parameter_object, moving_img, moving_resolution)
+    warped = apply_transform_chanwise(parameter_object, moving_img, input_resolution)
     logging.info(f"transformed image shape {warped.shape}")
 
     warped = np.squeeze(warped)
@@ -100,9 +100,10 @@ def apply_transform(moving_img, moving_resolution, parameter_object, interpolati
 @click.command()
 @click.option("-mp", "--moving_path", required=True, help="Path to moving input")
 @click.option("-mk", "--moving_key", required=True, help="Key of moving input")
-@click.option("-mr", "--moving_resolution", required=True, help="Resolution of moving input")
+@click.option("-ir", "--input_resolution", required=True, help="Resolution of moving input")
 @click.option("-op", "--output_path", required=True, help="Path to save warped image")
 @click.option("-ok", "--output_key", required=True, help="Key of moving output")
+@click.option("-or", "--output_resolution", required=True, help="Resolution of moving output.")
 @click.option("-io", "--interpolation_order", required=True, help="Order of interpolation")
 @click.option("-ld", "--log_dir", required=True, help="Log directory")
 @click.option("-pm", "--parameter_map_path", required=True, help="Path to the parameter map",)
@@ -113,9 +114,10 @@ def apply_transform(moving_img, moving_resolution, parameter_object, interpolati
 def apply_transforms(
     moving_path,
     moving_key,
-    moving_resolution,
+    input_resolution,
     output_path,
     output_key,
+    output_resolution,
     interpolation_order,
     log_dir,
     parameter_map_path,
@@ -127,6 +129,9 @@ def apply_transforms(
     log_dir = Path(log_dir)
     log_dir.mkdir(exist_ok=True)
 
+    input_resolution = json.loads(input_resolution)
+    output_resolution = json.loads(output_resolution)
+
     setup_logging(log_dir, "apply_transform.log")
 
     logging.info(f"Read parameter file {parameter_map_path}")
@@ -135,10 +140,24 @@ def apply_transforms(
     if verbose:
         logging.info(parameter_object)
 
+    reg_spacing = list(map(float, parameter_object.GetParameter(0, "Spacing")))
+    if output_resolution != reg_spacing:
+        reg_size = list(map(int, parameter_object.GetParameter(0, "Size")))
+        output_size = [int(round(s * rs / os)) for s, rs, os in zip(reg_size, reg_spacing, output_resolution)]
+
+        parameter_object.SetParameter("Spacing", [str(v) for v in output_resolution])
+        parameter_object.SetParameter("Size", [str(v) for v in output_size])
+        logging.info(f"Updated spacing from {reg_spacing} to {output_resolution}")
+        logging.info(f"Updated image size from {reg_size} to {output_size}")
+
     if prealignment_transform_path:
-        logging.info("Read prealignment transform")
-        prealignment_transform = read_transform_dict(prealignment_transform_path)["fixed_prealignment"]
-        T_fixed, output_shape = prealignment_transform["matrix"], prealignment_transform["output_shape"]
+        if output_resolution != reg_spacing:
+            logging.info("Pre-alignment transform at different resolution is not supported yet.")
+            T_fixed, output_shape = None, None
+        else:
+            logging.info("Read prealignment transform")
+            prealignment_transform = read_transform_dict(prealignment_transform_path)["fixed_prealignment"]
+            T_fixed, output_shape = prealignment_transform["matrix"], prealignment_transform["output_shape"]
     else:
         logging.info("Process without prealignment transform")
         T_fixed, output_shape = None, None
@@ -151,13 +170,11 @@ def apply_transforms(
             fixed_prealigned = rotate_img(fixed_img, T_fixed, output_shape=output_shape)
 
     logging.info(f"Start processing moving image: {moving_path}")
-    moving_resolution = json.loads(moving_resolution)
-
     moving_name = Path(moving_path).stem
     logging.info("Read moving image")
     moving_img = load_data(moving_path, moving_key)
     if moving_path.endswith(".n5"):
-        if list(moving_resolution) != get_attrs(moving_path, moving_key)["resolution"]:
+        if list(input_resolution) != get_attrs(moving_path, moving_key)["resolution"]:
             raise ValueError("Moving resolution from config is different from n5 file")
 
     if moving_img.ndim == 3:
@@ -169,7 +186,7 @@ def apply_transforms(
     logging.info("Start transformation")
     warped, warp_prealigned = apply_transform(
         moving_img,
-        moving_resolution,
+        input_resolution,
         parameter_object,
         interpolation_order,
         T_fixed=T_fixed,
