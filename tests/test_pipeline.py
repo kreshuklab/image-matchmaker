@@ -58,11 +58,13 @@ def run_pipline(
         check=True,
     )
 
-    log_dir = transform_config["log_dir"]
+    log_dir = Path(transform_config["log_dir"].replace("data/test_apply_transform", str(test_dir)))
+    log_dir.mkdir(parents=True, exist_ok=True)
+
     for moving_img in transform_config["moving_images"]:
         moving_img["input_path"] = moving_img["input_path"].replace("data/test_rigid_registration", str(test_dir))
-        moving_img["output_path"] = moving_img["output_path"].replace(log_dir, str(test_dir))
-    transform_config["log_dir"] = str(test_dir)
+        moving_img["output_path"] = moving_img["output_path"].replace("data/test_apply_transform", str(test_dir))
+    transform_config["log_dir"] = str(log_dir)
     transform_config["final_transform_path"] = str(final_transform_path)
     transform_config["parameter_map_path"] = transform_config[
         "parameter_map_path"
@@ -71,7 +73,7 @@ def run_pipline(
         "prealignment_transform_path"
     ].replace("data/test_rigid_registration", str(test_dir))
 
-    tmp_config_path = test_dir / "apply_transform.yaml"
+    tmp_config_path = log_dir / "apply_transform.yaml"
     with open(tmp_config_path, "w") as f:
         yaml.dump(transform_config, f)
 
