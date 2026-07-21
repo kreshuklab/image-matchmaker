@@ -16,6 +16,7 @@ from image_matchmaker.utils import (
     apply_transform_chanwise,
     plot_three_slices,
     plot_overlay,
+    resample_volume,
 )
 
 
@@ -165,6 +166,10 @@ def apply_transforms(
     if fixed_path:
         logging.info("Read fixed image")
         fixed_img = load_data(fixed_path, fixed_key)
+        if output_resolution != reg_spacing:
+            logging.info(f"Resample fixed image from resolution {reg_spacing} to {output_resolution}")
+            fixed_img = resample_volume(fixed_img, reg_spacing, output_resolution)
+
         if T_fixed is not None:
             logging.info("Rotate fixed image using prealignment transform")
             fixed_prealigned = rotate_img(fixed_img, T_fixed, output_shape=output_shape)
