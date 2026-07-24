@@ -160,7 +160,7 @@ def create_transformix_object(transform_parameter_object):
     return transformix_filter
 
 
-def apply_transform(transformix_filter, moving_img):
+def apply_elastix_transform(transformix_filter, moving_img):
     transformix_filter.SetMovingImage(moving_img)
     transformix_filter.Update()
     output_image = transformix_filter.GetOutput()
@@ -176,12 +176,12 @@ def apply_transform_chanwise(transform_parameter_object, moving_img_np, resoluti
     if moving_img_np.ndim == 4:
         for chan in range(moving_img_np.shape[0]):
             moving_img = itk_scalar_img(moving_img_np, resolution, chan)
-            output_img_np = apply_transform(transformix_filter, moving_img)
+            output_img_np = apply_elastix_transform(transformix_filter, moving_img)
             result_img.append(output_img_np)
         result_img = np.array(result_img)
     else:
         moving_img = itk_scalar_img(moving_img_np[None, :], resolution, 0)
         logging.info(moving_img)
-        result_img = apply_transform(transformix_filter, moving_img)
+        result_img = apply_elastix_transform(transformix_filter, moving_img)
 
     return result_img
