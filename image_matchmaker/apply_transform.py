@@ -3,13 +3,12 @@ import json
 import click
 import logging
 import numpy as np
-import tifffile as tiff
 from pathlib import Path
 
 from image_matchmaker.utils import (
     setup_logging,
-    read_volume,
-    write_volume,
+    load_data,
+    save_data,
     get_attrs,
     rotate_img,
     read_transform_dict,
@@ -18,32 +17,6 @@ from image_matchmaker.utils import (
     plot_overlay,
     resample_volume,
 )
-
-
-def load_data(path, key=None):
-    if path.endswith(".n5"):
-        assert key
-        data = read_volume(path, key)
-    elif path.endswith((".tif", ".tiff")):
-        data = tiff.imread(path)
-        if data.ndim == 2:
-            data = data[None, ...]
-    else:
-        raise NotImplementedError
-
-    return data.astype(np.float32)
-
-
-def save_data(data, output_path, output_key=None, **kwargs):
-    logging.info("Write results")
-    Path(output_path).parent.mkdir(parents=True, exist_ok=True)
-    if output_path.endswith((".tif", ".tiff")):
-        tiff.imwrite(output_path, data)
-    elif output_path.endswith(".n5"):
-        assert output_key
-        write_volume(output_path, data, output_key, **kwargs)
-    else:
-        raise NotImplementedError
 
 
 def apply_transform(moving_img, input_resolution, parameter_object, interpolation_order,
