@@ -11,7 +11,7 @@ Image-Matchmaker can be used in three ways:
 
 This is the recommended way to run image-matchmaker and is covered in the
 {doc}`Quick Start <quickstart>`. Activate the conda environment first
-(e.g. `conda activate matchmaker_env`); the workflows do not manage the environment
+(e.g. `conda activate imm_env`); the workflows do not manage the environment
 for you. `--configfile` is required — the workflows no longer ship with a default
 config. The two workflows are:
 
