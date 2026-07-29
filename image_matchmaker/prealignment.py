@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 from image_matchmaker.data import create_point_cloud
 from image_matchmaker.utils import (
     get_transformation_matrix,
+    prealignment_spacing,
     rotate_img,
     read_volume,
     get_attrs,
@@ -564,7 +565,7 @@ def main(
 
     fixed_spacing = np.asarray(fixed_spacing, dtype=np.float32)
     moving_spacing = np.asarray(moving_spacing, dtype=np.float32)
-    new_spacing = np.full_like(fixed_spacing, fixed_spacing.min())
+    new_spacing = np.asarray(prealignment_spacing(fixed_spacing), dtype=np.float32)
 
     logging.info("Reading fixed image")
     fixed_img = read_volume(fixed_path, fixed_key)
