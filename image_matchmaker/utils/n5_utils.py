@@ -11,6 +11,23 @@ def print_key_tree(f: z5py.File):
 def read_volume(
     f: z5py.File, key: str, roi: any = np.s_[:]
 ):
+    """
+    Read a dataset from an n5/zarr container.
+
+    Parameters
+    ----------
+    f : z5py.File or str or pathlib.Path
+        An open container, or a path to an ``.n5`` file.
+    key : str
+        Dataset key to read.
+    roi : slice, optional
+        Region of interest to read (defaults to the whole volume).
+
+    Returns
+    -------
+    numpy.ndarray or None
+        The requested array, or ``None`` if ``key`` does not exist.
+    """
     if isinstance(f, (str, PurePath)):
         f = z5py.File(f, "r")
 
@@ -28,6 +45,21 @@ def read_volume(
 
 
 def get_attrs(f: z5py.File, key: str):
+    """
+    Return the attributes of a dataset in an n5/zarr container.
+
+    Parameters
+    ----------
+    f : z5py.File or str or pathlib.Path
+        An open container, or a path to an ``.n5`` file.
+    key : str
+        Dataset key whose attributes are returned.
+
+    Returns
+    -------
+    mapping or None
+        The dataset's attributes, or ``None`` if ``key`` does not exist.
+    """
     if isinstance(f, (str, PurePath)):
         f = z5py.File(f, "a")
 
@@ -42,6 +74,18 @@ def get_attrs(f: z5py.File, key: str):
 
 
 def set_attrs(f, key: str, attrs_dict: dict):
+    """
+    Set (or update) attributes on a dataset in an n5/zarr container.
+
+    Parameters
+    ----------
+    f : z5py.File or str or pathlib.Path
+        An open container, or a path to an ``.n5`` file.
+    key : str
+        Dataset key whose attributes are set.
+    attrs_dict : dict
+        Attributes to write; existing keys are overwritten.
+    """
     if isinstance(f, (str, PurePath)):
         f = z5py.File(f, "a")
 
@@ -59,7 +103,25 @@ def set_attrs(f, key: str, attrs_dict: dict):
 
 
 def write_volume(f, arr: np.array, key, chunks=(1, 512, 512), attrs=None):
+    """
+    Write an array to a dataset in an n5/zarr container.
 
+    Creates the dataset (gzip-compressed) if it does not exist, otherwise
+    overwrites it.
+
+    Parameters
+    ----------
+    f : z5py.File or str or pathlib.Path
+        An open container, or a path to an ``.n5`` file.
+    arr : numpy.ndarray
+        Array to write.
+    key : str
+        Dataset key to write to.
+    chunks : tuple of int, optional
+        Chunk shape for the dataset (default ``(1, 512, 512)``).
+    attrs : dict, optional
+        Attributes to attach to the dataset.
+    """
     shape = arr.shape
     compression = "gzip"
     dtype = arr.dtype

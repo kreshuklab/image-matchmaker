@@ -1,7 +1,7 @@
 channels:
     - conda-forge
 name:
-   matchmaker_env
+   imm_env
 dependencies:
     - python==3.11
     - tifffile

@@ -99,6 +99,23 @@ def pcd_to_elastix(pcd_path, elastix_path):
 
 
 def extract_centroids(segm, resolution):
+    """
+    Extract per-instance centroids from an instance segmentation.
+
+    Parameters
+    ----------
+    segm : numpy.ndarray
+        3D instance segmentation (one label per object), in ZYX order.
+    resolution : sequence of float
+        Voxel spacing ``(z, y, x)``; centroids are scaled into physical units.
+
+    Returns
+    -------
+    labels : numpy.ndarray
+        Instance label ids.
+    center_coords : numpy.ndarray
+        ``(N, 3)`` centroid coordinates in ``(x, y, z)`` order.
+    """
     coords_df = pd.DataFrame(regionprops_table(segm, properties=("label", "centroid")))
     center_coords = np.array(
         [
@@ -112,13 +129,51 @@ def extract_centroids(segm, resolution):
 
 
 def create_pcd(center_coords, labels):
+    """
+    Build an Open3D point cloud from centroid coordinates and labels.
+
+    Parameters
+    ----------
+    center_coords : numpy.ndarray
+        ``(N, 3)`` point coordinates.
+    labels : numpy.ndarray
+        ``(N,)`` instance label ids, stored as a per-point attribute.
+
+    Returns
+    -------
+    open3d.t.geometry.PointCloud
+        Point cloud with ``positions`` and a ``label`` attribute.
+    """
     pcd = o3d.t.geometry.PointCloud()
     pcd.point.positions = o3d.core.Tensor(center_coords)
     pcd.point.label = o3d.core.Tensor(labels[:, None])
     return pcd
 
 
-def run_cpd(fixed_pcd, moving_pcd, w, beta, lmd, maxiter):
+def cpd_from_pcds(fixed_pcd, moving_pcd, w, beta, lmd, maxiter):
+    """
+    Run non-rigid Coherent Point Drift (CPD) to register two point clouds.
+
+    Parameters
+    ----------
+    fixed_pcd : open3d.t.geometry.PointCloud
+        Target (fixed) point cloud.
+    moving_pcd : open3d.t.geometry.PointCloud
+        Source (moving) point cloud to be deformed onto ``fixed_pcd``.
+    w : float
+        Outlier weight (fraction of points assumed to be noise).
+    beta : float
+        Width of the Gaussian smoothing kernel.
+    lmd : float
+        Regularization weight (trade-off between fit and smoothness).
+    maxiter : int
+        Maximum number of EM iterations.
+
+    Returns
+    -------
+    open3d.t.geometry.PointCloud
+        The registered (deformed) moving point cloud.
+    """
     # source_pt = asnumpy(moving_pcd.point.positions.numpy())
     # target_pt = asnumpy(fixed_pcd.point.positions.numpy())
 

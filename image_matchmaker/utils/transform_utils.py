@@ -6,6 +6,19 @@ from elf.wrapper.resized_volume import ResizedVolume
 
 
 def write_transform_dict(transform_dict, json_path):
+    """
+    Write a transform dictionary to a JSON file.
+
+    Each entry's ``"matrix"`` (a NumPy array) is converted to a nested list so
+    it can be serialized.
+
+    Parameters
+    ----------
+    transform_dict : dict
+        Mapping of name to ``{"matrix": numpy.ndarray, ...}`` entries.
+    json_path : str
+        Destination JSON path.
+    """
     for key, val in transform_dict.items():
         val["matrix"] = val["matrix"].tolist()
     with open(json_path, "w") as f:
@@ -13,6 +26,21 @@ def write_transform_dict(transform_dict, json_path):
 
 
 def read_transform_dict(json_path):
+    """
+    Read a transform dictionary from a JSON file.
+
+    Each entry's ``"matrix"`` is converted back into a NumPy array.
+
+    Parameters
+    ----------
+    json_path : str
+        Path to a JSON file written by :func:`write_transform_dict`.
+
+    Returns
+    -------
+    dict
+        Mapping of name to ``{"matrix": numpy.ndarray, ...}`` entries.
+    """
     with open(json_path, "r") as f:
         transform_dict = json.load(f)
 
@@ -80,6 +108,26 @@ def crop_to_bbox(img):
 
 
 def resample_volume(img, old_spacing, new_spacing, order=0):
+    """
+    Resample a volume from one voxel spacing to another.
+
+    Parameters
+    ----------
+    img : numpy.ndarray
+        Input volume.
+    old_spacing : sequence of float
+        Current voxel spacing (per axis).
+    new_spacing : sequence of float
+        Target voxel spacing (per axis).
+    order : int, optional
+        Spline interpolation order; use ``0`` (nearest neighbour) for label
+        masks (default ``0``).
+
+    Returns
+    -------
+    numpy.ndarray
+        The resampled volume.
+    """
     scale = np.asarray(old_spacing) / np.asarray(new_spacing)
     return zoom(img, scale, order=order)
 
@@ -138,6 +186,41 @@ def get_rotation_matrix(R):
 
 def get_transformation_matrix(img, gc, Vt, spacing, img_ref=None, Vt_ref=None,
                                 spacing_ref=None, spacing_out=None):
+    """
+    Build the affine matrix that centers and rotates a volume onto its
+    principal axes.
+
+    Combines a translation to the origin, the PCA rotation, and a translation
+    onto the centre of the output shape. When a reference image is given, the
+    output shape is the union that also fits the reference after its own
+    rotation.
+
+    Parameters
+    ----------
+    img : numpy.ndarray
+        Volume to be transformed.
+    gc : numpy.ndarray
+        Centre of mass (translation to the origin).
+    Vt : numpy.ndarray
+        Principal-axis rotation (as returned by the SVD/PCA step).
+    spacing : sequence of float
+        Voxel spacing of ``img``.
+    img_ref : numpy.ndarray, optional
+        Reference volume used to compute a common output shape.
+    Vt_ref : numpy.ndarray, optional
+        Principal-axis rotation of the reference volume.
+    spacing_ref : sequence of float, optional
+        Voxel spacing of the reference volume.
+    spacing_out : sequence of float, optional
+        Output voxel spacing (defaults to ``spacing``).
+
+    Returns
+    -------
+    T : numpy.ndarray
+        The 4x4 affine transformation matrix.
+    new_shape : numpy.ndarray
+        Shape of the transformed output volume.
+    """
     if spacing_out is None:
         spacing_out = spacing
         spacing_out_ref = spacing_ref

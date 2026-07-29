@@ -67,7 +67,7 @@ def create_parameter_object(parameter_map_paths):
     return parameter_object
 
 
-def run_registration(
+def elastix_registration(
     fixed_img,
     moving_img,
     parameter_map_paths,
@@ -99,7 +99,7 @@ def run_registration(
     return result_image, result_transform_parameters
 
 
-def run_pointset_registration(
+def elastix_pointset_registration(
     fixed_img,
     moving_img,
     parameter_map_paths,

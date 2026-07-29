@@ -14,8 +14,9 @@ log_dir = config["log_dir"]
 parameter_map_path = config["parameter_map_path"]
 prealignment_transform_path = config["prealignment_transform_path"]
 
-fixed_path = config["fixed_image"]["input_path"]
-fixed_key = config["fixed_image"]["input_key"]
+fixed_image = config.get("fixed_image", {})
+fixed_path = fixed_image.get("input_path")
+fixed_key = fixed_image.get("input_key")
 
 TARGET_OUTPUTS = [f"{p}/{k}" if p.endswith(".n5") else p for p, k in zip(output_paths, output_keys)]
 FILE_OUTPUTS = [p for p in TARGET_OUTPUTS if not ".n5/" in p]

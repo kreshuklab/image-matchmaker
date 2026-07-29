@@ -10,7 +10,7 @@ from image_matchmaker.utils import (
     get_attrs,
     plot_overlay,
     itk_scalar_img,
-    run_registration,
+    elastix_registration,
     itk_to_np_order,
     apply_transform_chanwise,
     setup_logging,
@@ -45,7 +45,7 @@ def elastix_segm_rigid_alignment(
     ]
 
     logging.info("Run rigid registration with elastix")
-    result_image, result_transform_parameters = run_registration(
+    result_image, result_transform_parameters = elastix_registration(
         fixed_img,
         moving_img,
         parameter_map_paths,
@@ -92,11 +92,11 @@ def run_rigid_alignment(
     is also exported to a MoBIE project.
 
     Args:
-        fixed_path (str): Path to the fixed image .n5 file.
-        fixed_key (str): Key to the fixed image data in the .n5 file.
-        moving_path (str): Path to the moving image .n5 file.
-        moving_key (str): Key to the moving image data in the .n5 file.
-        output_dir (str): Directory where the aligned image should be saved.
+        fixed_img (np.ndarray): Fixed (prealigned) image volume.
+        fixed_resolution (sequence of float): Voxel spacing of the fixed image.
+        moving_img (np.ndarray): Moving (prealigned) image volume.
+        moving_resolution (sequence of float): Voxel spacing of the moving image.
+        output_dir (str): Directory where the aligned image and plots are saved.
 
     Returns:
         np.ndarray: The rigidly aligned moving image.

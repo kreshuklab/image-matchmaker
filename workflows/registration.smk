@@ -8,10 +8,10 @@ workdir: root_dir
 print(config["fixed_image"])
 print(config["moving_image"])
 
-fixed_name = config["fixed_name"] if "fixed_name" in config else "fixed_image"
+fixed_name = config["fixed_image"]["name"] if "name" in config["fixed_image"] else "fixed_image"
 fixed_input_key = config["fixed_image"]["input_key"] if "input_key" in config["fixed_image"] else None
 fixed_n5_path = f"{config['log_dir']}/{fixed_name}.n5"
-moving_name = config["moving_name"] if "moving_name" in config else "moving_image"
+moving_name = config["moving_image"]["name"] if "name" in config["moving_image"] else "moving_image"
 moving_input_key = config["moving_image"]["input_key"] if "input_key" in config["moving_image"] else None
 moving_n5_path = f"{config['log_dir']}/{moving_name}.n5"
 log_dir = config["log_dir"]
@@ -50,10 +50,13 @@ maxiter = config["coherent_point_drift"]["maxiter"]
 
 # matching parameters
 matching_method = config["matching"].get("method", "hungarian")
-min_neighbours = config["matching"]["min_neighbours"]
-max_dist = config["matching"]["max_dist"]
+min_neighbours = config["matching"].get("min_neighbours")
+max_dist = config["matching"].get("max_dist", 30)
 sinkhorn_tau = config["matching"].get("tau", 1.0)
 sinkhorn_max_iter = config["matching"].get("max_iter", 500)
+
+# min_neighbours is only used by the ilp method; only pass it when provided
+min_neighbours_opt = f"--min_neighbours {min_neighbours}" if min_neighbours is not None else ""
 
 if config["mobie_export"]:
     mobie_outputs = [
@@ -98,7 +101,7 @@ rule input_to_n5:
         moving_image_n5 = directory(moving_n5_path),
     params:
         output_key = raw_n5_key
-    log: f"{log_dir}/matchmaker.log"
+    log: f"{log_dir}/image_matchmaker.log"
     shell:
         f"rm -r {{output.fixed_image_n5}};"
         f"rm -r {{output.moving_image_n5}};"
@@ -123,7 +126,7 @@ rule SVD_prealignment:
         input_key = raw_n5_key,
         output_key = prealignment_n5_key,
         axis_orientation = config["prealignment"]["axis_orientation"]
-    log: f"{log_dir}/matchmaker.log"
+    log: f"{log_dir}/image_matchmaker.log"
     shell:
         f"python image_matchmaker/prealignment.py --fixed_path {{input.fixed_image_n5}} --fixed_key {{params.input_key}} --fixed_spacing {{fixed_spacing}} --moving_path {{input.moving_image_n5}} --moving_key {{params.input_key}} --moving_spacing {{moving_spacing}} --output_dir {log_dir}/{prealignment_dir}  --output_key {{params.output_key}} --output_transform_path {{output.output_transform}} --axis_orientation {{params.axis_orientation}};"
 
@@ -143,7 +146,7 @@ rule rigid_alignment:
     params:
         input_key = prealignment_n5_key,
         output_key = rigid_alignment_n5_key
-    log: f"{log_dir}/matchmaker.log"
+    log: f"{log_dir}/image_matchmaker.log"
     shell:
         f"python image_matchmaker/rigid_alignment_elastix.py --fixed_path {{input.fixed_image_n5}} --fixed_key {{params.input_key}} --moving_path {{input.moving_image_n5}} --moving_key {{params.input_key}} --output_dir {log_dir}/{rigid_alignment_dir} --output_key {{params.output_key}};"
 
@@ -162,7 +165,7 @@ rule create_mobie_project:
         moving_check = f"{log_dir}/mobie_project/{dataset_name}/images/ome-zarr/{moving_name}_{raw_n5_key}.done"
     params:
         input_key = raw_n5_key
-    log: f"{log_dir}/matchmaker.log"
+    log: f"{log_dir}/image_matchmaker.log"
     shell:
         f"python image_matchmaker/mobie_export.py --input_path {{input.fixed_image_n5}} --input_key {{params.input_key}} --input_type {fixed_type} {'--semantic_seg' if semantic_seg else ''} --dataset_name {dataset_name} --output_dir {log_dir};"
         f"touch {{output.fixed_check}};"
@@ -190,7 +193,7 @@ rule add_prealignment_to_mobie:
         moving_check = f"{log_dir}/mobie_project/{dataset_name}/images/ome-zarr/{moving_name}_{prealignment_n5_key}.done"
     params:
         input_key = prealignment_n5_key
-    log: f"{log_dir}/matchmaker.log"
+    log: f"{log_dir}/image_matchmaker.log"
     shell:
         f"python image_matchmaker/mobie_export.py --input_path {{input.fixed_image_n5}} --input_key {{params.input_key}} --input_type {fixed_type} {'--semantic_seg' if semantic_seg else ''} --dataset_name {dataset_name} --output_dir {log_dir};"
         f"touch {{output.fixed_check}};"
@@ -215,7 +218,7 @@ rule add_rigid_alignment_to_mobie:
         moving_check = f"{log_dir}/mobie_project/{dataset_name}/images/ome-zarr/{moving_name}_{rigid_alignment_n5_key}.done"
     params:
         input_key = rigid_alignment_n5_key
-    log: f"{log_dir}/matchmaker.log"
+    log: f"{log_dir}/image_matchmaker.log"
     shell:
         f"python image_matchmaker/mobie_export.py --input_path {{input.moving_image_n5}} --input_key {{params.input_key}} --input_type {moving_type} {'--semantic_seg' if semantic_seg else ''} --dataset_name {dataset_name} --output_dir {log_dir};"
         f"touch {{output.moving_check}};"
@@ -236,7 +239,7 @@ rule cpd_nonrigid_registration:
         log_dir = f"{log_dir}/{cpd_dir}",
         fixed_key = prealignment_n5_key,
         moving_key = rigid_alignment_n5_key
-    log: f"{log_dir}/matchmaker.log"
+    log: f"{log_dir}/image_matchmaker.log"
     shell:
         f"python image_matchmaker/cpd_nonrigid_registration.py --moving_path {{input.moving_image_n5}} --moving_key {{params.moving_key}} --fixed_path {{input.fixed_image_n5}} --fixed_key {{params.fixed_key}} -o {{params.log_dir}} --w {w} --beta {beta} --lmd {lmd} --maxiter {maxiter};"
 
@@ -249,9 +252,9 @@ rule matching:
         match_path = f"{log_dir}/{matching_dir}/matched_labels.csv"
     params:
         log_dir = f"{log_dir}/{matching_dir}"
-    log: f"{log_dir}/matchmaker.log"
+    log: f"{log_dir}/image_matchmaker.log"
     shell:
-        f"python image_matchmaker/match_pointclouds.py --fixed_pcd {{input.fixed_pcd}} --moving_pcd {{input.moving_pcd}} -o {{params.log_dir}} --min_neighbours {min_neighbours} --max_dist {max_dist} --method {matching_method} --tau {sinkhorn_tau} --sinkhorn_max_iter {sinkhorn_max_iter};"
+        f"python image_matchmaker/match_pointclouds.py --fixed_pcd {{input.fixed_pcd}} --moving_pcd {{input.moving_pcd}} -o {{params.log_dir}} {min_neighbours_opt} --max_dist {max_dist} --method {matching_method} --tau {sinkhorn_tau} --sinkhorn_max_iter {sinkhorn_max_iter};"
 
 
 rule elastix_deformable_pointset:
@@ -273,7 +276,7 @@ rule elastix_deformable_pointset:
         output_key = pointset_alignment_n5_key,
         prealigned_output_key = pointset_alignment_prealignment_space_n5_key,
         log_dir = f"{log_dir}/{elastix_dir}"
-    log: f"{log_dir}/matchmaker.log"
+    log: f"{log_dir}/image_matchmaker.log"
     shell:
         f"python image_matchmaker/elastix_deformable_pointset_registration.py --fixed_path {{input.fixed_image_n5}} --fixed_key {{params.input_key}} --moving_path {{input.moving_image_n5}} --moving_key {{params.input_key}} --output_dir {{params.log_dir}}  --output_key {{params.output_key}} --match_path {{input.match_path}} --prealigned_output_key {{params.prealigned_output_key}} --prealignment_transform {{input.prealignment_transform}};"
 
@@ -287,7 +290,7 @@ rule add_elastix_deformable_pointset_to_mobie:
         moving_check = f"{log_dir}/mobie_project/{dataset_name}/images/ome-zarr/{moving_name}_{pointset_alignment_n5_key}.done"
     params:
         input_key = pointset_alignment_n5_key
-    log: f"{log_dir}/matchmaker.log"
+    log: f"{log_dir}/image_matchmaker.log"
     shell:
         f"python image_matchmaker/mobie_export.py --input_path {{input.moving_image_n5}} --input_key {{params.input_key}} --input_type {moving_type} {'--semantic_seg' if semantic_seg else ''} --dataset_name {dataset_name} --output_dir {log_dir};"
         f"touch {{output.moving_check}};"

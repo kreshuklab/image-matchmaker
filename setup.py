@@ -4,7 +4,7 @@ setup(
     name='image_matchmaker',
     version='0.1',
     description='Registration of instance segmentations .',
-    url='https://github.com/kreshuklab/matchmaker/',
+    url='https://github.com/kreshuklab/image-matchmaker',
     packages=find_packages(include=['image_matchmaker']),
     python_requires='>=3.6',
     install_requires=[],

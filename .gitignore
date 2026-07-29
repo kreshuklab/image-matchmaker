@@ -185,6 +185,8 @@ examples/data/test_data/
 *.png
 *.ome.zarr/
 
+# Documentation images
+!docs/source/_static/images/*.png
 # allow example tif files
 !examples/data/platy1_muscles_stardist_fixed.tif
 

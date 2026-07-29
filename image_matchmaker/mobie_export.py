@@ -124,7 +124,28 @@ def update_in_mobie(input_path, input_key, mobie_folder, dataset_name, segmentat
 
 
 def export_to_mobie(input_path, input_key, mobie_folder, dataset_name, segmentation_name, menu_name):
+    """
+    Export a segmentation to a MoBIE project.
 
+    Adds the segmentation to the dataset, creating the dataset if it does not
+    exist yet, or updating it (delete and re-upload) if a segmentation with the
+    same name is already present.
+
+    Parameters
+    ----------
+    input_path : str
+        Path to the input ``.n5`` container holding the segmentation.
+    input_key : str
+        Dataset key to read.
+    mobie_folder : str
+        Root folder of the MoBIE project.
+    dataset_name : str
+        Name of the MoBIE dataset.
+    segmentation_name : str
+        Name of the segmentation source in MoBIE.
+    menu_name : str
+        MoBIE menu group the source is placed under.
+    """
     metadata = mobie.metadata.read_dataset_metadata(os.path.join(mobie_folder, dataset_name))
     if not metadata:
         add_to_mobie(input_path, input_key, mobie_folder, dataset_name, segmentation_name, menu_name)

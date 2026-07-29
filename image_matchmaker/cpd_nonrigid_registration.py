@@ -8,15 +8,44 @@ import open3d as o3d
 from image_matchmaker.utils import (
     read_volume,
     get_attrs,
+    setup_logging,
     overlay_pcds,
     visualize_displacement_field,
     extract_centroids,
-    run_cpd,
+    cpd_from_pcds,
     create_pcd,
 )
 
 
-def cpd_from_images(fixed_img, fixed_resolution, moving_img, moving_resolution, output_dir, w, beta, lmd, maxiter):
+def run_cpd(fixed_img, fixed_resolution, moving_img, moving_resolution, output_dir, w, beta, lmd, maxiter):
+    """
+    Run non-rigid CPD registration starting from two segmentation volumes.
+
+    Extracts instance centroids from both volumes, builds point clouds, runs
+    CPD, and writes the fixed, moving, and registered point clouds together with
+    before/after and displacement-field QC plots to ``output_dir``.
+
+    Parameters
+    ----------
+    fixed_img : numpy.ndarray
+        Fixed segmentation volume.
+    fixed_resolution : sequence of float
+        Voxel spacing of the fixed volume.
+    moving_img : numpy.ndarray
+        Moving segmentation volume.
+    moving_resolution : sequence of float
+        Voxel spacing of the moving volume.
+    output_dir : pathlib.Path
+        Directory where point clouds and QC plots are written.
+    w : float
+        Outlier weight (fraction of points assumed to be noise).
+    beta : float
+        Width of the Gaussian smoothing kernel.
+    lmd : float
+        Regularization weight (trade-off between fit and smoothness).
+    maxiter : int
+        Maximum number of EM iterations.
+    """
     fixed_labels, fixed_center_coords = extract_centroids(fixed_img, fixed_resolution)
     moving_labels, moving_center_coord = extract_centroids(moving_img, moving_resolution)
 
@@ -29,7 +58,7 @@ def cpd_from_images(fixed_img, fixed_resolution, moving_img, moving_resolution, 
 
     logging.info(f"Point cloud registration with parameters w={w}, beta={beta}, lmd={lmd}, maxiter={maxiter}")
 
-    registered_pcd = run_cpd(fixed_pcd, moving_pcd, w, beta, lmd, maxiter)
+    registered_pcd = cpd_from_pcds(fixed_pcd, moving_pcd, w, beta, lmd, maxiter)
 
     overlay_pcds(
         fixed_pcd,
@@ -85,16 +114,7 @@ def cpd_from_images(fixed_img, fixed_resolution, moving_img, moving_resolution, 
 @click.option("-lmd", "--lmd", required=True, type=float, help="Parameter of nonrigid CPD")
 @click.option("-maxiter", "--maxiter", required=True, type=int, help="Parameter of nonrigid CPD")
 def main(fixed_path, fixed_key, moving_path, moving_key, output_dir, w, beta, lmd, maxiter):
-
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s [%(levelname)s] %(message)s",
-        handlers=[
-            logging.FileHandler(f"{output_dir}/cpd_nonrigid_registration.log", mode="w"),
-            logging.StreamHandler(sys.stdout),
-        ],
-        datefmt="%Y-%m-%d %H:%M:%S",
-    )
+    setup_logging(output_dir, "cpd_nonrigid_registration.log")
 
     output_dir = Path(output_dir)
     os.makedirs(output_dir / "plots", exist_ok=True)
@@ -109,7 +129,7 @@ def main(fixed_path, fixed_key, moving_path, moving_key, output_dir, w, beta, lm
     moving_resolution = get_attrs(moving_path, moving_key)["resolution"]
     logging.info(f"Moving image shape: {moving_img.shape}, dtype {moving_img.dtype}")
 
-    cpd_from_images(
+    run_cpd(
         fixed_img,
         fixed_resolution,
         moving_img,

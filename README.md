@@ -1,146 +1,32 @@
-# 💞 Matchmaker
+# 💞 Image-Matchmaker
 Tool for segmentation-based deformable registration and object matching
 
-## How to run
+## Overview
 
-### Create conda environment
-```
-conda env create -f environment.yml
-```
+Image-Matchmaker is a framework that leverages **instance segmentation masks** to align two volumetric
+datasets of e.g. different modalities like EM and LM. It optimizes a transformation that maps a
+**moving** volume onto a **fixed** reference volume, progressively refining the spatial
+correspondence through a sequential pipeline:
 
+1. **Pre-alignment (SVD)** — coarse global alignment of centroids and principal axes.
+2. **Rigid registration (Elastix)** — rotation + translation refinement.
+3. **Coherent Point Drift (CPD)** — non-rigid alignment of instance-centroid point clouds.
+4. **Instance matching** — establish instance correspondences.
+5. **B-spline registration (Elastix)** — final deformable alignment driven by the matched
+   landmarks on the original masks (rigid → rough → fine B-spline).
 
-### Run tests
+The composed rigid + B-spline transform can then be reapplied to the raw channels of the
+original volumes (e.g. raw EM or fluorescence LM) to bring them into a shared coordinate space.
 
-After activating the environment, generate the deformed test data, run the Snakemake workflow, and validate the final results with pytest:
+![Image-Matchmaker pipeline](docs/source/_static/images/workflow.png)
 
-```bash
-pytest -s
-```
+## Documentation
 
-Optional: If you want to hide all warnings during tests, append:
+Full documentation is available at **https://image-matchmaker.readthedocs.io/**, including:
 
-```bash
--p no:warnings
-```
-
-This test generates deformed test data, runs the Snakemake workflow, and compares the final outputs against pre-computed reference results.
-
-The reference data will be downloaded automatically from this repo's release if available. If the download fails (e.g. the repository is private), manually download the reference data from [here](https://github.com/kreshuklab/matchmaker/releases/tag/test_data-v1.0) and place it under:
-
-```
-examples/data/test_data/
-```
-
-
-### Generate rigid and elastic deformed test data
-```
-python examples/deform_test_data.py
-```
-
-This script generates synthetic test datasets from the fixed segmentation mask stored in the repository.
-
-First, the original segmentation mask is rotated using a 3D rigid transformation.
-
-Two moving datasets are then generated:
-
-- Rigid case: applies a rigid 3D rotation to the fixed volume and removes a fraction of instances.
-- Elastic case: applies a control-grid based elastic deformation, followed by a rigid rotation and instance removal.
-
-The elastic deformation is generated from a smoothed random displacement field defined on a control grid and interpolated to full resolution.
-
-All generated deformed volumes (`.n5` and `.tif`) are saved under:
-
-```
-examples/data/deformed_data/
-```
-
-
-### 3 ways of interaction with the library
-
-- Running the full pipeline using workflow manager and a config file to set up registration parameters
-```
-snakemake -s workflows/registration.smk --configfile examples/register_config_test_elastic.yaml --cores 16
-```
-- Running separate scripts
-```
-prealignment.py --fixed_path ... --fixed_key ... --moving_path ... --moving_key ... --output_dir ... --mobie_export --dataset_name ...
-```
-
-- Importing individual functions from image_matchmaker:
-```
-import image_matchmaker as imm
-
-...
-
-imm.n5_utils.read_volume(...)
-```
-
-
-
-## Registration
-### Input
-
-- **Fixed image**: 3D instance segmentation in `n5` + resolution
-- **Moving image**: 3D instance segmentation `n5` + resolution
-
-
-Expected image shape: ZYX
-
-### Output
-- **Moving image resampled to match fixed image** `n5`
-- **QC plots**
-- **Files with all transforms**
-- **Table of correspondence between instances in moving and fixed instance segmentations**
-- **Logging file: `registration.log`**
-- **Optional: Mobie project saved at `{output_dir}/mobie_project/`**
-
-
-### Registration steps
-
-**1. PCA pre-alignment**: alignment of fixed and moving image to the PCs \
- `prealignment.py --fixed_path ... --fixed_key ... --moving_path ... --moving_key ... --output_dir ... --mobie_export --dataset_name ...` \
-
-Outputs:
-- prealigned images: `{file_name}_prealigned.n5`
-- transformation matrixes
-    - `{file_name}_fixed_T_prealignment.txt`
-    - `{file_name}_moving_T_prealignment.txt` (maybe final one is `moving_T_prealignment.txt`, couldn't figure this out)
-- plots:
-    - slice per dimension before pre-alignment: `{file_name}_fixed.png`, `{file_name}_moving.png`
-    - slice per dimension after pre-alignment: `{file_name}_fixed_prealigned.png`, `{file_name}_moving_prealigned.png`
-    - overlay of slice per dimension after pre-alignment: `overlay_prealignment.png`
-    - intensity profiles per axis and volume: `fixed_intensity_profile_{axis}.png`, `moving_intensity_profile_{axis}.png`
-
-**2. Rigid pre-alignment with Elastix** \
-`apply_rigid_elastix.py --fixed_path ... --fixed_key ... --moving_path ... --moving_key ... --output_dir ... --mobie_export --dataset_name ...` \
-
-Outputs:
-- rigid alinged moving image: `{file_name}_rigid_aligned.n5`
-- rigid transformation matrix (Elastix outputs): `result.0.mhd`, `result.0.raw`, `TransformParameters.0.txt`
-- logging file: `elastix_log_rigid.log`
-- plots:
-    - `intersample_segm_overlay_before_alignment.png`
-    - `intersample_segm_rigid_alignment_semantic.png`
-
-
-**3. Coherent point drift**
-
-**4. Matching points with mixed integer programming**
-
-**5. Deformable registration with Elastix** \
-with distance between keypoints in loss and rigidity penalty ---> **B-spline coefficients**
-
-
-
-
-## Apply registration to other images
-### Input
-
-- **Moving image**: 3D image `n5` + resolution
-- **Files with all transforms**
-
-### Output
-- **Moving image resampled to match fixed image** - only rigid - `n5`
-- **Moving image resampled to match fixed image** - deformable - `n5`
-
-Expected image shape: (C)ZYX
+- [Installation](https://image-matchmaker.readthedocs.io/en/latest/installation.html) — set up the conda environment.
+- [Quickstart](https://image-matchmaker.readthedocs.io/en/latest/quickstart.html) — run your first registration.
+- [Usage](https://image-matchmaker.readthedocs.io/en/latest/usage.html) — Snakemake workflow, command-line scripts, and Python API.
+- [Configuration reference](https://image-matchmaker.readthedocs.io/en/latest/config_ref.html) — registration and transform parameters.
+- [Outputs](https://image-matchmaker.readthedocs.io/en/latest/outputs.html) — files produced by each stage.
+- [Troubleshooting](https://image-matchmaker.readthedocs.io/en/latest/troubleshooting.html) — common issues and solutions.

@@ -5,6 +5,19 @@ from pathlib import Path
 
 
 def load_config(config_path):
+    """
+    Load a YAML configuration file.
+
+    Parameters
+    ----------
+    config_path : str
+        Path to a ``.yaml`` config file. Must exist.
+
+    Returns
+    -------
+    dict
+        The parsed configuration.
+    """
     assert config_path.endswith("yaml")
     assert Path(config_path).exists()
 
@@ -19,6 +32,19 @@ def load_config(config_path):
 
 
 def download_file(path, url):
+    """
+    Download a file from ``url`` to ``path`` if it does not already exist.
+
+    On failure, prints instructions for downloading the file manually rather
+    than raising.
+
+    Parameters
+    ----------
+    path : str
+        Local destination path.
+    url : str
+        URL to download from.
+    """
     if Path(path).exists():
         print(f"✅ File already exists at {path}")
         return
