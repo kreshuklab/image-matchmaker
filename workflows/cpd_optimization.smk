@@ -52,7 +52,7 @@ rule input_to_n5:
         moving_image_n5 = directory(moving_n5_path),
     params:
         output_key = raw_n5_key,
-    log: f"{log_dir}/matchmaker.log"
+    log: f"{log_dir}/image_matchmaker.log"
     shell:
         f"rm -rf {{output.fixed_image_n5}};"
         f"rm -rf {{output.moving_image_n5}};"

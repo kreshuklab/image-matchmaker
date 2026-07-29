@@ -21,7 +21,7 @@ order.
 ├── fixed_image.n5                     # fixed image, one key per stage (+ *_binary keys)
 ├── moving_image.n5                    # moving image, one key per stage (+ *_binary keys)
 ├── input_image_<name>.pdf             # slices of each raw input
-├── matchmaker.log                     # main Snakemake log
+├── image_matchmaker.log                     # main Snakemake log
 ├── raw_to_n5.log
 ├── mobie_export.log
 ├── 01_svd_prealignment/
@@ -63,7 +63,7 @@ order.
 ```
 
 Each stage writes its own `<stage>.log` (and the Elastix stages an additional
-`elastix_log_*.log`); the main Snakemake log is `matchmaker.log`. The `*_binary`
+`elastix_log_*.log`); the main Snakemake log is `image_matchmaker.log`. The `*_binary`
 n5 keys are binarized copies of each stage used for the MoBIE export.
 
 ## Outputs by registration step
