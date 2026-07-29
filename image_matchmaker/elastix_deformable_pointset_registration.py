@@ -8,6 +8,7 @@ from pathlib import Path
 import open3d as o3d
 
 from image_matchmaker.utils import (
+    prealignment_spacing,
     rotate_img,
     read_volume,
     get_attrs,
@@ -231,9 +232,11 @@ def main(
     )
 
     logging.info("Save registered moving image")
-    moving_attributes = dict(get_attrs(moving_path, moving_key))
+    # Elastix resamples into the fixed image domain, so this output is on the fixed grid
+    aligned_attributes = dict(get_attrs(moving_path, moving_key))
+    aligned_attributes["resolution"] = list(fixed_resolution)
     write_volume(
-        f=moving_path, arr=moving_aligned, key=output_key, attrs=moving_attributes
+        f=moving_path, arr=moving_aligned, key=output_key, attrs=aligned_attributes
     )
 
     prealignment_transform = read_transform_dict(prealignment_transform)
@@ -244,11 +247,14 @@ def main(
     )
     prealigned_fixed = rotate_img(fixed_img, matrix, output_shape=output_shape)
 
+    # the prealignment transform maps the fixed grid into the isotropic prealignment space
+    prealigned_attributes = dict(aligned_attributes)
+    prealigned_attributes["resolution"] = prealignment_spacing(fixed_resolution)
     write_volume(
         f=moving_path,
         arr=prealigned_moving_aligned,
         key=prealigned_output_key,
-        attrs=moving_attributes,
+        attrs=prealigned_attributes,
     )
     plot_overlay(
         prealigned_fixed,

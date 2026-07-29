@@ -5,6 +5,23 @@ from scipy.ndimage import affine_transform, zoom
 from elf.wrapper.resized_volume import ResizedVolume
 
 
+def prealignment_spacing(fixed_spacing):
+    """
+    Voxel spacing of the shared prealignment space: isotropic at the finest fixed axis.
+
+    Parameters
+    ----------
+    fixed_spacing : sequence of float
+        Voxel spacing of the fixed volume.
+
+    Returns
+    -------
+    list of float
+        Isotropic voxel spacing of the prealignment space.
+    """
+    return [float(min(fixed_spacing))] * len(fixed_spacing)
+
+
 def write_transform_dict(transform_dict, json_path):
     """
     Write a transform dictionary to a JSON file.
