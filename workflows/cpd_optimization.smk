@@ -15,8 +15,8 @@ moving_lm_csv = config["landmarks"]["moving"]
 log_dir          = config["log_dir"]
 axis_orientation = config["prealignment"]["axis_orientation"]
 
-fixed_name    = config.get("fixed_name", "fixed_image")
-moving_name   = config.get("moving_name", "moving_image")
+fixed_name    = config["fixed_image"].get("name", "fixed_image")
+moving_name   = config["moving_image"].get("name", "moving_image")
 fixed_n5_path = f"{log_dir}/{fixed_name}.n5"
 moving_n5_path = f"{log_dir}/{moving_name}.n5"
 

@@ -54,18 +54,20 @@ DEFAULT_SEARCH_SPACE = {
 
 ### Dataset-specific CPD grid search ranges
 
-`suggest_cpd_ranges.py` derives a `beta` search range proportional to the data scale.
-It reads a segmentation, computes basic point-cloud statistics (spatial extent, point
-density), and prints a YAML block that can be pasted into the `optuna.search_space`
-section of the optimization config.
+`suggest_cpd_ranges.py` derives a `beta` search range proportional to the data scale,
+from basic point-cloud statistics (spatial extent, point density).
 
-When the config sets `search_space: "dataset-specific"`, the Snakemake workflow runs this
-step automatically on the aligned fixed segmentation. It can also run manually:
+When the config sets `search_space: "dataset-specific"`, `cpd_optimization.py` calls
+`suggest_beta_ranges()` in-process on the aligned fixed point cloud — there is no separate
+Snakemake step. The script is the standalone way to inspect the same numbers: it writes the
+full search space to `<log_dir>/dataset_cpd_ranges.yaml` and echoes the suggested `beta`
+values, so they can be pasted into the `optuna.search_space` section of the config.
 
 ```
 python image_matchmaker/cpd_parameter_tuning/suggest_cpd_ranges.py \
     --path <segmentation>.n5 \
     --key svd_prealignment \
+    --log_dir <output_dir> \
     --x_res 0.4 --y_res 0.4 --z_res 0.4
 ```
 
@@ -78,10 +80,10 @@ Separate from the main registration pipeline. Performs:
   1. Embed the corresponding landmarks into both input segmentations as labeled spheres.
   2. Apply SVD prealignment to the fixed image (carrying its landmarks).
   3. Apply SVD + rigid alignment to the moving image (carrying its landmarks).
-  4. Optionally compute dataset-specific beta ranges from the aligned fixed segmentation
-     (when `search_space: "dataset-specific"`).
-  5. Run an Optuna grid search over CPD parameters, evaluating each combination by the
+  4. Run an Optuna grid search over CPD parameters, evaluating each combination by the
      mean Landmark Registration Error (LRE) between corresponding landmarks after CPD.
+     With `search_space: "dataset-specific"` the beta range is derived from the aligned
+     fixed point cloud at the start of this step.
 
 Output: `best_cpd_params.yaml` (drop-in replacement for the `coherent_point_drift` section
 of the main registration config).

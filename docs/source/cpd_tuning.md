@@ -55,6 +55,7 @@ The optimization is driven by `examples/cpd_optimization_config.yaml`. Key field
 
 ```yaml
 fixed_image:
+  name: "fixed_image"                        # optional, names the working .n5 in log_dir
   path: "data/.../fixed_image.n5"
   input_key: "input"
   aligned_key: "svd_prealignment_with_lm"   # key the SVD-aligned fixed image is written to
@@ -63,6 +64,7 @@ fixed_image:
   z_res: 1.0
 
 moving_image:
+  name: "moving_image"                       # optional, names the working .n5 in log_dir
   path: "data/.../moving_image.n5"
   input_key: "input"
   aligned_key: "rigid_alignment_with_lm"     # key the rigid-aligned moving image is written to
@@ -103,13 +105,16 @@ Controls which parameter ranges the grid search uses. Three options:
     maxiter: [150]
   ```
 
-`suggest_cpd_ranges.py` implements the dataset-specific `beta` estimate and can also
-be run standalone to print a YAML block you can paste into `search_space`:
+`suggest_cpd_ranges.py` implements the dataset-specific `beta` estimate. The optimization
+calls it in-process, so it is not a separate workflow step, but it can also be run
+standalone: it writes the full search space to `<log_dir>/dataset_cpd_ranges.yaml` and
+echoes the suggested `beta` values, which you can paste into `search_space`:
 
 ```bash
 python image_matchmaker/cpd_parameter_tuning/suggest_cpd_ranges.py \
     --path <segmentation>.n5 \
     --key svd_prealignment \
+    --log_dir <output_dir> \
     --x_res 0.4 --y_res 0.4 --z_res 0.4
 ```
 

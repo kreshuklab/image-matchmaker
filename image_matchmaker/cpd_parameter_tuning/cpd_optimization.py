@@ -15,7 +15,7 @@ import optuna
 from optuna.samplers import GridSampler
 
 from image_matchmaker.utils import (
-    read_volume, get_attrs, extract_centroids, run_cpd, create_pcd, setup_logging,
+    read_volume, get_attrs, extract_centroids, cpd_from_pcds, create_pcd, setup_logging,
     visualize_displacement_field,
 )
 from image_matchmaker.cpd_parameter_tuning.suggest_cpd_ranges import suggest_beta_ranges
@@ -81,7 +81,7 @@ def run_optimization(fixed_pcd, moving_pcd, fixed_labels, moving_labels,
         maxiter = trial.suggest_categorical("maxiter", search_space["maxiter"])
 
         logging.info(f"Trial {trial.number}: w={w}, beta={beta}, lmd={lmd}, maxiter={maxiter}")
-        registered_pcd = run_cpd(fixed_pcd, moving_pcd, w, beta, lmd, maxiter)
+        registered_pcd = cpd_from_pcds(fixed_pcd, moving_pcd, w, beta, lmd, maxiter)
         mean_lre, per_lm = compute_lre(fixed_pcd, registered_pcd, id_map)
         logging.info(f"  → mean LRE = {mean_lre:.2f} µm")
 
@@ -203,7 +203,7 @@ def run_optimization(fixed_pcd, moving_pcd, fixed_labels, moving_labels,
 @click.option(
     "--landmark_ids_json",
     default=None,
-    help="Path to landmark_label_ids.json (default: <log_dir>/landmark_label_ids.json)",
+    help="Path to landmark_label_ids.json (default: <log_dir>/01_prepare_landmarks/landmark_label_ids.json)",
 )
 @click.option(
     "--fixed_path", default=None, help="Override fixed image n5 path from config"
@@ -216,7 +216,9 @@ def main(config, landmark_ids_json, fixed_path, moving_path):
         cfg = yaml.safe_load(f)
 
     log_dir = Path(cfg["log_dir"])
-    output_dir = log_dir / "cpd_optimization"
+    # Must match cpd_optimization_dir in workflows/cpd_optimization.smk, which declares this
+    # rule's outputs there.
+    output_dir = log_dir / "04_cpd_optimization"
     output_dir.mkdir(parents=True, exist_ok=True)
     setup_logging(str(output_dir), "cpd_optimization.log")
 
@@ -226,7 +228,10 @@ def main(config, landmark_ids_json, fixed_path, moving_path):
     moving_path = moving_path or cfg["moving_image"]["path"]
     moving_key = cfg["moving_image"]["aligned_key"]
 
-    landmark_ids_path = Path(landmark_ids_json) if landmark_ids_json else log_dir / "landmark_label_ids.json"
+    landmark_ids_path = (
+        Path(landmark_ids_json) if landmark_ids_json
+        else log_dir / "01_prepare_landmarks" / "landmark_label_ids.json"
+    )
     with open(landmark_ids_path) as f:
         id_map = {name: int(lbl) for name, lbl in json.load(f).items()}
     logging.info(f"Loaded {len(id_map)} landmark label IDs from {landmark_ids_path}")
