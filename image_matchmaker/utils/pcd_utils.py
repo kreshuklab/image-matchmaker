@@ -44,7 +44,7 @@ class PrintIterationsCallback(object):
 
 
     def __call__(self, transformation: Transformation) -> None:
-        logging.info(f"Iteration {self._cnt}")        
+        logging.info(f"Iteration {self._cnt}")
         self._cnt += 1
 
 
@@ -95,7 +95,7 @@ def pcd_to_elastix(pcd_path, elastix_path):
         f.write("point\n")
         f.write(f"{len(points)}\n")
         for x, y, z in points:
-            f.write(f"{z} {x} {y}\n")
+            f.write(f"{x} {y} {z}\n")
 
 
 def extract_centroids(segm, resolution):
