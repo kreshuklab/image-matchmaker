@@ -15,7 +15,6 @@ from image_matchmaker.utils import (
     write_volume,
     plot_overlay,
     itk_scalar_img,
-    itk_to_np_order,
     apply_transform_chanwise,
     read_transform_dict,
     pcd_to_elastix,
@@ -90,14 +89,17 @@ def run_pointset_registration(
     fixed_img = itk_scalar_img(fixed_img_semantic_np, fixed_resolution)
     moving_img = itk_scalar_img(moving_img_semantic_np, moving_resolution)
 
+    fixed_img_scalar_np = itk.GetArrayFromImage(fixed_img)
+    moving_img_scalar_np = itk.GetArrayFromImage(moving_img)
+
     plot_overlay(
-        itk_to_np_order(itk.GetArrayFromImage(fixed_img)),
-        itk_to_np_order(itk.GetArrayFromImage(moving_img)),
+        fixed_img_scalar_np,
+        moving_img_scalar_np,
         f"{output_dir}/plots/deformable_pointset_alignment_before.pdf",
     )
     plot_overlay(
-        itk_to_np_order(itk.GetArrayFromImage(fixed_img)),
-        itk_to_np_order(itk.GetArrayFromImage(moving_img)),
+        fixed_img_scalar_np,
+        moving_img_scalar_np,
         f"{output_dir}/plots/deformable_pointset_alignment_before.png",
     )
 
@@ -120,14 +122,15 @@ def run_pointset_registration(
         log_name=log_name,
     )
 
-    result_img_np = itk_to_np_order(itk.GetArrayFromImage(result_image))
+    result_img_np = itk.GetArrayFromImage(result_image)
+    result_resolution = tuple(result_image.GetSpacing())[::-1]  # XYZ -> ZYX
     plot_overlay(
-        itk_to_np_order(itk.GetArrayFromImage(fixed_img)),
+        fixed_img_scalar_np,
         result_img_np,
         f"{output_dir}/plots/deformable_pointset_alignment_semantic.pdf",
     )
     plot_overlay(
-        itk_to_np_order(itk.GetArrayFromImage(fixed_img)),
+        fixed_img_scalar_np,
         result_img_np,
         f"{output_dir}/plots/deformable_pointset_alignment_semantic.png",
     )
@@ -160,7 +163,7 @@ def run_pointset_registration(
     plot_overlay(fixed_img_np, grid_img_np, f"{output_dir}/plots/grid_before.png")
     plot_overlay(fixed_img_np, transformed_grid_np, f"{output_dir}/plots/grid_after.png")
 
-    return result_img_np
+    return result_img_np, result_resolution
 
 
 @click.command()
@@ -222,7 +225,7 @@ def main(
     matched_label_df = pd.read_csv(match_path)
     print(matched_label_df)
 
-    moving_aligned = run_pointset_registration(
+    moving_aligned, aligned_resolution = run_pointset_registration(
         fixed_img,
         fixed_resolution,
         moving_img,
@@ -234,7 +237,7 @@ def main(
     logging.info("Save registered moving image")
     # Elastix resamples into the fixed image domain, so this output is on the fixed grid
     aligned_attributes = dict(get_attrs(moving_path, moving_key))
-    aligned_attributes["resolution"] = list(fixed_resolution)
+    aligned_attributes["resolution"] = aligned_resolution
     write_volume(
         f=moving_path, arr=moving_aligned, key=output_key, attrs=aligned_attributes
     )
