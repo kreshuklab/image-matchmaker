@@ -77,7 +77,7 @@ def apply_transform(moving_img, input_resolution, parameter_object, interpolatio
 @click.option("-ir", "--input_resolution", required=True, help="Resolution of moving input")
 @click.option("-op", "--output_path", required=True, help="Path to save warped image")
 @click.option("-ok", "--output_key", required=True, help="Key of moving output")
-@click.option("-or", "--output_resolution", required=True, help="Resolution of moving output.")
+@click.option("-or", "--output_resolution", required=False, default=None, help="Resolution of moving output.")
 @click.option("-io", "--interpolation_order", required=True, help="Order of interpolation")
 @click.option("-ld", "--log_dir", required=True, help="Log directory")
 @click.option("-pm", "--parameter_map_path", required=True, help="Path to the parameter map",)
@@ -104,7 +104,6 @@ def apply_transforms(
     log_dir.mkdir(exist_ok=True)
 
     input_resolution = json.loads(input_resolution)
-    output_resolution = json.loads(output_resolution)
 
     setup_logging(log_dir, "apply_transform.log")
 
@@ -115,14 +114,21 @@ def apply_transforms(
         logging.info(parameter_object)
 
     reg_spacing = list(map(float, parameter_object.GetParameter(0, "Spacing")))
-    if output_resolution != reg_spacing:
-        reg_size = list(map(int, parameter_object.GetParameter(0, "Size")))
-        output_size = [int(round(s * rs / os)) for s, rs, os in zip(reg_size, reg_spacing, output_resolution)]
+    if output_resolution is None:
+        output_resolution = reg_spacing
+        logging.info(
+            f"No output resolution provided. Using registration (fixed) resolution: {output_resolution}"
+        )
+    else:
+        output_resolution = json.loads(output_resolution)
+        if output_resolution != reg_spacing:
+            reg_size = list(map(int, parameter_object.GetParameter(0, "Size")))
+            output_size = [int(round(s * rs / os)) for s, rs, os in zip(reg_size, reg_spacing, output_resolution)]
 
-        parameter_object.SetParameter("Spacing", [str(v) for v in output_resolution])
-        parameter_object.SetParameter("Size", [str(v) for v in output_size])
-        logging.info(f"Updated spacing from {reg_spacing} to {output_resolution}")
-        logging.info(f"Updated image size from {reg_size} to {output_size}")
+            parameter_object.SetParameter("Spacing", [str(v) for v in output_resolution])
+            parameter_object.SetParameter("Size", [str(v) for v in output_size])
+            logging.info(f"Updated spacing from {reg_spacing} to {output_resolution}")
+            logging.info(f"Updated image size from {reg_size} to {output_size}")
 
     if prealignment_transform_path:
         if output_resolution != reg_spacing:
