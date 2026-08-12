@@ -28,6 +28,7 @@ prepare_landmarks_dir = "01_prepare_landmarks"
 prealignment_dir      = "02_prealignment_with_lm"
 rigid_alignment_dir   = "03_rigid_alignment_with_lm"
 cpd_optimization_dir  = "04_cpd_optimization"
+overlays_dir          = "05_landmark_overlays"
 
 landmark_ids_json = f"{log_dir}/{prepare_landmarks_dir}/landmark_label_ids.json"
 
@@ -39,6 +40,10 @@ rule all:
     input:
         best_params   = f"{log_dir}/{cpd_optimization_dir}/best_cpd_params.yaml",
         study_results = f"{log_dir}/{cpd_optimization_dir}/study_results.csv",
+        overlays      = expand(
+            f"{log_dir}/{overlays_dir}/landmark_overlay_{{stage}}.pdf",
+            stage=["input", "prealignment", "rigid_alignment", "best_cpd"],
+        ),
 
 
 rule input_to_n5:
@@ -160,8 +165,9 @@ rule optimize_cpd:
         config            = workflow.configfiles[0],
         landmark_ids_json = landmark_ids_json,
     output:
-        best_params   = f"{log_dir}/{cpd_optimization_dir}/best_cpd_params.yaml",
-        study_results = f"{log_dir}/{cpd_optimization_dir}/study_results.csv",
+        best_params    = f"{log_dir}/{cpd_optimization_dir}/best_cpd_params.yaml",
+        study_results  = f"{log_dir}/{cpd_optimization_dir}/study_results.csv",
+        registered_pcd = f"{log_dir}/{cpd_optimization_dir}/registered_pcd.pcd",
     params:
         fixed_path  = fixed_n5_path,
         moving_path = moving_n5_path,
@@ -172,3 +178,38 @@ rule optimize_cpd:
         "--landmark_ids_json {input.landmark_ids_json} "
         "--fixed_path {params.fixed_path} "
         "--moving_path {params.moving_path}"
+
+
+rule plot_overlays:
+    """Overlay the corresponding landmarks fixed-vs-moving at every stage of the pipeline.
+
+    Runs last so all four stages can be drawn together; the CPD stage comes from the point
+    cloud optimize_cpd saved for its best trial, so no CPD fit is recomputed.
+    """
+    input:
+        fixed_input_ds    = f"{fixed_n5_path}/{lm_input_key}",
+        moving_input_ds   = f"{moving_n5_path}/{lm_input_key}",
+        fixed_prealigned  = f"{fixed_n5_path}/{fixed_aligned_key}",
+        moving_prealigned = f"{moving_n5_path}/{fixed_aligned_key}",
+        moving_rigid      = f"{moving_n5_path}/{moving_aligned_key}",
+        registered_pcd    = f"{log_dir}/{cpd_optimization_dir}/registered_pcd.pcd",
+        best_params       = f"{log_dir}/{cpd_optimization_dir}/best_cpd_params.yaml",
+        config            = workflow.configfiles[0],
+        landmark_ids_json = landmark_ids_json,
+    output:
+        expand(
+            f"{log_dir}/{overlays_dir}/landmark_overlay_{{stage}}.pdf",
+            stage=["input", "prealignment", "rigid_alignment", "best_cpd"],
+        ),
+    params:
+        fixed_path   = fixed_n5_path,
+        moving_path  = moving_n5_path,
+        lm_input_key = lm_input_key,
+    log: f"{log_dir}/{overlays_dir}/plot_overlays.log"
+    shell:
+        "python image_matchmaker/cpd_parameter_tuning/plot_overlays.py "
+        "--config {input.config} "
+        "--landmark_ids_json {input.landmark_ids_json} "
+        "--fixed_path {params.fixed_path} "
+        "--moving_path {params.moving_path} "
+        "--lm_input_key {params.lm_input_key}"
