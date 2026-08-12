@@ -11,12 +11,18 @@ interpolation_orders = [item["interpolation_order"] for item in moving_images]
 input_resolutions, output_resolutions = [], []
 for item in moving_images:
     in_r = item["input_resolution"]
-    ou_r = item["output_resolution"]
+    ou_r = item.get("output_resolution")
     input_resolutions.append([in_r["z_res"], in_r["y_res"], in_r["x_res"]])
-    output_resolutions.append([ou_r["z_res"], ou_r["y_res"], ou_r["x_res"]])
+    if ou_r is None or ou_r.get("z_res") is None or ou_r.get("y_res") is None or ou_r.get("x_res") is None:
+        output_resolutions.append(None)
+    else:
+        output_resolutions.append([ou_r["z_res"], ou_r["y_res"], ou_r["x_res"]])
 
 input_resolutions = [json.dumps(r, separators=(',', ':')) for r in input_resolutions]
-output_resolutions = [json.dumps(r, separators=(',', ':')) for r in output_resolutions]
+output_resolutions = [
+    json.dumps(r, separators=(',', ':')) if r is not None else None
+    for r in output_resolutions
+]
 
 log_dir = config["log_dir"]
 parameter_map_path = config["parameter_map_path"]
@@ -37,6 +43,15 @@ def get_all_opts(d):
         if v:
             opts.extend([f"--{k}", str(v)])
     return opts
+
+
+def get_output_resolution_opt(index):
+    output_resolution = output_resolutions[index]
+
+    if output_resolution is None:
+        return ""
+
+    return f"--output_resolution '{output_resolution}'"
 
 
 rule all:
@@ -63,7 +78,7 @@ rule apply_transform_file:
         input_resolution = lambda w: input_resolutions[TARGET_OUTPUTS.index(w.out_file)],
         output_path = lambda w: output_paths[TARGET_OUTPUTS.index(w.out_file)],
         output_key = lambda w: output_keys[TARGET_OUTPUTS.index(w.out_file)],
-        output_resolution = lambda w: output_resolutions[TARGET_OUTPUTS.index(w.out_file)],
+        output_resolution_opt = lambda w: get_output_resolution_opt(TARGET_OUTPUTS.index(w.out_file)),
         interpolation_order = lambda w: interpolation_orders[TARGET_OUTPUTS.index(w.out_file)],
     shell:
         """
@@ -74,7 +89,7 @@ rule apply_transform_file:
             --input_resolution '{params.input_resolution}' \
             --output_path {params.output_path} \
             --output_key {params.output_key} \
-            --output_resolution '{params.output_resolution}' \
+            {params.output_resolution_opt} \
             --interpolation_order {params.interpolation_order} \
             --log_dir {log_dir} \
             --parameter_map_path {input.parameter_map_path}
@@ -100,7 +115,7 @@ rule apply_transform_n5:
         input_resolution = lambda w: input_resolutions[TARGET_OUTPUTS.index(w.out_dir)],
         output_path = lambda w: output_paths[TARGET_OUTPUTS.index(w.out_dir)],
         output_key = lambda w: output_keys[TARGET_OUTPUTS.index(w.out_dir)],
-        output_resolution = lambda w: output_resolutions[TARGET_OUTPUTS.index(w.out_dir)],
+        output_resolution_opt = lambda w: get_output_resolution_opt(TARGET_OUTPUTS.index(w.out_dir)),
         interpolation_order = lambda w: interpolation_orders[TARGET_OUTPUTS.index(w.out_dir)],
     shell:
         """
@@ -111,7 +126,7 @@ rule apply_transform_n5:
             --input_resolution '{params.input_resolution}' \
             --output_path {params.output_path} \
             --output_key {params.output_key} \
-            --output_resolution '{params.output_resolution}' \
+            {params.output_resolution_opt} \
             --interpolation_order {params.interpolation_order} \
             --log_dir {log_dir} \
             --parameter_map_path {input.parameter_map_path}
