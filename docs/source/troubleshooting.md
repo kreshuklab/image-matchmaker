@@ -82,7 +82,7 @@ parameters — lower `max_dist` to reject distant matches, or change `min_neighb
 
 ### CPD does not converge / the displacement field is erratic
 
-Inspect `displacement_field_*` in `03_cpd_nonrigid_registration/plots/`. Increase
+Inspect `displacement_field` in `03_cpd_nonrigid_registration/plots/`. Increase
 `coherent_point_drift.maxiter` (100–150 is typical), and tune `w`, `beta`, and `lmd`.
 Large, discontinuous displacements often mean an earlier step (pre-alignment or rigid)
 did not align well — fix that first. If you have corresponding landmarks, the

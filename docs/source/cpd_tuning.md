@@ -171,8 +171,47 @@ The workflow:
 4. Applies SVD + rigid alignment to the moving image (carrying its landmarks).
 5. Runs the Optuna grid search over CPD parameters, evaluating each combination by
    the mean LRE between corresponding landmarks after CPD.
+6. Plots the landmark overlays for every stage of the pipeline.
 
 ## Outputs
+
+Like the main pipeline, each step writes to its own ordinal-prefixed subfolder of
+`log_dir`, so they list in pipeline order:
+
+```text
+{log_dir}/
+├── fixed_image.n5                     # one key per stage, see below
+├── moving_image.n5
+├── input_image_<name>.pdf             # slices of each raw input
+├── image_matchmaker.log                     # main Snakemake log
+├── raw_to_n5.log
+├── 01_prepare_landmarks/
+│   ├── landmark_label_ids.json        # {landmark name: label id} used by every later step
+│   ├── add_landmarks.log
+│   └── plots/                         # {fixed,moving}_landmarks_qc.pdf
+├── 02_prealignment_with_lm/
+│   ├── prealignment_transform.json
+│   ├── prealignment.log
+│   └── plots/
+├── 03_rigid_alignment_with_lm/
+│   ├── TransformParameters.0.txt
+│   ├── result.0.{mhd,raw}             # Elastix warped result (intermediate, large)
+│   ├── rigid_alignment.log
+│   ├── elastix_log_rigid.log
+│   └── plots/
+├── 04_cpd_optimization/               # the grid search, see below
+└── 05_landmark_overlays/              # the QC plots to look at first, see below
+```
+
+The `.n5` containers gain one key per stage: `input` (raw), `input_with_lm` (landmarks
+embedded as labeled spheres), `svd_prealignment_with_lm`, and — moving image only —
+`rigid_alignment_with_lm`. Note that pre-alignment writes **both** images under the key
+named by `fixed_image.aligned_key`; only rigid alignment introduces a separate key for the
+moving image, which is why `moving_image.aligned_key` names the rigid-alignment output.
+
+The landmark QC plots in `01_prepare_landmarks/plots/` are worth a glance before anything
+else: they show each segmentation with its embedded landmark spheres, so a landmark that
+was mis-specified or fell outside the volume shows up immediately.
 
 Written under `{log_dir}/04_cpd_optimization/`:
 
@@ -180,7 +219,57 @@ Written under `{log_dir}/04_cpd_optimization/`:
   `coherent_point_drift` section of your main registration config.
 - `study_results.csv` — every trial with its parameters and resulting mean LRE
   (sorted best-first).
-- `trial_XXXX_{xy,xz,yz}.png` — per-trial displacement-field plots, labeled with the
-  trial's parameters and LRE.
+- `trial_XXXX.pdf` — per-trial displacement-field plot, the xy, xz and yz projections as
+  three panels in one figure, labeled with the trial's parameters and LRE.
 - `trial_XXXX.json` — per-trial parameters and metrics.
+- `registered_pcd.pcd` — the registered point cloud of the best trial, kept so the
+  overlay below can be drawn without re-running the winning CPD fit.
 - `optuna_study.db` — the Optuna study database (inspectable, resumable).
+
+Written under `{log_dir}/05_landmark_overlays/`:
+
+- `landmark_overlay_{input,prealignment,rigid_alignment,best_cpd}.pdf` — the
+  corresponding landmarks fixed-vs-moving, one plot per pipeline stage, each with the xy,
+  xz and yz projections as three panels. Every landmark appears twice — red at its fixed
+  position, blue at its position at that stage — joined by a line, over a faint cloud of
+  all instance centroids for context. The title carries that stage's mean LRE.
+- `plot_overlays.log` — the per-stage mean LRE, also logged as a single summary line.
+
+### Reading the overlays
+
+The four plots are the quickest way to see whether the pipeline is behaving, because they
+put the same measurement — mean LRE — on every stage:
+
+- `input` is the unregistered baseline. The two clouds sit apart and the connecting lines
+  are long; that is expected.
+- `prealignment` and `rigid_alignment` should each pull the pairs closer. A stage that
+  *increases* the LRE is a real signal, not noise: it means that step is not helping on
+  this data, and its parameters (`prealignment.axis_orientation` in particular) are worth
+  revisiting.
+- `best_cpd` should be the tightest. If it is barely better than `rigid_alignment`, the
+  search space is probably in the wrong region — see the `optuna.search_space` section
+  above.
+
+Long lines that all point the same way indicate a residual global offset, which pre-alignment
+or rigid alignment should have removed. Long lines pointing in scattered directions indicate
+either genuinely poor CPD parameters or mis-specified landmark correspondences.
+
+### Redrawing the plots
+
+Only the `best_cpd` overlay depends on the search, and it is drawn from the saved
+`registered_pcd.pcd` rather than by re-fitting. So all four can be regenerated cheaply —
+delete them and re-run snakemake, which reruns just the `plot_overlays` step:
+
+```bash
+rm {log_dir}/05_landmark_overlays/*.pdf
+snakemake -s workflows/cpd_optimization.smk --configfile <your config> --cores 4
+```
+
+The same script can be called directly, which is useful when tweaking a plot:
+
+```bash
+python image_matchmaker/cpd_parameter_tuning/plot_overlays.py \
+    --config <your config> \
+    --fixed_path {log_dir}/<fixed_name>.n5 \
+    --moving_path {log_dir}/<moving_name>.n5
+```

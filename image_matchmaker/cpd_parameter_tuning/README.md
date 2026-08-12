@@ -83,7 +83,13 @@ Separate from the main registration pipeline. Performs:
   4. Run an Optuna grid search over CPD parameters, evaluating each combination by the
      mean Landmark Registration Error (LRE) between corresponding landmarks after CPD.
      With `search_space: "dataset-specific"` the beta range is derived from the aligned
-     fixed point cloud at the start of this step.
+     fixed point cloud at the start of this step. The registered point cloud of the best
+     trial is saved as `registered_pcd.pcd`.
+  5. Plot the landmark overlays for all four stages — input, prealignment, rigid alignment
+     and best CPD — into `05_landmark_overlays/`. Each shows the corresponding landmarks
+     fixed-vs-moving in three projections with that stage's mean LRE in the title, so the
+     four together show how much misalignment each step removes. The CPD stage is drawn
+     from the saved point cloud, so nothing is recomputed.
 
 Output: `best_cpd_params.yaml` (drop-in replacement for the `coherent_point_drift` section
 of the main registration config).

@@ -94,8 +94,8 @@ python image_matchmaker/raw_to_n5.py --input_path <img> --output_path <out.n5> \
 | `--tau` | no | Sinkhorn entropy regularization (default `1.0`, `sinkhorn` only) |
 | `--sinkhorn_max_iter` | no | Maximum Sinkhorn iterations (default `500`, `sinkhorn` only) |
 
-The three matching plots (`point_matching_{xz,yz,xy}`) are written to a `plots/`
-subfolder of the output directory.
+The matching plot (`point_matching`, with the xy, xz and yz projections as three panels)
+is written to a `plots/` subfolder of the output directory.
 
 ### `elastix_deformable_pointset_registration.py` — deformable B-spline
 
@@ -136,6 +136,13 @@ from image_matchmaker.utils import (
 )
 ```
 
+The point-cloud QC plots come in two flavours: a single-projection function
+(`overlay_pcds`, `visualize_displacement_field`, `plot_matching_qc`) and a `*_panels`
+variant that draws the xy, xz and yz projections as three panels in one figure
+(`plot_pcd_overlay_panels`, `plot_displacement_field_panels`, `plot_matching_qc_panels`,
+and `plot_landmark_overlay`). The pipeline uses the panel variants; both share the same
+drawing code. All of them write through `PLOT_FORMAT` — see the note below.
+
 Higher-level stage functions are available from their modules, e.g.
 `prealign_samples` / `run_prealignment` (`image_matchmaker.prealignment`),
 `run_cpd` (`image_matchmaker.cpd_nonrigid_registration`), and `run_matching`
@@ -144,18 +151,32 @@ Higher-level stage functions are available from their modules, e.g.
 A minimal example — pre-align two masks and save an overlay:
 
 ```python
+import numpy as np
+
 from image_matchmaker.prealignment import prealign_samples
-from image_matchmaker.utils import read_volume, plot_overlay
+from image_matchmaker.utils import read_volume, plot_overlay, prealignment_spacing
 
 seg_fixed = read_volume("fixed_image.n5", key="seg")
 seg_moving = read_volume("moving_image.n5", key="seg")
 
-results = prealign_samples(seg_fixed, seg_moving)
+# the spacings must be numpy arrays, in (z, y, x) order and µm
+fixed_spacing = np.asarray([0.4, 0.4, 0.4], dtype=np.float32)
+moving_spacing = np.asarray([0.5, 0.4, 0.4], dtype=np.float32)
+new_spacing = np.asarray(prealignment_spacing(fixed_spacing), dtype=np.float32)
+
+results = prealign_samples(
+    seg_fixed, seg_moving, fixed_spacing, moving_spacing, new_spacing
+)
 fixed_prealigned = results["fixed"][0]
 moving_prealigned = results["moving"][0]
 
-plot_overlay(fixed_prealigned, moving_prealigned, save_path="overlay.png")
+plot_overlay(fixed_prealigned, moving_prealigned, save_path="overlay.pdf")
 ```
+
+**Note on the output format:** every plotting helper saves through
+`image_matchmaker.utils.vis.PLOT_FORMAT`, which is `"pdf"`. The suffix you pass in
+`save_path` is *rewritten* to it, so asking for `overlay.png` still writes `overlay.pdf`.
+Set `PLOT_FORMAT = None` to keep the suffix you pass.
 
 For complete, runnable examples of the Python API see `examples/registration_test.py`
 (pre-alignment). Refer to each function's source for its full signature.
