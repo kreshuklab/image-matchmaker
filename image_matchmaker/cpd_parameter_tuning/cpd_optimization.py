@@ -223,7 +223,14 @@ def run_optimization(fixed_pcd, moving_pcd, fixed_labels, moving_labels,
 @click.option(
     "--moving_path", default=None, help="Override moving image n5 path from config"
 )
-def main(config, landmark_ids_json, fixed_path, moving_path):
+@click.option(
+    "--n_jobs",
+    default=None,
+    type=int,
+    help="Trials to evaluate in parallel (default: optuna.n_jobs from config). The workflow "
+         "passes the rule's thread count here, so --cores caps the search.",
+)
+def main(config, landmark_ids_json, fixed_path, moving_path, n_jobs):
     with open(config) as f:
         cfg = yaml.safe_load(f)
 
@@ -280,7 +287,8 @@ def main(config, landmark_ids_json, fixed_path, moving_path):
     logging.info(f"Total combinations: {n_combinations}")
 
     study_name = cfg.get("optuna", {}).get("study_name", "cpd_optimization")
-    n_jobs = cfg.get("optuna", {}).get("n_jobs", 1)
+    if n_jobs is None:
+        n_jobs = cfg.get("optuna", {}).get("n_jobs", 1)
 
     run_optimization(
         fixed_pcd=fixed_pcd,

@@ -128,8 +128,14 @@ raising `n_jobs` runs several parameter combinations at the same time and is the
 way to speed up the search. A good starting point is the number of physical cores
 available.
 
-Note that Snakemake's `--cores` does **not** parallelize the search — only a single
-`optimize_cpd` job runs, and it fans out internally according to `n_jobs`.
+Only a single `optimize_cpd` job runs; it fans out internally rather than as separate
+Snakemake jobs. The rule declares `threads: optuna.n_jobs` and passes its thread count on as
+`--n_jobs`, so **`--cores` caps the search**: run with fewer cores than `n_jobs` and Snakemake
+scales the rule down instead of letting it oversubscribe. Keep `--cores` at least as large as
+`n_jobs` to get the parallelism you asked for.
+
+The script also accepts `--n_jobs` directly, which overrides the config value when it is run
+outside the workflow.
 
 ### `LOCAL_TMPDIR` (environment variable)
 

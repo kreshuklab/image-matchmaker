@@ -158,6 +158,10 @@ rule optimize_cpd:
     """Run Optuna grid search over CPD parameters, evaluated by mean LRE.
     Beta ranges for dataset-specific mode are computed inside cpd_optimization.py
     from the extracted point clouds.
+
+    threads is optuna.n_jobs, and the thread count is passed on as --n_jobs, so Snakemake's
+    core accounting matches what the search actually spawns and --cores caps it: asking for
+    fewer cores than n_jobs makes Snakemake scale the rule down rather than oversubscribe.
     """
     input:
         fixed_ds          = f"{fixed_n5_path}/{fixed_aligned_key}",
@@ -168,6 +172,7 @@ rule optimize_cpd:
         best_params    = f"{log_dir}/{cpd_optimization_dir}/best_cpd_params.yaml",
         study_results  = f"{log_dir}/{cpd_optimization_dir}/study_results.csv",
         registered_pcd = f"{log_dir}/{cpd_optimization_dir}/registered_pcd.pcd",
+    threads: config.get("optuna", {}).get("n_jobs", 1)
     params:
         fixed_path  = fixed_n5_path,
         moving_path = moving_n5_path,
@@ -177,7 +182,8 @@ rule optimize_cpd:
         "--config {input.config} "
         "--landmark_ids_json {input.landmark_ids_json} "
         "--fixed_path {params.fixed_path} "
-        "--moving_path {params.moving_path}"
+        "--moving_path {params.moving_path} "
+        "--n_jobs {threads}"
 
 
 rule plot_overlays:
