@@ -136,10 +136,10 @@ def main(fixed_path, fixed_key, fixed_output_key, fixed_landmarks_csv,
     plots_dir = Path(log_dir) / "plots"
     plots_dir.mkdir(exist_ok=True)
     plot_landmark_qc(fixed_seg_lm, id_map,
-                     save_path=plots_dir / "fixed_landmarks_qc.png",
+                     save_path=plots_dir / "fixed_landmarks_qc.pdf",
                      cell_cmap=PINK, landmark_color="red")
     plot_landmark_qc(moving_seg_lm, id_map,
-                     save_path=plots_dir / "moving_landmarks_qc.png",
+                     save_path=plots_dir / "moving_landmarks_qc.pdf",
                      cell_cmap=CYAN, landmark_color="blue")
     logging.info(f"Landmark QC plots written to {plots_dir}")
 

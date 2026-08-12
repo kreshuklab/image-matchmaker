@@ -3,14 +3,15 @@ import sys
 import click
 import logging
 from pathlib import Path
-import open3d as o3d
+import numpy as np  # noqa: F401  before open3d, see below
+import open3d as o3d  # after numpy: importing open3d first breaks numpy's C extensions in imm_env
 
 from image_matchmaker.utils import (
     read_volume,
     get_attrs,
     setup_logging,
-    overlay_pcds,
-    visualize_displacement_field,
+    plot_pcd_overlay_panels,
+    plot_displacement_field_panels,
     extract_centroids,
     cpd_from_pcds,
     create_pcd,
@@ -52,50 +53,26 @@ def run_cpd(fixed_img, fixed_resolution, moving_img, moving_resolution, output_d
     fixed_pcd = create_pcd(fixed_center_coords, fixed_labels)
     moving_pcd = create_pcd(moving_center_coord, moving_labels)
 
-    overlay_pcds(fixed_pcd, moving_pcd, projection="xz", save_path=output_dir / "plots/pcds_before_registration_xz.png")
-    overlay_pcds(fixed_pcd, moving_pcd, projection="yz", save_path=output_dir / "plots/pcds_before_registration_yz.png")
-    overlay_pcds(fixed_pcd, moving_pcd, projection="xy", save_path=output_dir / "plots/pcds_before_registration_xy.png")
+    plot_pcd_overlay_panels(
+        fixed_pcd,
+        moving_pcd,
+        save_path=output_dir / "plots/pcds_before_registration.pdf",
+    )
 
     logging.info(f"Point cloud registration with parameters w={w}, beta={beta}, lmd={lmd}, maxiter={maxiter}")
 
     registered_pcd = cpd_from_pcds(fixed_pcd, moving_pcd, w, beta, lmd, maxiter)
 
-    overlay_pcds(
+    plot_pcd_overlay_panels(
         fixed_pcd,
         registered_pcd,
-        projection="xz",
-        save_path=output_dir / "plots/pcds_after_registration_xz.png",
-    )
-    overlay_pcds(
-        fixed_pcd,
-        registered_pcd,
-        projection="yz",
-        save_path=output_dir / "plots/pcds_after_registration_yz.png",
-    )
-    overlay_pcds(
-        fixed_pcd,
-        registered_pcd,
-        projection="xy",
-        save_path=output_dir / "plots/pcds_after_registration_xy.png",
+        save_path=output_dir / "plots/pcds_after_registration.pdf",
     )
 
-    visualize_displacement_field(
+    plot_displacement_field_panels(
         moving_pcd,
         registered_pcd,
-        projection="xz",
-        save_path=output_dir / "plots/displacement_field_xz.png",
-    )
-    visualize_displacement_field(
-        moving_pcd,
-        registered_pcd,
-        projection="yz",
-        save_path=output_dir / "plots/displacement_field_yz.png",
-    )
-    visualize_displacement_field(
-        moving_pcd,
-        registered_pcd,
-        projection="xy",
-        save_path=output_dir / "plots/displacement_field_xy.png",
+        save_path=output_dir / "plots/displacement_field.pdf",
     )
 
     o3d.t.io.write_point_cloud(str(output_dir / "fixed_pcd.pcd"), fixed_pcd, write_ascii=True)
