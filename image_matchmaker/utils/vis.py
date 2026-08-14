@@ -295,7 +295,7 @@ def plot_landmark_overlay(
         for bg, color in ((fixed_bg, PINK_HEX), (moving_bg, CYAN_HEX)):
             if bg is not None:
                 col, row = _slice_gc_coords(np.asarray(bg).T[::-1], axis)
-                ax.scatter(col, row, c=color, s=1, alpha=0.15, linewidths=0)
+                ax.scatter(col, row, c=color, s=1, alpha=0.15, linewidths=0, rasterized=True)
 
         for name, fixed_zyx, moving_zyx in pairs:
             fx, fy = _slice_gc_coords(fixed_zyx, axis)
@@ -439,6 +439,7 @@ def _draw_pcd_overlay(
         c=fixed_col,
         alpha=0.5,
         label="Fixed point cloud",
+        rasterized=True,
     )
     ax.scatter(
         moving_np[roi_x][moving_mask],
@@ -447,11 +448,11 @@ def _draw_pcd_overlay(
         c=moving_col,
         alpha=0.5,
         label="Moving point cloud",
+        rasterized=True,
     )
     ax.set_xlabel(projection[0])
     ax.set_ylabel(projection[1])
     ax.invert_yaxis()
-    # ax.axis, not set_aspect: keeps the datalim-adjusting behaviour the old plt.axis call had
     ax.axis("equal")
 
 
@@ -588,7 +589,6 @@ def _draw_displacement_field(
             linewidth=0.5,
         )
 
-    # ax.axis, not set_aspect: keeps the datalim-adjusting behaviour the old plt.axis call had
     ax.axis("equal")
     ax.invert_yaxis()
 
@@ -745,7 +745,6 @@ def _draw_matching_qc(
             ):
                 ax.plot([p1[d1], p2[d1]], [p1[d2], p2[d2]], c="lightseagreen", linewidth=0.5)
 
-    # ax.axis, not set_aspect: keeps the datalim-adjusting behaviour the old plt.axis call had
     ax.axis("equal")
     ax.invert_yaxis()
 
@@ -827,8 +826,6 @@ def plot_matching_qc_panels(
         _draw_matching_qc(
             ax, fixed_np, moving_np, projection, pairs, center_slice, max_points
         )
-        # sns.scatterplot adds a legend to every axes it draws into, so drop all but the
-        # first panel's - the panels share their colour coding.
         if i > 0 and ax.get_legend() is not None:
             ax.get_legend().remove()
 

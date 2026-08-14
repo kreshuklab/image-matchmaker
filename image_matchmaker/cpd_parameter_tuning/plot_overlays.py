@@ -49,13 +49,18 @@ def volume_pcd(path, key):
     show_default=True,
     help="Key of the unaligned segmentations with landmarks embedded",
 )
-def main(config, landmark_ids_json, fixed_path, moving_path, lm_input_key):
+@click.option(
+    "--output_dir",
+    default=None,
+    help="Where to write the overlays (default: <log_dir>/05_landmark_overlays)",
+)
+def main(config, landmark_ids_json, fixed_path, moving_path, lm_input_key, output_dir):
     with open(config) as f:
         cfg = yaml.safe_load(f)
 
     log_dir = Path(cfg["log_dir"])
     cpd_dir = log_dir / "04_cpd_optimization"
-    output_dir = log_dir / "05_landmark_overlays"
+    output_dir = Path(output_dir) if output_dir else log_dir / "05_landmark_overlays"
     output_dir.mkdir(parents=True, exist_ok=True)
     setup_logging(str(output_dir), "plot_overlays.log")
 
