@@ -177,7 +177,7 @@ def apply_transforms(
         output_shape=output_shape,
     )
 
-    resolution = [float(res) for res in parameter_object.GetParameter(0, "Spacing")]
+    resolution = [float(res) for res in parameter_object.GetParameter(0, "Spacing")][::-1]
 
     save_attrs = {}
     if moving_path.endswith(".n5"):
