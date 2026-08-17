@@ -158,7 +158,6 @@ def apply_transform_chanwise(transform_parameter_object, moving_img_np, resoluti
         result_img = np.stack(result_img, axis=0)
     elif moving_img_np.ndim == 3:
         moving_img = itk_scalar_img(moving_img_np, resolution)
-        logging.info(moving_img)
         result_img = apply_elastix_transform(transformix_filter, moving_img)
     else:
         raise ValueError(
