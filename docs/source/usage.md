@@ -136,12 +136,11 @@ from image_matchmaker.utils import (
 )
 ```
 
-The point-cloud QC plots come in two flavours: a single-projection function
-(`overlay_pcds`, `visualize_displacement_field`, `plot_matching_qc`) and a `*_panels`
-variant that draws the xy, xz and yz projections as three panels in one figure
-(`plot_pcd_overlay_panels`, `plot_displacement_field_panels`, `plot_matching_qc_panels`,
-and `plot_landmark_overlay`). The pipeline uses the panel variants; both share the same
-drawing code. All of them write through `PLOT_FORMAT` — see the note below.
+The point-cloud QC plots (`plot_pcd_overlay`, `plot_displacement_field`,
+`plot_matching_qc`, `plot_landmark_overlay`) each draw the xy, xz and yz projections
+as three panels in one figure. All but `plot_landmark_overlay` take a `projections` argument,
+so `projections=("xz",)` gives a single view. All of them write through `PLOT_FORMAT` — see
+the note below.
 
 Higher-level stage functions are available from their modules, e.g.
 `prealign_samples` / `run_prealignment` (`image_matchmaker.prealignment`),

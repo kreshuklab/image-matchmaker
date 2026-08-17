@@ -224,7 +224,7 @@ A registration has likely succeeded when:
 - the `overlay_*` plots show fixed and moving converging from stage to stage, with
   the final overlay closely aligned;
 - the CPD `displacement_field` is smooth and coherent (no large, erratic vectors);
-- the `point_matching_*` lines connect nearby corresponding structures rather than
+- the `point_matching` lines connect nearby corresponding structures rather than
   crossing over long distances;
 - the deformable `grid_after` deforms smoothly without folding.
 

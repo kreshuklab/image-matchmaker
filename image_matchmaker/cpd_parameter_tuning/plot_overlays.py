@@ -3,7 +3,7 @@ import logging
 from pathlib import Path
 
 import click
-import numpy as np
+import matplotlib
 import open3d as o3d
 import yaml
 
@@ -12,8 +12,7 @@ from image_matchmaker.utils import (
 )
 from image_matchmaker.cpd_parameter_tuning.cpd_optimization import compute_lre, pcd_to_label_pos
 
-import matplotlib
-matplotlib.use("agg")
+matplotlib.use("agg")  # non-interactive backend for headless runs
 
 
 def volume_pcd(path, key):

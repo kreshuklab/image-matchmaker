@@ -1,4 +1,5 @@
 from pathlib import Path
+from image_matchmaker.utils.vis import PLOT_FORMAT
 
 root_dir = f"{Path(workflow.basedir).resolve().parent}/"
 workdir: root_dir
@@ -41,7 +42,7 @@ rule all:
         best_params   = f"{log_dir}/{cpd_optimization_dir}/best_cpd_params.yaml",
         study_results = f"{log_dir}/{cpd_optimization_dir}/study_results.csv",
         overlays      = expand(
-            f"{log_dir}/{overlays_dir}/landmark_overlay_{{stage}}.pdf",
+            f"{log_dir}/{overlays_dir}/landmark_overlay_{{stage}}.{PLOT_FORMAT}",
             stage=["input", "prealignment", "rigid_alignment", "best_cpd"],
         ),
 
@@ -204,7 +205,7 @@ rule plot_overlays:
         landmark_ids_json = landmark_ids_json,
     output:
         expand(
-            f"{log_dir}/{overlays_dir}/landmark_overlay_{{stage}}.pdf",
+            f"{log_dir}/{overlays_dir}/landmark_overlay_{{stage}}.{PLOT_FORMAT}",
             stage=["input", "prealignment", "rigid_alignment", "best_cpd"],
         ),
     params:

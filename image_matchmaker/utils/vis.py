@@ -239,12 +239,12 @@ def plot_landmark_qc(
             ax.text(col + 2, row, name, fontsize=4, color=landmark_color, zorder=6, va="center")
         ax.invert_yaxis()
 
-    plt.tight_layout()
+    fig.tight_layout()
     if save_path is None:
         plt.show()
     else:
-        _savefig(save_path, bbox_inches="tight")
-    plt.close()
+        _savefig(save_path, bbox_inches="tight", fig=fig)
+    plt.close(fig)
 
 
 def plot_landmark_overlay(
@@ -309,12 +309,12 @@ def plot_landmark_overlay(
         ax.invert_yaxis()  # scatter defaults to origin bottom-left; put it top-left
 
     fig.suptitle(title)
-    plt.tight_layout()
+    fig.tight_layout()
     if save_path is None:
         plt.show()
     else:
-        _savefig(save_path, bbox_inches="tight")
-    plt.close()
+        _savefig(save_path, bbox_inches="tight", fig=fig)
+    plt.close(fig)
 
 
 def plot_overlay(img1, img2, save_path=None, x_pos=None, y_pos=None, z_pos=None,
@@ -421,8 +421,7 @@ def _draw_pcd_overlay(
 ):
     """Draw one point-cloud overlay projection into ``ax``.
 
-    Shared by the single-panel and three-panel plots so the two cannot drift apart. The
-    caller adds the legend, so a multi-panel figure can show just one.
+    The caller adds the legend, so a multi-panel figure can show just one.
     """
     assert (
         len(projection) == 2
@@ -453,64 +452,11 @@ def _draw_pcd_overlay(
     ax.set_xlabel(projection[0])
     ax.set_ylabel(projection[1])
     ax.invert_yaxis()
+    # ax.axis, not set_aspect: keeps the datalim-adjusting behaviour the old plt.axis call had
     ax.axis("equal")
 
 
-def overlay_pcds(
-    fixed_pcd: o3d.t.geometry.PointCloud,
-    moving_pcd: o3d.t.geometry.PointCloud,
-    fixed_col=PINK_HEX,
-    moving_col=CYAN_HEX,
-    projection="xy",
-    save_path=None,
-    title="",
-    center_slice=True,
-    max_points=2000,
-):
-    """
-    Overlay two point clouds in a 2D projection.
-
-    Optionally restricts the plot to points near the centre-of-mass slice to
-    make dense clouds easier to read.
-
-    Parameters
-    ----------
-    fixed_pcd, moving_pcd : open3d.t.geometry.PointCloud
-        Point clouds to overlay (drawn in ``fixed_col`` / ``moving_col``).
-    fixed_col, moving_col : optional
-        Colours for the fixed and moving clouds (default pink / cyan).
-    projection : str, optional
-        Two-axis projection plane, e.g. ``"xy"``, ``"yz"`` (default ``"xy"``).
-    save_path : str, optional
-        If given, the figure is written here; otherwise it is shown.
-    title : str, optional
-        Plot title.
-    center_slice : bool, optional
-        If ``True``, only plot points near the centre-of-mass slice.
-    max_points : int, optional
-        Maximum number of points to plot per cloud (default ``2000``).
-    """
-    fig, ax = plt.subplots(figsize=(10, 10))
-    _draw_pcd_overlay(
-        ax,
-        fixed_pcd.point.positions.numpy(),
-        moving_pcd.point.positions.numpy(),
-        projection,
-        fixed_col,
-        moving_col,
-        center_slice,
-        max_points,
-    )
-    ax.set_title(title)
-    ax.legend()
-    if save_path is None:
-        plt.show()
-    else:
-        _savefig(save_path, fig=fig)
-    plt.close(fig)
-
-
-def plot_pcd_overlay_panels(
+def plot_pcd_overlay(
     fixed_pcd: o3d.t.geometry.PointCloud,
     moving_pcd: o3d.t.geometry.PointCloud,
     fixed_col=PINK_HEX,
@@ -525,7 +471,7 @@ def plot_pcd_overlay_panels(
     Overlay two point clouds in three orthogonal projections, one panel per projection.
 
     Same figure layout as :func:`plot_landmark_overlay` and
-    :func:`plot_displacement_field_panels`, so one file covers all three views.
+    :func:`plot_displacement_field`, so one file covers all three views.
 
     Parameters
     ----------
@@ -547,7 +493,7 @@ def plot_pcd_overlay_panels(
     fixed_np = fixed_pcd.point.positions.numpy()
     moving_np = moving_pcd.point.positions.numpy()
 
-    fig, axes = plt.subplots(1, len(projections), figsize=(18, 6))
+    fig, axes = plt.subplots(1, len(projections), figsize=(6 * len(projections), 6))
 
     for i, (ax, projection) in enumerate(zip(np.atleast_1d(axes), projections)):
         ax.set_title(f"{projection} projection")
@@ -559,7 +505,7 @@ def plot_pcd_overlay_panels(
             ax.legend()  # one legend is enough; the panels share their colour coding
 
     fig.suptitle(title)
-    plt.tight_layout()
+    fig.tight_layout()
     if save_path is None:
         plt.show()
     else:
@@ -570,10 +516,7 @@ def plot_pcd_overlay_panels(
 def _draw_displacement_field(
     ax, moving_np, registered_np, projection, center_slice, max_points
 ):
-    """Draw one displacement-field projection into ``ax``.
-
-    Shared by the single-panel and three-panel plots so the two cannot drift apart.
-    """
+    """Draw one displacement-field projection into ``ax``."""
     assert (
         len(projection) == 2
     ), f"Projection should be xy, yz or something like that of length 2, not {projection}"
@@ -589,59 +532,12 @@ def _draw_displacement_field(
             linewidth=0.5,
         )
 
+    # ax.axis, not set_aspect: keeps the datalim-adjusting behaviour the old plt.axis call had
     ax.axis("equal")
     ax.invert_yaxis()
 
 
-def visualize_displacement_field(
-    moving_pcd: o3d.t.geometry.PointCloud,
-    registered_pcd: o3d.t.geometry.PointCloud,
-    save_path=None,
-    projection="xy",
-    center_slice=True,
-    max_points=2000,
-    title=None,
-):
-    """
-    Plot the displacement field between a point cloud and its registered version.
-
-    Draws a line from each moving point to its registered position in a 2D
-    projection, so the deformation can be inspected for smoothness.
-
-    Parameters
-    ----------
-    moving_pcd : open3d.t.geometry.PointCloud
-        Point cloud before registration.
-    registered_pcd : open3d.t.geometry.PointCloud
-        The same points after registration.
-    save_path : str, optional
-        If given, the figure is written here; otherwise it is shown.
-    projection : str, optional
-        Two-axis projection plane, e.g. ``"xy"``, ``"yz"`` (default ``"xy"``).
-    center_slice : bool, optional
-        If ``True``, only plot points near the centre-of-mass slice.
-    max_points : int, optional
-        Maximum number of points to plot (default ``2000``).
-    """
-    fig, ax = plt.subplots()
-    _draw_displacement_field(
-        ax,
-        moving_pcd.point.positions.numpy(),
-        registered_pcd.point.positions.numpy(),
-        projection,
-        center_slice,
-        max_points,
-    )
-    if title is not None:
-        ax.set_title(title, fontsize=8)
-    if save_path is None:
-        plt.show()
-    else:
-        _savefig(save_path, fig=fig)
-    plt.close(fig)
-
-
-def plot_displacement_field_panels(
+def plot_displacement_field(
     moving_pcd: o3d.t.geometry.PointCloud,
     registered_pcd: o3d.t.geometry.PointCloud,
     save_path=None,
@@ -676,7 +572,7 @@ def plot_displacement_field_panels(
     moving_np = moving_pcd.point.positions.numpy()
     registered_np = registered_pcd.point.positions.numpy()
 
-    fig, axes = plt.subplots(1, len(projections), figsize=(18, 6))
+    fig, axes = plt.subplots(1, len(projections), figsize=(6 * len(projections), 6))
 
     for ax, projection in zip(np.atleast_1d(axes), projections):
         ax.set_title(f"{projection} projection")
@@ -685,7 +581,7 @@ def plot_displacement_field_panels(
         )
 
     fig.suptitle(title)
-    plt.tight_layout()
+    fig.tight_layout()
     if save_path is None:
         plt.show()
     else:
@@ -698,8 +594,7 @@ def _draw_matching_qc(
 ):
     """Draw one matching-QC projection into ``ax``.
 
-    Shared by the single-panel and three-panel plots so the two cannot drift apart. The
-    caller adds the legend, so a multi-panel figure can show just one.
+    The caller drops the extra legends, so a multi-panel figure can show just one.
     """
     axis_order = {"x": 0, "y": 1, "z": 2}
     d1 = axis_order[projection[0]]
@@ -745,47 +640,12 @@ def _draw_matching_qc(
             ):
                 ax.plot([p1[d1], p2[d1]], [p1[d2], p2[d2]], c="lightseagreen", linewidth=0.5)
 
+    # ax.axis, not set_aspect: keeps the datalim-adjusting behaviour the old plt.axis call had
     ax.axis("equal")
     ax.invert_yaxis()
 
 
 def plot_matching_qc(
-    fixed_np, moving_np, fig_name, pairs=None, projection="xz", center_slice=True, max_points=500
-):
-    """
-    Plot matched point-cloud correspondences for quality control.
-
-    Scatters the fixed and moving points in a 2D projection and draws a line
-    between each matched pair, so incorrect (long, crossing) matches are easy to
-    spot.
-
-    Parameters
-    ----------
-    fixed_np : numpy.ndarray
-        ``(N, 3)`` coordinates of the fixed point set.
-    moving_np : numpy.ndarray
-        ``(M, 3)`` coordinates of the moving point set.
-    fig_name : str
-        Path where the figure is saved.
-    pairs : list of tuple of int, optional
-        Matched index pairs ``(i, j)`` into ``fixed_np`` and ``moving_np``.
-    projection : str, optional
-        Two-axis projection plane, e.g. ``"xz"`` (default ``"xz"``).
-    center_slice : bool, optional
-        If ``True``, only plot points near the centre-of-mass slice.
-    max_points : int, optional
-        Maximum number of points to plot (default ``500``).
-    """
-    fig, ax = plt.subplots()
-    _draw_matching_qc(
-        ax, fixed_np, moving_np, projection, pairs, center_slice, max_points
-    )
-    ax.legend()
-    _savefig(fig_name, fig=fig)
-    plt.close(fig)
-
-
-def plot_matching_qc_panels(
     fixed_np,
     moving_np,
     save_path=None,
@@ -819,18 +679,20 @@ def plot_matching_qc_panels(
     title : str, optional
         Figure title.
     """
-    fig, axes = plt.subplots(1, len(projections), figsize=(18, 6))
+    fig, axes = plt.subplots(1, len(projections), figsize=(6 * len(projections), 6))
 
     for i, (ax, projection) in enumerate(zip(np.atleast_1d(axes), projections)):
         ax.set_title(f"{projection} projection")
         _draw_matching_qc(
             ax, fixed_np, moving_np, projection, pairs, center_slice, max_points
         )
+        # sns.scatterplot adds a legend to every axes it draws into, so drop all but the
+        # first panel's - the panels share their colour coding.
         if i > 0 and ax.get_legend() is not None:
             ax.get_legend().remove()
 
     fig.suptitle(title)
-    plt.tight_layout()
+    fig.tight_layout()
     if save_path is None:
         plt.show()
     else:

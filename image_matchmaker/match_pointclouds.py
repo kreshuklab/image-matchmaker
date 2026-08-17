@@ -12,7 +12,7 @@ from image_matchmaker.utils import (
     hungarian_matching,
     sinkhorn_matching,
     write_index_pairs,
-    plot_matching_qc_panels,
+    plot_matching_qc,
     setup_logging,
 )
 
@@ -120,7 +120,7 @@ def run_matching(
 
     # matched_idx_pairs was swapped back above, so it indexes these two in this order
     qc_fixed, qc_moving = (pos_2, pos_1) if swap_order else (pos_1, pos_2)
-    plot_matching_qc_panels(
+    plot_matching_qc(
         qc_fixed,
         qc_moving,
         output_dir / "plots/point_matching.pdf",

@@ -75,7 +75,7 @@ value instead of `auto` (see {doc}`Configuration Reference <config_ref>`).
 
 ### Point matches look wrong (long, crossing lines)
 
-Inspect `point_matching_*` in `04_match_pointclouds/plots/`. Adjust the `matching`
+Inspect `point_matching` in `04_match_pointclouds/plots/`. Adjust the `matching`
 parameters — lower `max_dist` to reject distant matches, or change `min_neighbours`
 — or try a different `matching.method` (`ilp`, `hungarian`, `sinkhorn`) (see
 {doc}`Configuration Reference <config_ref>`).
