@@ -362,6 +362,11 @@ def plot_overlay(img1, img2, save_path=None, x_pos=None, y_pos=None, z_pos=None,
         plt.imshow((s1 > 0).astype(np.float32), cmap=PINK, alpha=a1, vmin=0, vmax=1)
         plt.imshow((s2 > 0).astype(np.float32), cmap=CYAN, alpha=a2, vmin=0, vmax=1)
 
+        # Each imshow resets the limits to its own extent, so the last one drawn would crop
+        # the other volume wherever it is larger. Show the union instead.
+        plt.xlim(-0.5, max(s1.shape[1], s2.shape[1]) - 0.5)
+        plt.ylim(max(s1.shape[0], s2.shape[0]) - 0.5, -0.5)
+
         if gc1 is not None:
             px, py = _slice_gc_coords(gc1, axis)
             plt.scatter(px, py, c="red", s=40)
