@@ -18,6 +18,8 @@ correspondence through a sequential pipeline:
 The composed rigid + B-spline transform can then be reapplied to the raw channels of the
 original volumes (e.g. raw EM or fluorescence LM) to bring them into a shared coordinate space.
 
+![Image-Matchmaker pipeline](docs/source/_static/images/workflow.png)
+
 ## Documentation
 
 Full documentation is available at **https://image-matchmaker.readthedocs.io/**, including:

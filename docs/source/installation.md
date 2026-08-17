@@ -12,7 +12,7 @@ cd image-matchmaker
 
 ```bash
 conda env create -f environment.yml
-conda activate matchmaker_env
+conda activate imm_env
 ```
 ---
 

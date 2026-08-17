@@ -25,7 +25,7 @@ You can either:
 
 ## 2. Run registration
 
-With the conda environment activated (e.g. `conda activate matchmaker_env`), run the
+With the conda environment activated (e.g. `conda activate imm_env`), run the
 registration workflow. `--configfile` is required — there is no default config:
 
 ```bash
