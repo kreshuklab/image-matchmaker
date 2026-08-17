@@ -25,37 +25,15 @@ def itk_scalar_img(img: np.array, resolution, ch=0):
     """
     logging.info(f"Converting image of type {img.dtype} to ITK object")
     if img.ndim == 4:
-        img = np.moveaxis(img[ch, :, :, :], 0, -1)
-
-    else:
-        img = np.moveaxis(img[:, :, :], 0, -1)
+        if ch is None:
+            raise ValueError("ch must be specified when input image is 4D (C, Z, Y, X).")
+        img = img[ch]
+    elif img.ndim != 3:
+        raise ValueError(f"Expected a 3D (Z, Y, X) or 4D (C, Z, Y, X) array, got shape {img.shape}.")
 
     itk_img = itk.image_from_array(img)
-    # itk_img.SetSpacing(resolution[::-1])
-    itk_img.SetSpacing(resolution)
+    itk_img.SetSpacing(resolution[::-1])    # ZYX -> XYZ
     return itk_img
-
-
-def itk_to_np_order(img: np.array):
-    # In numpy: CZYX
-    # In ITK: YXZC
-    if img.ndim == 3 or img.ndim == 2:
-        return np.moveaxis(img, -1, 0)
-    elif img.ndim == 4:
-        img = np.swapaxes(img, 0, 3)
-        img = np.swapaxes(img, 1, 2)
-        return np.flip(img)
-
-
-def np_to_itk_order(img: np.array):
-    # In numpy: CZYX
-    # In ITK: XYZC
-    if img.ndim == 3 or img.ndim == 2:
-        return np.moveaxis(img, 0, -1)
-    elif img.ndim == 4:
-        img = np.swapaxes(img, 0, 3)
-        img = np.swapaxes(img, 1, 2)
-        return img
 
 
 def create_parameter_object(parameter_map_paths):
@@ -164,24 +142,26 @@ def apply_transform(transformix_filter, moving_img):
     transformix_filter.SetMovingImage(moving_img)
     transformix_filter.Update()
     output_image = transformix_filter.GetOutput()
-    output_img_np = itk.GetArrayFromImage(output_image)
-    output_img_np = itk_to_np_order(output_img_np)
+    output_img_np = itk.GetArrayFromImage(output_image) # already in zyx order
     return output_img_np
 
 
 def apply_transform_chanwise(transform_parameter_object, moving_img_np, resolution):
     transformix_filter = create_transformix_object(transform_parameter_object)
-    result_img = []
 
     if moving_img_np.ndim == 4:
+        result_img = []
         for chan in range(moving_img_np.shape[0]):
             moving_img = itk_scalar_img(moving_img_np, resolution, chan)
             output_img_np = apply_transform(transformix_filter, moving_img)
             result_img.append(output_img_np)
-        result_img = np.array(result_img)
-    else:
-        moving_img = itk_scalar_img(moving_img_np[None, :], resolution, 0)
-        logging.info(moving_img)
+        result_img = np.stack(result_img, axis=0)
+    elif moving_img_np.ndim == 3:
+        moving_img = itk_scalar_img(moving_img_np, resolution)
         result_img = apply_transform(transformix_filter, moving_img)
+    else:
+        raise ValueError(
+            f"Expected moving image with shape (Z,Y,X) or (C,Z,Y,X), got {moving_img_np.shape}."
+        )
 
     return result_img

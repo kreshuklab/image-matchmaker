@@ -11,7 +11,6 @@ from image_matchmaker.utils import (
     plot_overlay,
     itk_scalar_img,
     elastix_registration,
-    itk_to_np_order,
     apply_transform_chanwise,
     setup_logging,
 )
@@ -55,14 +54,16 @@ def elastix_segm_rigid_alignment(
     )
 
     logging.info(f"Result image shape {result_image.shape}")
-    result_img_np = itk_to_np_order(itk.GetArrayFromImage(result_image))
+    result_img_np = itk.GetArrayFromImage(result_image)
+    result_resolution = list(result_image.GetSpacing())[::-1]  # XYZ -> ZYX
+    fixed_img_scalar_np = itk.GetArrayFromImage(fixed_img)
     plot_overlay(
-        itk_to_np_order(itk.GetArrayFromImage(fixed_img)),
+        fixed_img_scalar_np,
         result_img_np,
         f"{output_dir}/plots/overlay_after_rigid_alignment.pdf",
     )
     plot_overlay(
-        itk_to_np_order(itk.GetArrayFromImage(fixed_img)),
+        fixed_img_scalar_np,
         result_img_np,
         f"{output_dir}/plots/overlay_after_rigid_alignment.png",
     )
@@ -73,7 +74,7 @@ def elastix_segm_rigid_alignment(
     )
     logging.info(f"Result image shape {result_img_np.shape}")
 
-    return result_img_np
+    return result_img_np, result_resolution
 
 
 def run_rigid_alignment(
@@ -111,7 +112,7 @@ def run_rigid_alignment(
 
     logging.info("Compute rigid alignment of moving image...")
 
-    moving_img_np = elastix_segm_rigid_alignment(
+    moving_img_np, aligned_resolution = elastix_segm_rigid_alignment(
         fixed_img_np=fixed_img_np,
         fixed_resolution=fixed_resolution,
         moving_img_np=moving_img_np,
@@ -120,7 +121,7 @@ def run_rigid_alignment(
     )
     moving_img_np = moving_img_np.astype(np.uint16)
 
-    return moving_img_np
+    return moving_img_np, aligned_resolution
 
 
 @click.command()
@@ -144,7 +145,7 @@ def main(fixed_path, fixed_key, moving_path, moving_key, output_dir, output_key,
     moving_resolution = get_attrs(moving_path, moving_key)["resolution"]
     logging.info(f"Moving image shape: {moving_img.shape}, dtype {moving_img.dtype}")
 
-    moving_rigid_aligned = run_rigid_alignment(
+    moving_rigid_aligned, aligned_resolution = run_rigid_alignment(
         fixed_img,
         fixed_resolution,
         moving_img,
@@ -154,6 +155,7 @@ def main(fixed_path, fixed_key, moving_path, moving_key, output_dir, output_key,
 
     logging.info("Save rigid aligned moving image")
     moving_attributes = dict(get_attrs(moving_path, moving_key))
+    moving_attributes["resolution"] = aligned_resolution
     write_volume(
         f=moving_path,
         arr=moving_rigid_aligned,

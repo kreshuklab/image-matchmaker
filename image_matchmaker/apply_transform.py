@@ -45,6 +45,43 @@ def save_data(data, output_path, output_key=None, **kwargs):
         raise NotImplementedError
 
 
+def check_parameter_map_axes(parameter_object, fixed_shape, fixed_resolution=None):
+    """Fail early if a stored transform was written with the old (transposed) axis order.
+
+    ``Size`` and ``Spacing`` in a transform parameter file describe the fixed image grid in
+    ITK ``(x, y, z)`` order, so both must be the reverse of the fixed volume's numpy
+    ``(z, y, x)`` shape and resolution. Parameter files written before the axis-order fix hold
+    them permuted; transformix then resamples onto a grid whose axes do not match the moving
+    image and returns a silently transposed result instead of raising.
+
+    Args:
+        parameter_object: The transform parameter object about to be applied.
+        fixed_shape: Shape of the fixed volume, ``(z, y, x)`` (trailing 3 axes are used).
+        fixed_resolution: Optional fixed voxel spacing ``(z, y, x)``. Checked when given,
+            which is what catches a permuted map on a cubic volume.
+
+    Raises:
+        ValueError: If the parameter map grid does not describe the fixed volume.
+    """
+    reg_size = [int(s) for s in parameter_object.GetParameter(0, "Size")]
+    fixed_shape = list(fixed_shape)[-3:]
+    if reg_size[::-1] != fixed_shape:
+        raise ValueError(
+            f"Transform parameter map grid {reg_size[::-1]} does not match the fixed image "
+            f"{fixed_shape}. This map was most likely written before the ITK axis-order fix; "
+            "re-run the registration workflow to regenerate it."
+        )
+
+    if fixed_resolution is not None:
+        reg_spacing = [float(s) for s in parameter_object.GetParameter(0, "Spacing")]
+        if not np.allclose(reg_spacing[::-1], list(fixed_resolution)[-3:]):
+            raise ValueError(
+                f"Transform parameter map spacing {reg_spacing[::-1]} does not match the fixed "
+                f"image resolution {list(fixed_resolution)[-3:]}. This map was most likely "
+                "written before the ITK axis-order fix; re-run the registration workflow."
+            )
+
+
 def apply_transform(moving_img, moving_resolution, parameter_object, interpolation_order,
                     T_fixed=None, output_shape=None):
     """
@@ -146,6 +183,11 @@ def apply_transforms(
     if fixed_path:
         logging.info("Read fixed image")
         fixed_img = load_data(fixed_path, fixed_key)
+        check_parameter_map_axes(
+            parameter_object,
+            fixed_img.shape,
+            get_attrs(fixed_path, fixed_key)["resolution"] if fixed_path.endswith(".n5") else None,
+        )
         if T_fixed is not None:
             logging.info("Rotate fixed image using prealignment transform")
             fixed_prealigned = rotate_img(fixed_img, T_fixed, output_shape=output_shape)
@@ -176,7 +218,7 @@ def apply_transforms(
         output_shape=output_shape,
     )
 
-    resolution = [float(res) for res in parameter_object.GetParameter(0, "Spacing")]
+    resolution = [float(res) for res in parameter_object.GetParameter(0, "Spacing")][::-1]
 
     save_attrs = {}
     if moving_path.endswith(".n5"):
