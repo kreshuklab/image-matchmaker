@@ -55,15 +55,15 @@ def elastix_segm_rigid_alignment(
 
     logging.info(f"Result image shape {result_image.shape}")
     result_img_np = itk.GetArrayFromImage(result_image)
-    result_resolution = tuple(result_image.GetSpacing())[::-1]  # XYZ -> ZYX
-    fixed_img_np = itk.GetArrayFromImage(fixed_img)
+    result_resolution = list(result_image.GetSpacing())[::-1]  # XYZ -> ZYX
+    fixed_img_scalar_np = itk.GetArrayFromImage(fixed_img)
     plot_overlay(
-        fixed_img_np,
+        fixed_img_scalar_np,
         result_img_np,
         f"{output_dir}/plots/overlay_after_rigid_alignment.pdf",
     )
     plot_overlay(
-        fixed_img_np,
+        fixed_img_scalar_np,
         result_img_np,
         f"{output_dir}/plots/overlay_after_rigid_alignment.png",
     )

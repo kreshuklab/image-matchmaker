@@ -123,7 +123,7 @@ def run_pointset_registration(
     )
 
     result_img_np = itk.GetArrayFromImage(result_image)
-    result_resolution = tuple(result_image.GetSpacing())[::-1]  # XYZ -> ZYX
+    result_resolution = list(result_image.GetSpacing())[::-1]  # XYZ -> ZYX
     plot_overlay(
         fixed_img_scalar_np,
         result_img_np,

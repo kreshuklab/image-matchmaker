@@ -36,20 +36,6 @@ def itk_scalar_img(img: np.array, resolution, ch=0):
     return itk_img
 
 
-def itk_to_np_order(img: np.array):
-    if img.ndim != 3:
-        raise ValueError(f"Expected a 3D array, got shape {img.shape}.")
-
-    return img
-
-
-def np_to_itk_order(img: np.array):
-    if img.ndim != 3:
-        raise ValueError(f"Expected a 3D array in (Z,Y,X) order, got shape {img.shape}.")
-
-    return img
-
-
 def create_parameter_object(parameter_map_paths):
     parameter_object = itk.ParameterObject.New()
     for parameter_map_path in parameter_map_paths:

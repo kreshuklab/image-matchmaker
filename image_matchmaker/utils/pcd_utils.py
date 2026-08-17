@@ -75,18 +75,25 @@ def create_matched_pcds(
 
 
 def pcd_to_elastix(pcd_path, elastix_path):
-    """_summary_
+    """Write a point cloud as an Elastix ``point`` file, in physical units.
+
+    The coordinate order must match the axis convention of the images the point sets are
+    registered with, so this function is only correct together with :func:`itk_scalar_img`:
+    ``extract_centroids`` yields points in ``(x, y, z)`` and ``itk_scalar_img`` puts the
+    volume into ITK's ``(x, y, z)`` index order, so the points are written ``x y z``.
+    Changing either one alone silently misaligns the
+    ``CorrespondingPointsEuclideanDistanceMetric`` against the image metric.
 
     Args:
-        pcd_path: Point cloud in PCD format
+        pcd_path: Point cloud in PCD format, with positions in ``(x, y, z)`` µm.
         elastix_path: Point cloud in Elastix format, for example:
             point
             5
             2214.0 282.2 0.0
             2445.0 2013.0 0.0
             795.0 366.0 0.0
-            153.0 609.0
-            324.0 2322.0
+            153.0 609.0 0.0
+            324.0 2322.0 0.0
     """
 
     pcd = o3d.t.io.read_point_cloud(pcd_path)
@@ -174,8 +181,6 @@ def cpd_from_pcds(fixed_pcd, moving_pcd, w, beta, lmd, maxiter):
     open3d.t.geometry.PointCloud
         The registered (deformed) moving point cloud.
     """
-    # source_pt = asnumpy(moving_pcd.point.positions.numpy())
-    # target_pt = asnumpy(fixed_pcd.point.positions.numpy())
 
     source_pt = cp.asarray(moving_pcd.point.positions.numpy(), dtype=cp.float32)
     target_pt = cp.asarray(fixed_pcd.point.positions.numpy(), dtype=cp.float32)
@@ -196,8 +201,6 @@ def cpd_from_pcds(fixed_pcd, moving_pcd, w, beta, lmd, maxiter):
     )
     elapsed = time.time() - start
     logging.info(f"time: {elapsed}")
-
-    # print("result: ", to_cpu(tf_param.w), to_cpu(tf_param.g))
 
     result = to_cpu(tf_param.transform(source_pt))
     registered_pcd = copy.deepcopy(moving_pcd)
