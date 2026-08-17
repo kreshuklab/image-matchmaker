@@ -10,8 +10,8 @@ from image_matchmaker.utils import (
     read_volume,
     get_attrs,
     setup_logging,
-    plot_pcd_overlay_panels,
-    plot_displacement_field_panels,
+    plot_pcd_overlay,
+    plot_displacement_field,
     extract_centroids,
     cpd_from_pcds,
     create_pcd,
@@ -53,7 +53,7 @@ def run_cpd(fixed_img, fixed_resolution, moving_img, moving_resolution, output_d
     fixed_pcd = create_pcd(fixed_center_coords, fixed_labels)
     moving_pcd = create_pcd(moving_center_coord, moving_labels)
 
-    plot_pcd_overlay_panels(
+    plot_pcd_overlay(
         fixed_pcd,
         moving_pcd,
         save_path=output_dir / "plots/pcds_before_registration.pdf",
@@ -63,13 +63,13 @@ def run_cpd(fixed_img, fixed_resolution, moving_img, moving_resolution, output_d
 
     registered_pcd = cpd_from_pcds(fixed_pcd, moving_pcd, w, beta, lmd, maxiter)
 
-    plot_pcd_overlay_panels(
+    plot_pcd_overlay(
         fixed_pcd,
         registered_pcd,
         save_path=output_dir / "plots/pcds_after_registration.pdf",
     )
 
-    plot_displacement_field_panels(
+    plot_displacement_field(
         moving_pcd,
         registered_pcd,
         save_path=output_dir / "plots/displacement_field.pdf",

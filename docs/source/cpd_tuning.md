@@ -228,8 +228,11 @@ Written under `{log_dir}/04_cpd_optimization/`:
 - `trial_XXXX.pdf` — per-trial displacement-field plot, the xy, xz and yz projections as
   three panels in one figure, labeled with the trial's parameters and LRE.
 - `trial_XXXX.json` — per-trial parameters and metrics.
-- `registered_pcd.pcd` — the registered point cloud of the best trial, kept so the
-  overlay below can be drawn without re-running the winning CPD fit.
+- `registered_pcd.pcd` — the registered point cloud of the best trial, so the overlay
+  below can be drawn without re-running the winning CPD fit. It is produced by refitting
+  the winning parameters once when the search finishes (CPD is deterministic, so this
+  reproduces that trial and always matches `best_cpd_params.yaml`, including when the
+  search was resumed from an earlier run).
 - `optuna_study.db` — the Optuna study database (inspectable, resumable).
 
 Written under `{log_dir}/05_landmark_overlays/`:

@@ -2,9 +2,9 @@ import json
 import os
 import shutil
 import tempfile
-import threading
 import click
 import logging
+import matplotlib
 import numpy as np
 import open3d as o3d
 import pandas as pd
@@ -17,11 +17,10 @@ from optuna.samplers import GridSampler
 
 from image_matchmaker.utils import (
     read_volume, get_attrs, extract_centroids, cpd_from_pcds, create_pcd, setup_logging,
-    plot_displacement_field_panels,
+    plot_displacement_field,
 )
 from image_matchmaker.cpd_parameter_tuning.suggest_cpd_ranges import suggest_beta_ranges
 
-import matplotlib
 matplotlib.use("agg")  # non-interactive backend required for worker threads
 
 _ranges_file = Path(__file__).parent / "default_cpd_ranges.yaml"
@@ -75,10 +74,6 @@ def run_optimization(fixed_pcd, moving_pcd, fixed_labels, moving_labels,
     n_landmark_moving = sum(1 for lbl in moving_labels if lbl >= min_lm_id)
     logging.info(f"Landmarks in fixed pcd: {n_landmark_fixed}, in moving pcd: {n_landmark_moving}")
 
-    trial_results = []
-    results_lock = threading.Lock()
-    best_so_far = {"lre": float("inf"), "pcd": None}
-
     def objective(trial):
         w = trial.suggest_categorical("w", search_space["w"])
         beta = trial.suggest_categorical("beta", search_space["beta"])
@@ -91,7 +86,7 @@ def run_optimization(fixed_pcd, moving_pcd, fixed_labels, moving_labels,
         logging.info(f"  → mean LRE = {mean_lre:.2f} µm")
 
         plot_title = f"Trial {trial.number:04d} | w={w}, β={beta}, λ={lmd}, maxiter={maxiter} | LRE={mean_lre:.2f} µm"
-        plot_displacement_field_panels(
+        plot_displacement_field(
             moving_pcd,
             registered_pcd,
             title=plot_title,
@@ -107,10 +102,6 @@ def run_optimization(fixed_pcd, moving_pcd, fixed_labels, moving_labels,
             "mean_lre_um": mean_lre,
             "per_landmark_um": per_lm,
         }
-        with results_lock:
-            trial_results.append(result)
-            if mean_lre < best_so_far["lre"]:
-                best_so_far.update(lre=mean_lre, pcd=registered_pcd)
         with open(output_dir / f"trial_{trial.number:04d}.json", "w") as f:
             json.dump(result, f, indent=2)
 
@@ -123,6 +114,7 @@ def run_optimization(fixed_pcd, moving_pcd, fixed_labels, moving_labels,
     local_base = os.environ.get("LOCAL_TMPDIR") or tempfile.gettempdir()
     local_db_dir = Path(tempfile.mkdtemp(prefix="optuna_", dir=local_base))
     local_db_path = local_db_dir / "optuna_study.db"
+
     if final_db_path.exists():
         shutil.copy2(final_db_path, local_db_path)
         logging.info(f"Seeded local study DB from existing {final_db_path}")
@@ -175,36 +167,16 @@ def run_optimization(fixed_pcd, moving_pcd, fixed_labels, moving_labels,
     logging.info(f"Best parameters written to {best_params_path}")
 
     summary = pd.DataFrame([
-        {
-            "trial": r["trial"],
-            "w": r["w"],
-            "beta": r["beta"],
-            "lmd": r["lmd"],
-            "maxiter": r["maxiter"],
-            "mean_lre_um": r["mean_lre_um"],
-        }
-        for r in trial_results
+        {"trial": t.number, **t.params, "mean_lre_um": t.value}
+        for t in study.trials if t.value is not None
     ])
     summary_path = output_dir / "study_results.csv"
     summary.sort_values("mean_lre_um").to_csv(summary_path, index=False)
     logging.info(f"Study summary written to {summary_path}")
-
-    if best_so_far["pcd"] is None:
-        raise RuntimeError(
-            f"No trial ran in this process, so there is no point cloud to save. The study "
-            f"'{study_name}' in {final_db_path} is already complete. Delete that database as "
-            "well to rerun the grid search from scratch."
-        )
-    if best_so_far["lre"] > best.value:
-        logging.warning(
-            f"Best trial of the study has LRE {best.value:.4g} µm but ran in an earlier process; "
-            f"the best cloud available here is from a trial with LRE {best_so_far['lre']:.4g} µm. "
-            f"registered_pcd.pcd is that cloud, not the one described by {best_params_path.name}, "
-            f"so the best_cpd overlay does not match those parameters. "
-            f"Delete {final_db_path.name} and rerun to make the two agree."
-        )
+    logging.info("Refitting the best parameter combination to save its point cloud")
+    registered_pcd = cpd_from_pcds(fixed_pcd, moving_pcd, **best.params)
     registered_pcd_path = output_dir / "registered_pcd.pcd"
-    o3d.t.io.write_point_cloud(str(registered_pcd_path), best_so_far["pcd"], write_ascii=True)
+    o3d.t.io.write_point_cloud(str(registered_pcd_path), registered_pcd, write_ascii=True)
     logging.info(f"Registered point cloud of the best trial written to {registered_pcd_path}")
 
     return best_params_path

@@ -1,17 +1,11 @@
 import numpy as np
-from pathlib import Path
 import open3d as o3d
 import copy
 import time
-from probreg import cpd, callbacks
+from probreg import cpd
 import logging
-import argparse
-import sys
-import matplotlib.pyplot as plt
 from probreg.transformation import Transformation
 from skimage.measure import regionprops_table
-import seaborn as sns
-
 import pandas as pd
 
 use_cuda = False
@@ -23,7 +17,9 @@ if use_cuda:
     asnumpy = cp.asnumpy
 else:
     cp = np
-    to_cpu = lambda x: x
+
+    def to_cpu(x):
+        return x
 
     def asnumpy(x):
         return x
@@ -42,9 +38,8 @@ class PrintIterationsCallback(object):
     def __init__(self):
         self._cnt = 0
 
-
     def __call__(self, transformation: Transformation) -> None:
-        logging.info(f"Iteration {self._cnt}")        
+        logging.info(f"Iteration {self._cnt}")
         self._cnt += 1
 
 

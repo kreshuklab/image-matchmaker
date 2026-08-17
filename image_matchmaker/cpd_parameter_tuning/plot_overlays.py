@@ -3,7 +3,7 @@ import logging
 from pathlib import Path
 
 import click
-import numpy as np
+import matplotlib
 import open3d as o3d
 import yaml
 
@@ -12,8 +12,7 @@ from image_matchmaker.utils import (
 )
 from image_matchmaker.cpd_parameter_tuning.cpd_optimization import compute_lre, pcd_to_label_pos
 
-import matplotlib
-matplotlib.use("agg")
+matplotlib.use("agg")  # non-interactive backend for headless runs
 
 
 def volume_pcd(path, key):
@@ -49,13 +48,18 @@ def volume_pcd(path, key):
     show_default=True,
     help="Key of the unaligned segmentations with landmarks embedded",
 )
-def main(config, landmark_ids_json, fixed_path, moving_path, lm_input_key):
+@click.option(
+    "--output_dir",
+    default=None,
+    help="Where to write the overlays (default: <log_dir>/05_landmark_overlays)",
+)
+def main(config, landmark_ids_json, fixed_path, moving_path, lm_input_key, output_dir):
     with open(config) as f:
         cfg = yaml.safe_load(f)
 
     log_dir = Path(cfg["log_dir"])
     cpd_dir = log_dir / "04_cpd_optimization"
-    output_dir = log_dir / "05_landmark_overlays"
+    output_dir = Path(output_dir) if output_dir else log_dir / "05_landmark_overlays"
     output_dir.mkdir(parents=True, exist_ok=True)
     setup_logging(str(output_dir), "plot_overlays.log")
 
