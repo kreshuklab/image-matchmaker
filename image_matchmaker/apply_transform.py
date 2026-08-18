@@ -103,7 +103,7 @@ def apply_transforms(
     log_dir = Path(log_dir)
     log_dir.mkdir(parents=True, exist_ok=True)
 
-    input_resolution = json.loads(input_resolution)
+    input_resolution = json.loads(input_resolution) # should keep it as ZYX order
 
     setup_logging(log_dir, "apply_transform.log")
 
@@ -113,14 +113,14 @@ def apply_transforms(
     if verbose:
         logging.info(parameter_object)
 
-    reg_spacing = list(map(float, parameter_object.GetParameter(0, "Spacing")))
+    reg_spacing = list(map(float, parameter_object.GetParameter(0, "Spacing"))) # XYZ
     if output_resolution is None:
         output_resolution = reg_spacing
         logging.info(
             f"No output resolution provided. Using registration (fixed) resolution: {output_resolution}"
         )
     else:
-        output_resolution = json.loads(output_resolution)
+        output_resolution = json.loads(output_resolution)[::-1] # ZYX -> XYZ
         if output_resolution != reg_spacing:
             reg_size = list(map(int, parameter_object.GetParameter(0, "Size")))
             output_size = [int(round(s * rs / os)) for s, rs, os in zip(reg_size, reg_spacing, output_resolution)]
@@ -132,7 +132,7 @@ def apply_transforms(
 
     if prealignment_transform_path:
         if output_resolution != reg_spacing:
-            logging.info("Pre-alignment transform at different resolution is not supported yet.")
+            logging.warning("Pre-alignment transform at different resolution is not supported yet.")
             T_fixed, output_shape = None, None
         else:
             logging.info("Read prealignment transform")
@@ -180,11 +180,10 @@ def apply_transforms(
     resolution = [float(res) for res in parameter_object.GetParameter(0, "Spacing")][::-1]
 
     save_attrs = {}
-    if moving_path.endswith(".n5"):
-        attributes = dict(get_attrs(moving_path, moving_key))
-        attributes["resolution"] = resolution
-        save_attrs["chunks"] = chunks
-        save_attrs["attrs"] = attributes
+    attributes = dict(get_attrs(moving_path, moving_key)) if moving_path.endswith(".n5") else {}
+    attributes["resolution"] = resolution
+    save_attrs["chunks"] = chunks
+    save_attrs["attrs"] = attributes
 
     logging.info("Plot warped image")
     plot_three_slices(warped, save_path=log_dir / f"{moving_name}_warped.png")
