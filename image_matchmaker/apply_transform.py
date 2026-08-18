@@ -101,7 +101,7 @@ def apply_transforms(
     verbose,
 ):
     log_dir = Path(log_dir)
-    log_dir.mkdir(exist_ok=True)
+    log_dir.mkdir(parents=True, exist_ok=True)
 
     input_resolution = json.loads(input_resolution)
 
