@@ -100,5 +100,8 @@ Usage:
 ```
 snakemake -s workflows/cpd_optimization.smk \
           --configfile examples/cpd_optimization_config.yaml \
-          --cores 1
+          --cores 4
 ```
+
+Give `--cores` at least `optuna.n_jobs`: the `optimize_cpd` rule requests `n_jobs` threads
+and passes them on, so fewer cores make Snakemake scale the search down.

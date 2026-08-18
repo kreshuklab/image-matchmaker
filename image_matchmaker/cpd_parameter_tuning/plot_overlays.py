@@ -4,6 +4,7 @@ from pathlib import Path
 
 import click
 import matplotlib
+import numpy as np
 import open3d as o3d
 import yaml
 

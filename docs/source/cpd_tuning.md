@@ -153,7 +153,7 @@ filesystem:
 export LOCAL_TMPDIR=/scratch/$USER   # node-local disk
 snakemake -s workflows/cpd_optimization.smk \
           --configfile examples/cpd_optimization_config.yaml \
-          --cores 1
+          --cores 4                  # at least optuna.n_jobs
 ```
 
 If a previous run left an `optuna_study.db`, it is seeded into the local copy first,
@@ -166,8 +166,11 @@ With the conda environment activated:
 ```bash
 snakemake -s workflows/cpd_optimization.smk \
           --configfile examples/cpd_optimization_config.yaml \
-          --cores 1
+          --cores 4
 ```
+
+Give `--cores` at least `optuna.n_jobs` — with fewer, Snakemake scales the search down
+(see the `optuna.n_jobs` section above).
 
 The workflow:
 
