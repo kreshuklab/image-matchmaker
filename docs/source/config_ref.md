@@ -196,6 +196,16 @@ Dataset key used for `.n5` files.
 
 Voxel resolution along each axis.
 
+#### `input_resolution` and `output_resolution`
+
+Voxel resolution along each axis using:
+
+* `x_res`: Voxel resolution along the x-axis.
+* `y_res`: Voxel resolution along the y-axis.
+* `z_res`: Voxel resolution along the z-axis.
+
+`input_resolution` is required. `output_resolution` is optional and can either be omitted or left empty. If it is omitted or left empty, the output resolution is determined using the registration (fixed) image resolution.
+
 #### `interpolation_order`
 
 B-spline interpolation order used during resampling.
@@ -221,7 +231,7 @@ typically:
 
 ### `prealignment_transform_path` (optional)
 
-Path to the SVD pre-alignment transform produced by the registration run, 
+Path to the SVD pre-alignment transform produced by the registration run,
 typically:
 
 ```text

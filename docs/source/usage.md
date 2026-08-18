@@ -113,8 +113,9 @@ is written to a `plots/` subfolder of the output directory.
 | Option | Required | Description |
 |--------|----------|-------------|
 | `--moving_path` (`-mp`) / `--moving_key` (`-mk`) | yes | Moving input path and key |
-| `--moving_resolution` (`-mr`) | yes | Resolution of the moving input |
+| `--input_resolution` (`-ir`) | yes | Resolution of the moving input |
 | `--output_path` (`-op`) / `--output_key` (`-ok`) | yes | Output path and key |
+| `--output_resolution` (`-or`) | no | Resolution of the moving output |
 | `--interpolation_order` (`-io`) | yes | Interpolation order (`0` for masks) |
 | `--log_dir` (`-ld`) | yes | Log directory |
 | `--parameter_map_path` (`-pm`) | yes | Elastix parameter map |

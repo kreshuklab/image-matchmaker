@@ -121,21 +121,28 @@ moving_images:
   -
     input_path: /path/to/the/moving/image1
     input_key: "input"
+    input_resolution:
+      x_res: 1
+      y_res: 1
+      z_res: 1
     output_path: /path/to/the/output/image1
     output_key: "pointset_alignment_transform"
-    x_res: 1
-    y_res: 1
-    z_res: 1
+    output_resolution:
+      x_res: 1
+      y_res: 1
+      z_res: 1
     interpolation_order: 0
 
   -
     input_path: /path/to/the/moving/image2
     input_key: "input"
+    input_resolution:
+      x_res: 1
+      y_res: 1
+      z_res: 1
     output_path: /path/to/the/output/image2
     output_key: "pointset_alignment_transform"
-    x_res: 1
-    y_res: 1
-    z_res: 1
+    output_resolution:
     interpolation_order: 0
 
 log_dir: /path/to/the/log/directory
