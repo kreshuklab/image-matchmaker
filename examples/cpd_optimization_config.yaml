@@ -1,4 +1,5 @@
 fixed_image:
+  # name: "fixed_image"   # optional, names the working .n5 written to log_dir
   path: "data/test_elastic_registration/fixed_image.n5"
   input_key: "input"
   aligned_key: "svd_prealignment_with_lm"
@@ -7,6 +8,7 @@ fixed_image:
   z_res: 1.0
 
 moving_image:
+  # name: "moving_image"  # optional, names the working .n5 written to log_dir
   path: "data/test_elastic_registration/moving_image.n5"
   input_key: "input"
   aligned_key: "rigid_alignment_with_lm"
@@ -28,9 +30,9 @@ optuna:
   # search_space controls which parameter ranges are used. Three options:
   #
   #   "default"          — load ranges from default_cpd_ranges.yaml
-  #   "dataset-specific" — compute beta from extent of aligned fixed image via
-  #                        suggest_cpd_ranges.py (run automatically by Snakemake
-  #                        after pre- and rigid alignment); other params from defaults
+  #   "dataset-specific" — compute beta from the extent of the aligned fixed point cloud
+  #                        (suggest_beta_ranges, called in-process at the start of the
+  #                        search, not a separate step); other params from defaults
   #   explicit dict      — specify ranges directly, e.g.:
   #
   # search_space:
@@ -39,3 +41,6 @@ optuna:
   #   lmd: [0.01, 0.1, 1.0]
   #   maxiter: [150]
   search_space: "default"
+  # Trials evaluated in parallel. Each worker runs a full CPD fit, so both runtime and
+  # memory scale with it. Run snakemake with --cores >= n_jobs, or the search is capped.
+  n_jobs: 1

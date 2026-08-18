@@ -118,15 +118,14 @@ def run_matching(
         for idx1, idx2 in matched_idx_pairs
     ]
 
-    if swap_order:
-        plot_matching_qc(pos_2, pos_1, output_dir / "plots/point_matching_xz.png", pairs=matched_idx_pairs, projection="xz")
-        plot_matching_qc(pos_2, pos_1, output_dir / "plots/point_matching_yz.png", pairs=matched_idx_pairs, projection="yz")
-        plot_matching_qc(pos_2, pos_1, output_dir / "plots/point_matching_xy.png", pairs=matched_idx_pairs, projection="xy")
-
-    else:
-        plot_matching_qc(pos_1, pos_2, output_dir / "plots/point_matching_xz.png", pairs=matched_idx_pairs, projection="xz")
-        plot_matching_qc(pos_1, pos_2, output_dir / "plots/point_matching_yz.png", pairs=matched_idx_pairs, projection="yz")
-        plot_matching_qc(pos_1, pos_2, output_dir / "plots/point_matching_xy.png", pairs=matched_idx_pairs, projection="xy")
+    # matched_idx_pairs was swapped back above, so it indexes these two in this order
+    qc_fixed, qc_moving = (pos_2, pos_1) if swap_order else (pos_1, pos_2)
+    plot_matching_qc(
+        qc_fixed,
+        qc_moving,
+        output_dir / "plots/point_matching.pdf",
+        pairs=matched_idx_pairs,
+    )
 
     return matched_idx_pairs, matched_label_pairs
 

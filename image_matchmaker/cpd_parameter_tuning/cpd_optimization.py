@@ -2,10 +2,11 @@ import json
 import os
 import shutil
 import tempfile
-import threading
 import click
 import logging
+import matplotlib
 import numpy as np
+import open3d as o3d
 import pandas as pd
 import yaml
 from functools import reduce
@@ -15,17 +16,24 @@ import optuna
 from optuna.samplers import GridSampler
 
 from image_matchmaker.utils import (
-    read_volume, get_attrs, extract_centroids, run_cpd, create_pcd, setup_logging,
-    visualize_displacement_field,
+    read_volume, get_attrs, extract_centroids, cpd_from_pcds, create_pcd, setup_logging,
+    plot_displacement_field,
 )
 from image_matchmaker.cpd_parameter_tuning.suggest_cpd_ranges import suggest_beta_ranges
 
-import matplotlib
 matplotlib.use("agg")  # non-interactive backend required for worker threads
 
 _ranges_file = Path(__file__).parent / "default_cpd_ranges.yaml"
 with open(_ranges_file) as _f:
     DEFAULT_SEARCH_SPACE = yaml.safe_load(_f)
+
+
+def pcd_to_label_pos(pcd):
+    """{label_id: (x, y, z)} for every point of a labelled point cloud."""
+    # reshape(-1): the label attribute is (N, 1) in memory but (N,) when read back from .pcd
+    labels = np.asarray(pcd.point.label.numpy()).reshape(-1).astype(int)
+    positions = pcd.point.positions.numpy()
+    return dict(zip(labels, positions))
 
 
 def compute_lre(fixed_pcd, registered_pcd, id_map):
@@ -39,11 +47,6 @@ def compute_lre(fixed_pcd, registered_pcd, id_map):
     Returns:
         (mean_lre, per_landmark_dict)
     """
-    def pcd_to_label_pos(pcd):
-        labels = pcd.point.label.numpy()[:, 0].astype(int)
-        positions = pcd.point.positions.numpy()
-        return dict(zip(labels, positions))
-
     fixed_pos = pcd_to_label_pos(fixed_pcd)
     reg_pos = pcd_to_label_pos(registered_pcd)
 
@@ -71,9 +74,6 @@ def run_optimization(fixed_pcd, moving_pcd, fixed_labels, moving_labels,
     n_landmark_moving = sum(1 for lbl in moving_labels if lbl >= min_lm_id)
     logging.info(f"Landmarks in fixed pcd: {n_landmark_fixed}, in moving pcd: {n_landmark_moving}")
 
-    trial_results = []
-    results_lock = threading.Lock()
-
     def objective(trial):
         w = trial.suggest_categorical("w", search_space["w"])
         beta = trial.suggest_categorical("beta", search_space["beta"])
@@ -81,19 +81,17 @@ def run_optimization(fixed_pcd, moving_pcd, fixed_labels, moving_labels,
         maxiter = trial.suggest_categorical("maxiter", search_space["maxiter"])
 
         logging.info(f"Trial {trial.number}: w={w}, beta={beta}, lmd={lmd}, maxiter={maxiter}")
-        registered_pcd = run_cpd(fixed_pcd, moving_pcd, w, beta, lmd, maxiter)
+        registered_pcd = cpd_from_pcds(fixed_pcd, moving_pcd, w, beta, lmd, maxiter)
         mean_lre, per_lm = compute_lre(fixed_pcd, registered_pcd, id_map)
         logging.info(f"  → mean LRE = {mean_lre:.2f} µm")
 
         plot_title = f"Trial {trial.number:04d} | w={w}, β={beta}, λ={lmd}, maxiter={maxiter} | LRE={mean_lre:.2f} µm"
-        for proj in ("xy", "xz", "yz"):
-            visualize_displacement_field(
-                moving_pcd,
-                registered_pcd,
-                projection=proj,
-                title=plot_title,
-                save_path=plots_dir / f"trial_{trial.number:04d}_{proj}.png",
-            )
+        plot_displacement_field(
+            moving_pcd,
+            registered_pcd,
+            title=plot_title,
+            save_path=plots_dir / f"trial_{trial.number:04d}.pdf",
+        )
 
         result = {
             "trial": trial.number,
@@ -104,8 +102,6 @@ def run_optimization(fixed_pcd, moving_pcd, fixed_labels, moving_labels,
             "mean_lre_um": mean_lre,
             "per_landmark_um": per_lm,
         }
-        with results_lock:
-            trial_results.append(result)
         with open(output_dir / f"trial_{trial.number:04d}.json", "w") as f:
             json.dump(result, f, indent=2)
 
@@ -114,23 +110,14 @@ def run_optimization(fixed_pcd, moving_pcd, fixed_labels, moving_labels,
     plots_dir = output_dir / "plots"
     plots_dir.mkdir(exist_ok=True)
 
-    # SQLite does not tolerate concurrent writers on a network filesystem:
-    # with n_jobs>1 the parallel trial workers collide on Lustre's unreliable
-    # file locking and every commit dies with "database is locked". Keep the
-    # study DB on node-local disk during the run, then copy it back to
-    # output_dir for provenance.
     final_db_path = output_dir / "optuna_study.db"
     local_base = os.environ.get("LOCAL_TMPDIR") or tempfile.gettempdir()
     local_db_dir = Path(tempfile.mkdtemp(prefix="optuna_", dir=local_base))
     local_db_path = local_db_dir / "optuna_study.db"
-    # Preserve load_if_exists resume semantics: seed the local DB from a prior run.
+
     if final_db_path.exists():
         shutil.copy2(final_db_path, local_db_path)
         logging.info(f"Seeded local study DB from existing {final_db_path}")
-    # Even on local disk SQLite throws "database is locked" during the initial
-    # burst when all n_jobs workers register their trials at once. A long
-    # busy-timeout makes a blocked writer wait for the lock (up to 100 s) instead
-    # of erroring out immediately.
     storage = optuna.storages.RDBStorage(
         url=f"sqlite:///{local_db_path}",
         engine_kwargs={"connect_args": {"timeout": 100}},
@@ -149,7 +136,6 @@ def run_optimization(fixed_pcd, moving_pcd, fixed_labels, moving_labels,
     try:
         study.optimize(objective, n_trials=n_trials, n_jobs=n_jobs)
     finally:
-        # Copy the study DB back (even on failure) so partial runs stay inspectable.
         try:
             shutil.copy2(local_db_path, final_db_path)
             logging.info(f"Copied study DB to {final_db_path}")
@@ -181,19 +167,17 @@ def run_optimization(fixed_pcd, moving_pcd, fixed_labels, moving_labels,
     logging.info(f"Best parameters written to {best_params_path}")
 
     summary = pd.DataFrame([
-        {
-            "trial": r["trial"],
-            "w": r["w"],
-            "beta": r["beta"],
-            "lmd": r["lmd"],
-            "maxiter": r["maxiter"],
-            "mean_lre_um": r["mean_lre_um"],
-        }
-        for r in trial_results
+        {"trial": t.number, **t.params, "mean_lre_um": t.value}
+        for t in study.trials if t.value is not None
     ])
     summary_path = output_dir / "study_results.csv"
     summary.sort_values("mean_lre_um").to_csv(summary_path, index=False)
     logging.info(f"Study summary written to {summary_path}")
+    logging.info("Refitting the best parameter combination to save its point cloud")
+    registered_pcd = cpd_from_pcds(fixed_pcd, moving_pcd, **best.params)
+    registered_pcd_path = output_dir / "registered_pcd.pcd"
+    o3d.t.io.write_point_cloud(str(registered_pcd_path), registered_pcd, write_ascii=True)
+    logging.info(f"Registered point cloud of the best trial written to {registered_pcd_path}")
 
     return best_params_path
 
@@ -203,7 +187,7 @@ def run_optimization(fixed_pcd, moving_pcd, fixed_labels, moving_labels,
 @click.option(
     "--landmark_ids_json",
     default=None,
-    help="Path to landmark_label_ids.json (default: <log_dir>/landmark_label_ids.json)",
+    help="Path to landmark_label_ids.json (default: <log_dir>/01_prepare_landmarks/landmark_label_ids.json)",
 )
 @click.option(
     "--fixed_path", default=None, help="Override fixed image n5 path from config"
@@ -211,12 +195,19 @@ def run_optimization(fixed_pcd, moving_pcd, fixed_labels, moving_labels,
 @click.option(
     "--moving_path", default=None, help="Override moving image n5 path from config"
 )
-def main(config, landmark_ids_json, fixed_path, moving_path):
+@click.option(
+    "--n_jobs",
+    default=None,
+    type=int,
+    help="Trials to evaluate in parallel (default: optuna.n_jobs from config). The workflow "
+         "passes the rule's thread count here, so --cores caps the search.",
+)
+def main(config, landmark_ids_json, fixed_path, moving_path, n_jobs):
     with open(config) as f:
         cfg = yaml.safe_load(f)
 
     log_dir = Path(cfg["log_dir"])
-    output_dir = log_dir / "cpd_optimization"
+    output_dir = log_dir / "04_cpd_optimization"
     output_dir.mkdir(parents=True, exist_ok=True)
     setup_logging(str(output_dir), "cpd_optimization.log")
 
@@ -226,7 +217,10 @@ def main(config, landmark_ids_json, fixed_path, moving_path):
     moving_path = moving_path or cfg["moving_image"]["path"]
     moving_key = cfg["moving_image"]["aligned_key"]
 
-    landmark_ids_path = Path(landmark_ids_json) if landmark_ids_json else log_dir / "landmark_label_ids.json"
+    landmark_ids_path = (
+        Path(landmark_ids_json) if landmark_ids_json
+        else log_dir / "01_prepare_landmarks" / "landmark_label_ids.json"
+    )
     with open(landmark_ids_path) as f:
         id_map = {name: int(lbl) for name, lbl in json.load(f).items()}
     logging.info(f"Loaded {len(id_map)} landmark label IDs from {landmark_ids_path}")
@@ -265,7 +259,8 @@ def main(config, landmark_ids_json, fixed_path, moving_path):
     logging.info(f"Total combinations: {n_combinations}")
 
     study_name = cfg.get("optuna", {}).get("study_name", "cpd_optimization")
-    n_jobs = cfg.get("optuna", {}).get("n_jobs", 1)
+    if n_jobs is None:
+        n_jobs = cfg.get("optuna", {}).get("n_jobs", 1)
 
     run_optimization(
         fixed_pcd=fixed_pcd,
