@@ -69,9 +69,9 @@ def run_pipline(
     transform_config["parameter_map_path"] = transform_config[
         "parameter_map_path"
     ].replace("data/test_rigid_registration", str(test_dir))
-    transform_config["prealignment_transform_path"] = transform_config[
-        "prealignment_transform_path"
-    ].replace("data/test_rigid_registration", str(test_dir))
+    prealignment_transform_path = transform_config.get("prealignment_transform_path")
+    if prealignment_transform_path:
+        transform_config["prealignment_transform_path"] = prealignment_transform_path.replace("data/test_rigid_registration", str(test_dir))
 
     tmp_config_path = log_dir / "apply_transform.yaml"
     with open(tmp_config_path, "w") as f:
