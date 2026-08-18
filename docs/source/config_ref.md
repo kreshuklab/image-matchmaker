@@ -192,10 +192,6 @@ Input and output image paths.
 
 Dataset key used for `.n5` files.
 
-#### `x_res`, `y_res`, `z_res`
-
-Voxel resolution along each axis.
-
 #### `input_resolution` and `output_resolution`
 
 Voxel resolution along each axis using:
