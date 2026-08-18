@@ -15,8 +15,8 @@ moving_lm_csv = config["landmarks"]["moving"]
 log_dir          = config["log_dir"]
 axis_orientation = config["prealignment"]["axis_orientation"]
 
-fixed_name    = config.get("fixed_name", "fixed_image")
-moving_name   = config.get("moving_name", "moving_image")
+fixed_name    = config["fixed_image"].get("name", "fixed_image")
+moving_name   = config["moving_image"].get("name", "moving_image")
 fixed_n5_path = f"{log_dir}/{fixed_name}.n5"
 moving_n5_path = f"{log_dir}/{moving_name}.n5"
 
@@ -28,8 +28,12 @@ prepare_landmarks_dir = "01_prepare_landmarks"
 prealignment_dir      = "02_prealignment_with_lm"
 rigid_alignment_dir   = "03_rigid_alignment_with_lm"
 cpd_optimization_dir  = "04_cpd_optimization"
+overlays_dir          = "05_landmark_overlays"
 
 landmark_ids_json = f"{log_dir}/{prepare_landmarks_dir}/landmark_label_ids.json"
+# Sentinel for the overlay plots: their file format follows vis.PLOT_FORMAT, so naming them
+# as rule outputs would couple the workflow to whatever that is set to.
+overlays_done     = f"{log_dir}/{overlays_dir}/plot_overlays.done"
 
 fixed_spacing  = [config["fixed_image"]["z_res"], config["fixed_image"]["y_res"], config["fixed_image"]["x_res"]]
 moving_spacing = [config["moving_image"]["z_res"], config["moving_image"]["y_res"], config["moving_image"]["x_res"]]
@@ -39,6 +43,7 @@ rule all:
     input:
         best_params   = f"{log_dir}/{cpd_optimization_dir}/best_cpd_params.yaml",
         study_results = f"{log_dir}/{cpd_optimization_dir}/study_results.csv",
+        overlays      = overlays_done,
 
 
 rule input_to_n5:
@@ -153,6 +158,10 @@ rule optimize_cpd:
     """Run Optuna grid search over CPD parameters, evaluated by mean LRE.
     Beta ranges for dataset-specific mode are computed inside cpd_optimization.py
     from the extracted point clouds.
+
+    threads is optuna.n_jobs, and the thread count is passed on as --n_jobs, so Snakemake's
+    core accounting matches what the search actually spawns and --cores caps it: asking for
+    fewer cores than n_jobs makes Snakemake scale the rule down rather than oversubscribe.
     """
     input:
         fixed_ds          = f"{fixed_n5_path}/{fixed_aligned_key}",
@@ -160,8 +169,10 @@ rule optimize_cpd:
         config            = workflow.configfiles[0],
         landmark_ids_json = landmark_ids_json,
     output:
-        best_params   = f"{log_dir}/{cpd_optimization_dir}/best_cpd_params.yaml",
-        study_results = f"{log_dir}/{cpd_optimization_dir}/study_results.csv",
+        best_params    = f"{log_dir}/{cpd_optimization_dir}/best_cpd_params.yaml",
+        study_results  = f"{log_dir}/{cpd_optimization_dir}/study_results.csv",
+        registered_pcd = f"{log_dir}/{cpd_optimization_dir}/registered_pcd.pcd",
+    threads: config.get("optuna", {}).get("n_jobs", 1)
     params:
         fixed_path  = fixed_n5_path,
         moving_path = moving_n5_path,
@@ -171,4 +182,41 @@ rule optimize_cpd:
         "--config {input.config} "
         "--landmark_ids_json {input.landmark_ids_json} "
         "--fixed_path {params.fixed_path} "
-        "--moving_path {params.moving_path}"
+        "--moving_path {params.moving_path} "
+        "--n_jobs {threads}"
+
+
+rule plot_overlays:
+    """Overlay the corresponding landmarks fixed-vs-moving at every stage of the pipeline.
+
+    Runs last so all four stages can be drawn together; the CPD stage comes from the point
+    cloud optimize_cpd saved for its best trial, so no CPD fit is recomputed.
+
+    The plots themselves are not declared as outputs — their extension follows
+    vis.PLOT_FORMAT, so Snakemake tracks the touched sentinel instead and changing the plot
+    format cannot break the DAG.
+    """
+    input:
+        fixed_input_ds    = f"{fixed_n5_path}/{lm_input_key}",
+        moving_input_ds   = f"{moving_n5_path}/{lm_input_key}",
+        fixed_prealigned  = f"{fixed_n5_path}/{fixed_aligned_key}",
+        moving_prealigned = f"{moving_n5_path}/{fixed_aligned_key}",
+        moving_rigid      = f"{moving_n5_path}/{moving_aligned_key}",
+        registered_pcd    = f"{log_dir}/{cpd_optimization_dir}/registered_pcd.pcd",
+        best_params       = f"{log_dir}/{cpd_optimization_dir}/best_cpd_params.yaml",
+        config            = workflow.configfiles[0],
+        landmark_ids_json = landmark_ids_json,
+    output:
+        touch(overlays_done),
+    params:
+        fixed_path   = fixed_n5_path,
+        moving_path  = moving_n5_path,
+        lm_input_key = lm_input_key,
+    log: f"{log_dir}/{overlays_dir}/plot_overlays.log"
+    shell:
+        "python image_matchmaker/cpd_parameter_tuning/plot_overlays.py "
+        "--config {input.config} "
+        "--landmark_ids_json {input.landmark_ids_json} "
+        "--fixed_path {params.fixed_path} "
+        "--moving_path {params.moving_path} "
+        "--lm_input_key {params.lm_input_key}"

@@ -154,12 +154,12 @@ Non-rigid alignment of the point clouds.
 
 **QC plots** (in `03_cpd_nonrigid_registration/plots/`)
 
-- `pcds_before_registration_{xz,yz,xy}` / `pcds_after_registration_{xz,yz,xy}` —
-  fixed and moving point clouds projected onto each plane before and after CPD; the
-  two clouds should overlap more closely afterwards.
-- `displacement_field_{xz,yz,xy}` — vectors showing how each point moved during CPD.
-  A smooth, coherent field is good; **large or discontinuous displacements usually
-  indicate a problem in an earlier step**.
+- `pcds_before_registration` / `pcds_after_registration` — fixed and moving point clouds
+  projected onto each plane before and after CPD, with the xy, xz and yz projections as
+  three panels in one figure; the two clouds should overlap more closely afterwards.
+- `displacement_field` — vectors showing how each point moved during CPD, with the xy, xz
+  and yz projections as three panels in one figure. A smooth, coherent field is good;
+  **large or discontinuous displacements usually indicate a problem in an earlier step**.
 
 ### Feature matching
 
@@ -173,8 +173,9 @@ Finds correspondences between instances.
 
 **QC plots** (in `04_match_pointclouds/plots/`)
 
-- `point_matching_{xz,yz,xy}` — fixed and moving point clouds with lines drawn
-  between matched instances. Lines should connect nearby, corresponding structures;
+- `point_matching` — fixed and moving point clouds with lines drawn between matched
+  instances, with the xy, xz and yz projections as three panels in one figure. Lines
+  should connect nearby, corresponding structures;
   long crossing lines suggest incorrect matches (consider tuning the `matching`
   parameters or switching `matching.method` — see
   {doc}`Configuration Reference <config_ref>`).
@@ -222,8 +223,8 @@ A registration has likely succeeded when:
 
 - the `overlay_*` plots show fixed and moving converging from stage to stage, with
   the final overlay closely aligned;
-- the CPD `displacement_field_*` is smooth and coherent (no large, erratic vectors);
-- the `point_matching_*` lines connect nearby corresponding structures rather than
+- the CPD `displacement_field` is smooth and coherent (no large, erratic vectors);
+- the `point_matching` lines connect nearby corresponding structures rather than
   crossing over long distances;
 - the deformable `grid_after` deforms smoothly without folding.
 

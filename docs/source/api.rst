@@ -41,9 +41,10 @@ Visualization
 
 .. autofunction:: image_matchmaker.utils.plot_three_slices
 .. autofunction:: image_matchmaker.utils.plot_overlay
-.. autofunction:: image_matchmaker.utils.overlay_pcds
-.. autofunction:: image_matchmaker.utils.visualize_displacement_field
+.. autofunction:: image_matchmaker.utils.plot_pcd_overlay
+.. autofunction:: image_matchmaker.utils.plot_displacement_field
 .. autofunction:: image_matchmaker.utils.plot_matching_qc
+.. autofunction:: image_matchmaker.utils.plot_landmark_overlay
 .. autofunction:: image_matchmaker.mobie_export.export_to_mobie
 
 Pipeline stages
