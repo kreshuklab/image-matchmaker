@@ -242,7 +242,11 @@ Written under `{log_dir}/05_landmark_overlays/`:
   xz and yz projections as three panels. Every landmark appears twice — red at its fixed
   position, blue at its position at that stage — joined by a line, over a faint cloud of
   all instance centroids for context. The title carries that stage's mean LRE.
+  The suffix follows `PLOT_FORMAT` in `image_matchmaker/utils/vis.py`, as everywhere else
+  in the pipeline; set it to `'png'` there and these become `.png`.
 - `plot_overlays.log` — the per-stage mean LRE, also logged as a single summary line.
+- `plot_overlays.done` — empty sentinel that Snakemake tracks in place of the plots, since
+  their names depend on `PLOT_FORMAT`. Delete it to force a redraw.
 
 ### Reading the overlays
 
@@ -267,12 +271,15 @@ either genuinely poor CPD parameters or mis-specified landmark correspondences.
 
 Only the `best_cpd` overlay depends on the search, and it is drawn from the saved
 `registered_pcd.pcd` rather than by re-fitting. So all four can be regenerated cheaply —
-delete them and re-run snakemake, which reruns just the `plot_overlays` step:
+delete the sentinel and re-run snakemake, which reruns just the `plot_overlays` step:
 
 ```bash
-rm {log_dir}/05_landmark_overlays/*.pdf
+rm {log_dir}/05_landmark_overlays/plot_overlays.done
 snakemake -s workflows/cpd_optimization.smk --configfile <your config> --cores 4
 ```
+
+Deleting the plot files themselves does *not* trigger a rerun — snakemake tracks only the
+sentinel.
 
 The same script can be called directly, which is useful when tweaking a plot:
 

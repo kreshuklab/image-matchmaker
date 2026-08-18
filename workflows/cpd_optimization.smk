@@ -1,5 +1,4 @@
 from pathlib import Path
-from image_matchmaker.utils.vis import PLOT_FORMAT
 
 root_dir = f"{Path(workflow.basedir).resolve().parent}/"
 workdir: root_dir
@@ -32,6 +31,9 @@ cpd_optimization_dir  = "04_cpd_optimization"
 overlays_dir          = "05_landmark_overlays"
 
 landmark_ids_json = f"{log_dir}/{prepare_landmarks_dir}/landmark_label_ids.json"
+# Sentinel for the overlay plots: their file format follows vis.PLOT_FORMAT, so naming them
+# as rule outputs would couple the workflow to whatever that is set to.
+overlays_done     = f"{log_dir}/{overlays_dir}/plot_overlays.done"
 
 fixed_spacing  = [config["fixed_image"]["z_res"], config["fixed_image"]["y_res"], config["fixed_image"]["x_res"]]
 moving_spacing = [config["moving_image"]["z_res"], config["moving_image"]["y_res"], config["moving_image"]["x_res"]]
@@ -41,10 +43,7 @@ rule all:
     input:
         best_params   = f"{log_dir}/{cpd_optimization_dir}/best_cpd_params.yaml",
         study_results = f"{log_dir}/{cpd_optimization_dir}/study_results.csv",
-        overlays      = expand(
-            f"{log_dir}/{overlays_dir}/landmark_overlay_{{stage}}.{PLOT_FORMAT}",
-            stage=["input", "prealignment", "rigid_alignment", "best_cpd"],
-        ),
+        overlays      = overlays_done,
 
 
 rule input_to_n5:
@@ -192,6 +191,10 @@ rule plot_overlays:
 
     Runs last so all four stages can be drawn together; the CPD stage comes from the point
     cloud optimize_cpd saved for its best trial, so no CPD fit is recomputed.
+
+    The plots themselves are not declared as outputs — their extension follows
+    vis.PLOT_FORMAT, so Snakemake tracks the touched sentinel instead and changing the plot
+    format cannot break the DAG.
     """
     input:
         fixed_input_ds    = f"{fixed_n5_path}/{lm_input_key}",
@@ -204,10 +207,7 @@ rule plot_overlays:
         config            = workflow.configfiles[0],
         landmark_ids_json = landmark_ids_json,
     output:
-        expand(
-            f"{log_dir}/{overlays_dir}/landmark_overlay_{{stage}}.{PLOT_FORMAT}",
-            stage=["input", "prealignment", "rigid_alignment", "best_cpd"],
-        ),
+        touch(overlays_done),
     params:
         fixed_path   = fixed_n5_path,
         moving_path  = moving_n5_path,

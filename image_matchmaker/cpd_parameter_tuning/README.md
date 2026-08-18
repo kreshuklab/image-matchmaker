@@ -89,7 +89,9 @@ Separate from the main registration pipeline. Performs:
      and best CPD — into `05_landmark_overlays/`. Each shows the corresponding landmarks
      fixed-vs-moving in three projections with that stage's mean LRE in the title, so the
      four together show how much misalignment each step removes. The CPD stage is drawn
-     from the saved point cloud, so nothing is recomputed.
+     from the saved point cloud, so nothing is recomputed. Snakemake tracks the step through
+     a `plot_overlays.done` sentinel rather than the plots, whose extension follows
+     `PLOT_FORMAT` in `image_matchmaker/utils/vis.py`.
 
 Output: `best_cpd_params.yaml` (drop-in replacement for the `coherent_point_drift` section
 of the main registration config).

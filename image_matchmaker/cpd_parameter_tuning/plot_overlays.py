@@ -9,6 +9,7 @@ import yaml
 
 from image_matchmaker.utils import (
     read_volume, get_attrs, extract_centroids, create_pcd, setup_logging, plot_landmark_overlay,
+    PLOT_FORMAT,
 )
 from image_matchmaker.cpd_parameter_tuning.cpd_optimization import compute_lre, pcd_to_label_pos
 
@@ -83,7 +84,8 @@ def main(config, landmark_ids_json, fixed_path, moving_path, lm_input_key, outpu
 
     def draw(name, label, fixed_pcd, moving_pcd):
         mean_lre, _ = compute_lre(fixed_pcd, moving_pcd, id_map)
-        save_path = output_dir / f"landmark_overlay_{name}.pdf"
+        # PLOT_FORMAT is None when vis.py infers the format from the path, so name a suffix here
+        save_path = output_dir / f"landmark_overlay_{name}.{PLOT_FORMAT or 'pdf'}"
         plot_landmark_overlay(
             pcd_to_label_pos(fixed_pcd),
             pcd_to_label_pos(moving_pcd),
