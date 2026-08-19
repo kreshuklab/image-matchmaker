@@ -191,6 +191,8 @@ def apply_transforms(
         logging.info("Plot overlay image")
         plot_overlay(fixed_img, warped, log_dir / f"{moving_name}_warped_overlay.png",)
 
+    save_data(warped, output_path, output_key=output_key, **save_attrs)
+
     if T_fixed is not None:
         logging.info("Plot warped moving image after pre-alignment")
         plot_three_slices(warp_prealigned, save_path=log_dir / f"{moving_name}_warp_prealigned.png")
@@ -199,10 +201,16 @@ def apply_transforms(
             logging.info("Plot overlay image after pre-alignment")
             plot_overlay(fixed_prealigned, warp_prealigned, log_dir / f"{moving_name}_warp_prealigned_overlay.png",)
 
-        save_data(warp_prealigned, output_path, output_key=output_key, **save_attrs)
+        base, ext = output_path.rsplit(".", 1)
+        if ext in ("tif", "tiff"):
+            prealigned_path = f"{base}_prealigned.{ext}"
+        elif ext == "n5":
+            prealigned_path = output_path
+            output_key += "_prealigned"
+        else:
+            raise NotImplementedError
 
-    else:
-        save_data(warped, output_path, output_key=output_key, **save_attrs)
+        save_data(warp_prealigned, prealigned_path, output_key=output_key, **save_attrs)
 
 
 if __name__ == "__main__":
