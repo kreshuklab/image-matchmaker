@@ -93,7 +93,7 @@ def run_pipline(
     moving_path = test_dir / f"{moving_name}.n5"
 
     result_img = read_volume(moving_path, "pointset_alignment_prealignment_space")
-    warped_img = read_volume(moving_path, "pointset_alignment_transform")
+    warped_img = read_volume(moving_path, "pointset_alignment_transform_prealigned")
 
     assert_arrays_equal(result_img, warped_img)
 
