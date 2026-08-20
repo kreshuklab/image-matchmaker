@@ -108,6 +108,7 @@ def run_rigid_alignment(
     logging.info("Start rigid alignment")
 
     fixed_img_np = fixed_img.astype(np.float32)
+    moving_dtype = moving_img.dtype
     moving_img_np = moving_img.astype(np.float32)
 
     logging.info("Compute rigid alignment of moving image...")
@@ -119,7 +120,9 @@ def run_rigid_alignment(
         moving_resolution=moving_resolution,
         output_dir=output_dir
     )
-    moving_img_np = moving_img_np.astype(np.uint16)
+    # Preserve the caller's storage dtype. In particular, the CPD tuning
+    # workflow embeds landmark IDs in uint32 segmentations before this step.
+    moving_img_np = moving_img_np.astype(moving_dtype)
 
     return moving_img_np, aligned_resolution
 

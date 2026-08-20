@@ -14,7 +14,6 @@ moving_image:
   ref_url: "https://github.com/kreshuklab/image-matchmaker/releases/download/test_data-v1.0/moving_pointset_aligned.tif"
 
 log_dir: "data/test_rigid_registration"
-final_transform_path: "data/test_rigid_registration/final_transform.json"
 
 prealignment:
   axis_orientation: "auto"

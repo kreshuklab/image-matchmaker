@@ -14,7 +14,6 @@ moving_image:
   ref_url:
 
 log_dir: "data/test_elastic_registration"
-final_transform_path: "data/test_elastic_registration/final_transform.json"
 
 prealignment:
   axis_orientation: "auto" # auto or one of the options listed in svd_prealignment/axis_orientation

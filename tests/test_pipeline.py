@@ -27,8 +27,6 @@ def run_pipline(
     enable_elastic=False,
 ):
     test_dir = Path(test_dir)
-    final_transform_path = test_dir / "final_transform.json"
-
     if test_dir.exists() and test_dir.is_dir():
         shutil.rmtree(test_dir)
     test_dir.mkdir(parents=True)
@@ -40,7 +38,6 @@ def run_pipline(
     deform_test_data(config=registration_config, enable_aniso=enable_aniso, enable_elastic=enable_elastic)
 
     registration_config["log_dir"] = str(test_dir)
-    registration_config["final_transform_path"] = str(final_transform_path)
     registration_config["matching"]["max_dist"] = 10
 
     tmp_config_path = test_dir / "registration.yaml"
@@ -65,7 +62,6 @@ def run_pipline(
         moving_img["input_path"] = moving_img["input_path"].replace("data/test_rigid_registration", str(test_dir))
         moving_img["output_path"] = moving_img["output_path"].replace("data/test_apply_transform", str(test_dir))
     transform_config["log_dir"] = str(log_dir)
-    transform_config["final_transform_path"] = str(final_transform_path)
     transform_config["parameter_map_path"] = transform_config[
         "parameter_map_path"
     ].replace("data/test_rigid_registration", str(test_dir))

@@ -46,12 +46,6 @@ missing. Leave empty (or omit) for usual runs.
 Directory where logs, plots, intermediate files, and registration outputs are
 saved.
 
-### `final_transform_path`
-
-Path where the combined final transform is written.
-
----
-
 ### `prealignment`
 
 Settings for the SVD pre-alignment step.

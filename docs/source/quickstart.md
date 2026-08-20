@@ -59,7 +59,6 @@ moving_image:
   z_res: 1
 
 log_dir: /path/to/the/log/directory
-final_transform_path: /path/to/the/final_transform.json
 
 prealignment:
   axis_orientation: "auto"

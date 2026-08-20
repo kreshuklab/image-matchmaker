@@ -15,7 +15,6 @@ moving_image:
   z_res: 0.4
 
 log_dir: "data/brain_matching"
-final_transform_path: "data/brain_matching/final_transform.json"
 
 prealignment:
   axis_orientation: "X"
