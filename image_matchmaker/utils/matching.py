@@ -3,8 +3,6 @@ import cvxpy as cp
 from scipy.spatial import cKDTree
 from scipy.spatial.distance import cdist
 from scipy.optimize import linear_sum_assignment
-import matplotlib.pyplot as plt
-import seaborn as sns
 import logging
 
 
@@ -19,10 +17,16 @@ def create_cost_matrix(pos_1, pos_2, max_dist=35, min_neighbours=10):
     unconnected_pcd1 = np.argwhere((nonzero_idx > 0).sum(axis=1) < min_neighbours)[:, 0]
     unconnected_pcd2 = np.argwhere((nonzero_idx > 0).sum(axis=0) < min_neighbours)[:, 1]
     logging.info(
-        f"N points in pcd2  with less than {min_neighbours} neighbours: {len(nonzero_idx.sum(axis=0)[0, unconnected_pcd2])} out of {len(pos_2)}"
+        (
+            f"N points in pcd2  with less than {min_neighbours} neighbours: "
+            f"{len(nonzero_idx.sum(axis=0)[0, unconnected_pcd2])} out of {len(pos_2)}"
+        )
     )
     logging.info(
-        f"N points in pcd1  with less than {min_neighbours} neighbours: {len(nonzero_idx.sum(axis=1)[unconnected_pcd1, 0])} out of {len(pos_1)}"
+        (
+            f"N points in pcd1  with less than {min_neighbours} neighbours: "
+            f"{len(nonzero_idx.sum(axis=1)[unconnected_pcd1, 0])} out of {len(pos_1)}"
+        )
     )
     logging.info(f"Cost matrix shape: {sdm.shape}")
     logging.info(
@@ -45,10 +49,18 @@ def create_cost_matrix(pos_1, pos_2, max_dist=35, min_neighbours=10):
     unconnected_pcd1 = np.argwhere((nonzero_idx > 0).sum(axis=1) < min_neighbours)[:, 0]
     unconnected_pcd2 = np.argwhere((nonzero_idx > 0).sum(axis=0) < min_neighbours)[:, 1]
     logging.info(
-        f"N points in pcd2  with less than {min_neighbours} neighbours after adding knn: {len(nonzero_idx.sum(axis=0)[0, unconnected_pcd2])} out of {len(pos_2)}"
+        (
+            f"N points in pcd2  with less than {min_neighbours} neighbours "
+            f"after adding knn: {len(nonzero_idx.sum(axis=0)[0, unconnected_pcd2])} "
+            f"out of {len(pos_2)}"
+        )
     )
     logging.info(
-        f"N points in pcd1  with less than {min_neighbours} neighbours after adding knn: {len(nonzero_idx.sum(axis=1)[unconnected_pcd1, 0])} out of {len(pos_1)}"
+        (
+            f"N points in pcd1  with less than {min_neighbours} neighbours "
+            f"after adding knn: {len(nonzero_idx.sum(axis=1)[unconnected_pcd1, 0])} "
+            f"out of {len(pos_1)}"
+        )
     )
 
     return sdm
@@ -67,7 +79,7 @@ def problem_setup(sdm):
     for point in range(sdm.shape[1]):
         point_idx = np.argwhere(nonzero_idx[1] == point).flatten()
         constraints += [cp.sum(X[:, point_idx]) == 1]
-    
+
     #########################################
     # Comment this out to get a one-to-one matching
     #########################################
@@ -127,7 +139,7 @@ def write_index_pairs(pairs, pairs_path):
 
 def read_index_pairs(pairs_path):
     with open(pairs_path, "r") as f:
-        pairs = [(int(l.split(",")[0]), int(l.split(",")[1])) for l in f.readlines()]
+        pairs = [(int(line.split(",")[0]), int(line.split(",")[1])) for line in f.readlines()]
     return pairs
 
 
@@ -147,11 +159,7 @@ def hungarian_matching(pos_1, pos_2, max_dist, **_):
     logging.info("Solve one-to-one assignment (Hungarian)")
     row, col = linear_sum_assignment(cost)
 
-    pairs = [
-        (int(r), int(c))
-        for r, c in zip(row, col)
-        if cost[r, c] <= max_dist
-    ]
+    pairs = [(int(r), int(c)) for r, c in zip(row, col) if cost[r, c] <= max_dist]
     logging.info(
         f"Matched {len(pairs)} pairs (dropped {len(row) - len(pairs)} above max_dist={max_dist})"
     )
@@ -184,11 +192,7 @@ def sinkhorn_matching(pos_1, pos_2, max_dist, tau=1.0, max_iter=500, **_):
     logging.info("Discretize soft assignment (Hungarian)")
     row, col = linear_sum_assignment(-soft)
 
-    pairs = [
-        (int(r), int(c))
-        for r, c in zip(row, col)
-        if dist[r, c] <= max_dist
-    ]
+    pairs = [(int(r), int(c)) for r, c in zip(row, col) if dist[r, c] <= max_dist]
     logging.info(
         f"Matched {len(pairs)} pairs (dropped {len(row) - len(pairs)} above max_dist={max_dist})"
     )

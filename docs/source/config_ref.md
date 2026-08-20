@@ -192,9 +192,18 @@ Input and output image paths.
 
 Dataset key used for `.n5` files.
 
-#### `x_res`, `y_res`, `z_res`
+#### `input_resolution` and `output_resolution`
 
-Voxel resolution along each axis.
+Voxel resolution along each axis using:
+
+* `x_res`: Voxel resolution along the x-axis.
+* `y_res`: Voxel resolution along the y-axis.
+* `z_res`: Voxel resolution along the z-axis.
+
+`input_resolution` is required. `output_resolution` is optional and can either be omitted or left empty. If it is omitted or left empty, the output resolution is determined using the registration (fixed) image resolution.
+
+Pre-alignment is not currently supported together with a custom
+`output_resolution`; if both are set, the pre-alignment transform is skipped.
 
 #### `interpolation_order`
 
@@ -221,7 +230,7 @@ typically:
 
 ### `prealignment_transform_path` (optional)
 
-Path to the SVD pre-alignment transform produced by the registration run, 
+Path to the SVD pre-alignment transform produced by the registration run,
 typically:
 
 ```text

@@ -39,7 +39,7 @@ def write_transform_dict(transform_dict, json_path):
     for key, val in transform_dict.items():
         val["matrix"] = val["matrix"].tolist()
     with open(json_path, "w") as f:
-	    json.dump(transform_dict, f, indent=2)
+        json.dump(transform_dict, f, indent=2)
 
 
 def read_transform_dict(json_path):
@@ -202,7 +202,7 @@ def get_rotation_matrix(R):
 
 
 def get_transformation_matrix(img, gc, Vt, spacing, img_ref=None, Vt_ref=None,
-                                spacing_ref=None, spacing_out=None):
+                              spacing_ref=None, spacing_out=None):
     """
     Build the affine matrix that centers and rotates a volume onto its
     principal axes.
@@ -286,7 +286,7 @@ def get_axis_orient_matrix(img, axis_order):
     return T
 
 
-def rotate_img(img, rotation_matrix, output_shape=None, offset=None):
+def rotate_img(img, rotation_matrix, output_shape=None, offset=None, order=0):
     """
     Rotate an image using a given rotation matrix.
 
@@ -303,6 +303,9 @@ def rotate_img(img, rotation_matrix, output_shape=None, offset=None):
         The offset to apply to the rotated image to ensure it fits within the new
         bounding box. If not given, the offset will be determined from the rotation
         matrix.
+    order : int, optional
+        Spline interpolation order. Defaults to ``0`` (nearest neighbour), which is
+        required for instance labels; pass a higher order for intensity data.
 
     Returns
     -------
@@ -314,7 +317,7 @@ def rotate_img(img, rotation_matrix, output_shape=None, offset=None):
         matrix=rotation_matrix,
         output_shape=output_shape,  # new shape after rotation
         offset=offset,  # offset to ensure the image fits within the new bounding box
-        order=0,  # interpolation (use 0 for discrete/label data)
+        order=order,  # interpolation (0 for discrete/label data)
         mode='constant',  # fill mode
         cval=0.0  # fill value (if constant mode)
     )
@@ -402,7 +405,6 @@ def grid_sample3d(volume, grid, align_corners=False, mode="trilinear"):
 
     elif mode == "trilinear":
         c0 = np.floor(coords).astype(np.int32)   # (x0, y0, z0)
-        c1 = c0 + 1                              # (x1, y1, z1)
 
         d = coords - c0
         xd, yd, zd = d[..., 0], d[..., 1], d[..., 2]

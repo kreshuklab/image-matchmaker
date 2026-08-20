@@ -3,86 +3,23 @@ import json
 import click
 import logging
 import numpy as np
-import tifffile as tiff
 from pathlib import Path
 
 from image_matchmaker.utils import (
     setup_logging,
-    read_volume,
-    write_volume,
+    load_data,
+    save_data,
     get_attrs,
     rotate_img,
     read_transform_dict,
     apply_transform_chanwise,
     plot_three_slices,
     plot_overlay,
+    resample_volume,
 )
 
 
-def load_data(path, key=None):
-    if path.endswith(".n5"):
-        assert key
-        data = read_volume(path, key)
-    elif path.endswith((".tif", ".tiff")):
-        data = tiff.imread(path)
-        if data.ndim == 2:
-            data = data[None, ...]
-    else:
-        raise NotImplementedError
-
-    return data.astype(np.float32)
-
-
-def save_data(data, output_path, output_key=None, **kwargs):
-    logging.info("Write results")
-    Path(output_path).parent.mkdir(parents=True, exist_ok=True)
-    if output_path.endswith((".tif", ".tiff")):
-        tiff.imwrite(output_path, data)
-    elif output_path.endswith(".n5"):
-        assert output_key
-        write_volume(output_path, data, output_key, **kwargs)
-    else:
-        raise NotImplementedError
-
-
-def check_parameter_map_axes(parameter_object, fixed_shape, fixed_resolution=None):
-    """Fail early if a stored transform was written with the old (transposed) axis order.
-
-    ``Size`` and ``Spacing`` in a transform parameter file describe the fixed image grid in
-    ITK ``(x, y, z)`` order, so both must be the reverse of the fixed volume's numpy
-    ``(z, y, x)`` shape and resolution. Parameter files written before the axis-order fix hold
-    them permuted; transformix then resamples onto a grid whose axes do not match the moving
-    image and returns a silently transposed result instead of raising.
-
-    Args:
-        parameter_object: The transform parameter object about to be applied.
-        fixed_shape: Shape of the fixed volume, ``(z, y, x)`` (trailing 3 axes are used).
-        fixed_resolution: Optional fixed voxel spacing ``(z, y, x)``. Checked when given,
-            which is what catches a permuted map on a cubic volume.
-
-    Raises:
-        ValueError: If the parameter map grid does not describe the fixed volume.
-    """
-    reg_size = [int(s) for s in parameter_object.GetParameter(0, "Size")]
-    fixed_shape = list(fixed_shape)[-3:]
-    if reg_size[::-1] != fixed_shape:
-        raise ValueError(
-            f"Transform parameter map grid {reg_size[::-1]} does not match the fixed image "
-            f"{fixed_shape}. This map was most likely written before the ITK axis-order fix; "
-            "re-run the registration workflow to regenerate it."
-        )
-
-    if fixed_resolution is not None:
-        reg_spacing = [float(s) for s in parameter_object.GetParameter(0, "Spacing")]
-        if not np.allclose(reg_spacing[::-1], list(fixed_resolution)[-3:]):
-            raise ValueError(
-                f"Transform parameter map spacing {reg_spacing[::-1]} does not match the fixed "
-                f"image resolution {list(fixed_resolution)[-3:]}. This map was most likely "
-                "written before the ITK axis-order fix; re-run the registration workflow."
-            )
-
-
-def apply_transform(moving_img, moving_resolution, parameter_object, interpolation_order,
+def apply_transform(moving_img, input_resolution, parameter_object, interpolation_order,
                     T_fixed=None, output_shape=None):
     """
     Apply a (registration) transform to a moving image.
@@ -95,7 +32,7 @@ def apply_transform(moving_img, moving_resolution, parameter_object, interpolati
     ----------
     moving_img : numpy.ndarray
         Image to warp.
-    moving_resolution : sequence of float
+    input_resolution : sequence of float
         Voxel spacing of ``moving_img``.
     parameter_object : itk.ParameterObject
         Elastix transform parameters to apply.
@@ -120,14 +57,14 @@ def apply_transform(moving_img, moving_resolution, parameter_object, interpolati
     logging.info(f"Set interpolation order {interpolation_order}")
     parameter_object.SetParameter("FinalBSplineInterpolationOrder", str(interpolation_order))
 
-    warped = apply_transform_chanwise(parameter_object, moving_img, moving_resolution)
+    warped = apply_transform_chanwise(parameter_object, moving_img, input_resolution)
     logging.info(f"transformed image shape {warped.shape}")
 
     warped = np.squeeze(warped)
 
     if T_fixed is not None:
         logging.info("Rotate moving image using prealignment transform")
-        warp_prealigned = rotate_img(warped, T_fixed, output_shape=output_shape)
+        warp_prealigned = rotate_img(warped, T_fixed, output_shape=output_shape, order=interpolation_order)
     else:
         warp_prealigned = None
 
@@ -137,10 +74,11 @@ def apply_transform(moving_img, moving_resolution, parameter_object, interpolati
 @click.command()
 @click.option("-mp", "--moving_path", required=True, help="Path to moving input")
 @click.option("-mk", "--moving_key", required=True, help="Key of moving input")
-@click.option("-mr", "--moving_resolution", required=True, help="Resolution of moving input")
+@click.option("-ir", "--input_resolution", required=True, help="Resolution of moving input")
 @click.option("-op", "--output_path", required=True, help="Path to save warped image")
 @click.option("-ok", "--output_key", required=True, help="Key of moving output")
-@click.option("-io", "--interpolation_order", required=True, help="Order of interpolation")
+@click.option("-or", "--output_resolution", required=False, default=None, help="Resolution of moving output.")
+@click.option("-io", "--interpolation_order", required=True, type=int, help="Order of interpolation")
 @click.option("-ld", "--log_dir", required=True, help="Log directory")
 @click.option("-pm", "--parameter_map_path", required=True, help="Path to the parameter map",)
 @click.option("-pt", "--prealignment_transform_path", default=None, help="Prealignment transform path",)
@@ -150,9 +88,10 @@ def apply_transform(moving_img, moving_resolution, parameter_object, interpolati
 def apply_transforms(
     moving_path,
     moving_key,
-    moving_resolution,
+    input_resolution,
     output_path,
     output_key,
+    output_resolution,
     interpolation_order,
     log_dir,
     parameter_map_path,
@@ -162,7 +101,9 @@ def apply_transforms(
     verbose,
 ):
     log_dir = Path(log_dir)
-    log_dir.mkdir(exist_ok=True)
+    log_dir.mkdir(parents=True, exist_ok=True)
+
+    input_resolution = json.loads(input_resolution)  # ZYX
 
     setup_logging(log_dir, "apply_transform.log")
 
@@ -172,10 +113,31 @@ def apply_transforms(
     if verbose:
         logging.info(parameter_object)
 
+    reg_spacing = list(map(float, parameter_object.GetParameter(0, "Spacing")))[::-1]  # XYZ -> ZYX
+    reg_size = list(map(int, parameter_object.GetParameter(0, "Size")))[::-1]  # XYZ -> ZYX
+    if output_resolution is None:
+        output_resolution = reg_spacing
+        logging.info(
+            f"No output resolution provided. Using registration (fixed) resolution: {output_resolution}"
+        )
+    else:
+        output_resolution = json.loads(output_resolution)  # ZYX
+        if output_resolution != reg_spacing:
+            output_size = [int(round(s * rs / os)) for s, rs, os in zip(reg_size, reg_spacing, output_resolution)]
+
+            parameter_object.SetParameter("Spacing", [str(v) for v in output_resolution[::-1]])  # ZYX -> XYZ
+            parameter_object.SetParameter("Size", [str(v) for v in output_size[::-1]])  # ZYX -> XYZ
+            logging.info(f"Updated spacing from {reg_spacing} to {output_resolution} (ZYX)")
+            logging.info(f"Updated image size from {reg_size} to {output_size} (ZYX)")
+
     if prealignment_transform_path:
-        logging.info("Read prealignment transform")
-        prealignment_transform = read_transform_dict(prealignment_transform_path)["fixed_prealignment"]
-        T_fixed, output_shape = prealignment_transform["matrix"], prealignment_transform["output_shape"]
+        if output_resolution != reg_spacing:
+            logging.warning("Pre-alignment transform at different resolution is not supported yet and will be skipped.")
+            T_fixed, output_shape = None, None
+        else:
+            logging.info("Read prealignment transform")
+            prealignment_transform = read_transform_dict(prealignment_transform_path)["fixed_prealignment"]
+            T_fixed, output_shape = prealignment_transform["matrix"], prealignment_transform["output_shape"]
     else:
         logging.info("Process without prealignment transform")
         T_fixed, output_shape = None, None
@@ -183,23 +145,20 @@ def apply_transforms(
     if fixed_path:
         logging.info("Read fixed image")
         fixed_img = load_data(fixed_path, fixed_key)
-        check_parameter_map_axes(
-            parameter_object,
-            fixed_img.shape,
-            get_attrs(fixed_path, fixed_key)["resolution"] if fixed_path.endswith(".n5") else None,
-        )
+        if output_resolution != reg_spacing:
+            logging.info(f"Resample fixed image from resolution {reg_spacing} to {output_resolution}")
+            fixed_img = resample_volume(fixed_img, reg_spacing, output_resolution)  # ZYX
+
         if T_fixed is not None:
             logging.info("Rotate fixed image using prealignment transform")
             fixed_prealigned = rotate_img(fixed_img, T_fixed, output_shape=output_shape)
 
     logging.info(f"Start processing moving image: {moving_path}")
-    moving_resolution = json.loads(moving_resolution)
-
     moving_name = Path(moving_path).stem
     logging.info("Read moving image")
     moving_img = load_data(moving_path, moving_key)
     if moving_path.endswith(".n5"):
-        if list(moving_resolution) != get_attrs(moving_path, moving_key)["resolution"]:
+        if list(input_resolution) != get_attrs(moving_path, moving_key)["resolution"]:
             raise ValueError("Moving resolution from config is different from n5 file")
 
     if moving_img.ndim == 3:
@@ -211,27 +170,28 @@ def apply_transforms(
     logging.info("Start transformation")
     warped, warp_prealigned = apply_transform(
         moving_img,
-        moving_resolution,
+        input_resolution,
         parameter_object,
         interpolation_order,
         T_fixed=T_fixed,
         output_shape=output_shape,
     )
 
-    resolution = [float(res) for res in parameter_object.GetParameter(0, "Spacing")][::-1]
+    resolution = [float(res) for res in output_resolution]
 
     save_attrs = {}
-    if moving_path.endswith(".n5"):
-        attributes = dict(get_attrs(moving_path, moving_key))
-        attributes["resolution"] = resolution
-        save_attrs["chunks"] = chunks
-        save_attrs["attrs"] = attributes
+    attributes = dict(get_attrs(moving_path, moving_key)) if moving_path.endswith(".n5") else {}
+    attributes["resolution"] = resolution
+    save_attrs["chunks"] = chunks
+    save_attrs["attrs"] = attributes
 
     logging.info("Plot warped image")
     plot_three_slices(warped, save_path=log_dir / f"{moving_name}_warped.png")
     if fixed_path:
         logging.info("Plot overlay image")
         plot_overlay(fixed_img, warped, log_dir / f"{moving_name}_warped_overlay.png",)
+
+    save_data(warped, output_path, output_key=output_key, **save_attrs)
 
     if T_fixed is not None:
         logging.info("Plot warped moving image after pre-alignment")
@@ -241,10 +201,16 @@ def apply_transforms(
             logging.info("Plot overlay image after pre-alignment")
             plot_overlay(fixed_prealigned, warp_prealigned, log_dir / f"{moving_name}_warp_prealigned_overlay.png",)
 
-        save_data(warp_prealigned, output_path, output_key=output_key, **save_attrs)
+        base, ext = output_path.rsplit(".", 1)
+        if ext in ("tif", "tiff"):
+            prealigned_path = f"{base}_prealigned.{ext}"
+        elif ext == "n5":
+            prealigned_path = output_path
+            output_key += "_prealigned"
+        else:
+            raise NotImplementedError
 
-    else:
-        save_data(warped, output_path, output_key=output_key, **save_attrs)
+        save_data(warp_prealigned, prealigned_path, output_key=output_key, **save_attrs)
 
 
 if __name__ == "__main__":

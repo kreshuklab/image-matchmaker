@@ -109,7 +109,7 @@ def compute_centroids(mask, exclude_id=None):
 
 
 def compute_centroid_distances(mask1, mask2, exclude_id=None, matching=None,
-                                match1_idx=None, match2_idx=None,):
+                               match1_idx=None, match2_idx=None,):
     """
     Compute centroid distances between two segmentation masks.
 

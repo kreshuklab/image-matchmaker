@@ -1,5 +1,4 @@
 import os
-import sys
 import click
 import logging
 from pathlib import Path

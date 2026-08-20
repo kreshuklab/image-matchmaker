@@ -29,10 +29,12 @@ def itk_scalar_img(img: np.array, resolution, ch=0):
             raise ValueError("ch must be specified when input image is 4D (C, Z, Y, X).")
         img = img[ch]
     elif img.ndim != 3:
-        raise ValueError(f"Expected a 3D (Z, Y, X) or 4D (C, Z, Y, X) array, got shape {img.shape}.")
+        raise ValueError(
+            f"Expected a 3D (Z, Y, X) or 4D (C, Z, Y, X) array, got shape {img.shape}."
+        )
 
     itk_img = itk.image_from_array(img)
-    itk_img.SetSpacing(resolution[::-1])    # ZYX -> XYZ
+    itk_img.SetSpacing(resolution[::-1])  # ZYX -> XYZ
     return itk_img
 
 
@@ -138,11 +140,11 @@ def create_transformix_object(transform_parameter_object):
     return transformix_filter
 
 
-def apply_transform(transformix_filter, moving_img):
+def apply_elastix_transform(transformix_filter, moving_img):
     transformix_filter.SetMovingImage(moving_img)
     transformix_filter.Update()
     output_image = transformix_filter.GetOutput()
-    output_img_np = itk.GetArrayFromImage(output_image) # already in zyx order
+    output_img_np = itk.GetArrayFromImage(output_image)  # already in zyx order
     return output_img_np
 
 
@@ -153,15 +155,14 @@ def apply_transform_chanwise(transform_parameter_object, moving_img_np, resoluti
         result_img = []
         for chan in range(moving_img_np.shape[0]):
             moving_img = itk_scalar_img(moving_img_np, resolution, chan)
-            output_img_np = apply_transform(transformix_filter, moving_img)
+            output_img_np = apply_elastix_transform(transformix_filter, moving_img)
             result_img.append(output_img_np)
         result_img = np.stack(result_img, axis=0)
     elif moving_img_np.ndim == 3:
         moving_img = itk_scalar_img(moving_img_np, resolution)
-        result_img = apply_transform(transformix_filter, moving_img)
+        result_img = apply_elastix_transform(transformix_filter, moving_img)
     else:
         raise ValueError(
             f"Expected moving image with shape (Z,Y,X) or (C,Z,Y,X), got {moving_img_np.shape}."
         )
-
     return result_img

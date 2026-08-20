@@ -1,6 +1,8 @@
 import z5py
 import numpy as np
-from pathlib import PurePath
+from pathlib import PurePath, Path
+import logging
+import tifffile as tiff
 
 
 def print_key_tree(f: z5py.File):
@@ -144,3 +146,29 @@ def write_volume(f, arr: np.array, key, chunks=(1, 512, 512), attrs=None):
     if attrs is not None:
         for key in attrs.keys():
             ds.attrs[key] = attrs[key]
+
+
+def load_data(path, key=None):
+    if path.endswith(".n5"):
+        assert key
+        data = read_volume(path, key)
+    elif path.endswith((".tif", ".tiff")):
+        data = tiff.imread(path)
+        if data.ndim == 2:
+            data = data[None, ...]
+    else:
+        raise NotImplementedError
+
+    return data.astype(np.float32)
+
+
+def save_data(data, output_path, output_key=None, **kwargs):
+    logging.info("Write results")
+    Path(output_path).parent.mkdir(parents=True, exist_ok=True)
+    if output_path.endswith((".tif", ".tiff")):
+        tiff.imwrite(output_path, data)
+    elif output_path.endswith(".n5"):
+        assert output_key
+        write_volume(output_path, data, output_key, **kwargs)
+    else:
+        raise NotImplementedError

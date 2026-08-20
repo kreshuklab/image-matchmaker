@@ -59,12 +59,23 @@ order.
 │   ├── elastix_deformable_pointset_registration.log
 │   ├── elastix_log_deformable.log
 │   └── plots/
+├── 06_apply_transform/                # transform workflow, its own log_dir
+│   ├── apply_transform.log
+│   ├── <moving_name>_warped.pdf
+│   ├── <moving_name>_warped_overlay.pdf
+│   └── <moving_name>_warp_prealigned{,_overlay}.pdf
 └── mobie_project/                     # only if mobie_export: True
 ```
 
 Each stage writes its own `<stage>.log` (and the Elastix stages an additional
 `elastix_log_*.log`); the main Snakemake log is `image_matchmaker.log`. The `*_binary`
 n5 keys are binarized copies of each stage used for the MoBIE export.
+
+The transform workflow (`06_apply_transform/`) is configured separately and writes
+its plots directly into its own `log_dir` rather than a `plots/` subfolder, one set
+per moving image. The `*_overlay` plots are written only when a `fixed_image` is
+configured, and the `*_warp_prealigned*` plots only when a
+`prealignment_transform_path` is used.
 
 ## Outputs by registration step
 
