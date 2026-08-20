@@ -64,7 +64,7 @@ def apply_transform(moving_img, input_resolution, parameter_object, interpolatio
 
     if T_fixed is not None:
         logging.info("Rotate moving image using prealignment transform")
-        warp_prealigned = rotate_img(warped, T_fixed, output_shape=output_shape)
+        warp_prealigned = rotate_img(warped, T_fixed, output_shape=output_shape, order=interpolation_order)
     else:
         warp_prealigned = None
 
@@ -78,7 +78,7 @@ def apply_transform(moving_img, input_resolution, parameter_object, interpolatio
 @click.option("-op", "--output_path", required=True, help="Path to save warped image")
 @click.option("-ok", "--output_key", required=True, help="Key of moving output")
 @click.option("-or", "--output_resolution", required=False, default=None, help="Resolution of moving output.")
-@click.option("-io", "--interpolation_order", required=True, help="Order of interpolation")
+@click.option("-io", "--interpolation_order", required=True, type=int, help="Order of interpolation")
 @click.option("-ld", "--log_dir", required=True, help="Log directory")
 @click.option("-pm", "--parameter_map_path", required=True, help="Path to the parameter map",)
 @click.option("-pt", "--prealignment_transform_path", default=None, help="Prealignment transform path",)
@@ -103,7 +103,7 @@ def apply_transforms(
     log_dir = Path(log_dir)
     log_dir.mkdir(parents=True, exist_ok=True)
 
-    input_resolution = json.loads(input_resolution) # should keep it as ZYX order
+    input_resolution = json.loads(input_resolution)  # ZYX
 
     setup_logging(log_dir, "apply_transform.log")
 
@@ -113,26 +113,26 @@ def apply_transforms(
     if verbose:
         logging.info(parameter_object)
 
-    reg_spacing = list(map(float, parameter_object.GetParameter(0, "Spacing"))) # XYZ
+    reg_spacing = list(map(float, parameter_object.GetParameter(0, "Spacing")))[::-1]  # XYZ -> ZYX
+    reg_size = list(map(int, parameter_object.GetParameter(0, "Size")))[::-1]  # XYZ -> ZYX
     if output_resolution is None:
         output_resolution = reg_spacing
         logging.info(
             f"No output resolution provided. Using registration (fixed) resolution: {output_resolution}"
         )
     else:
-        output_resolution = json.loads(output_resolution)[::-1] # ZYX -> XYZ
+        output_resolution = json.loads(output_resolution)  # ZYX
         if output_resolution != reg_spacing:
-            reg_size = list(map(int, parameter_object.GetParameter(0, "Size")))
             output_size = [int(round(s * rs / os)) for s, rs, os in zip(reg_size, reg_spacing, output_resolution)]
 
-            parameter_object.SetParameter("Spacing", [str(v) for v in output_resolution])
-            parameter_object.SetParameter("Size", [str(v) for v in output_size])
-            logging.info(f"Updated spacing from {reg_spacing} to {output_resolution}")
-            logging.info(f"Updated image size from {reg_size} to {output_size}")
+            parameter_object.SetParameter("Spacing", [str(v) for v in output_resolution[::-1]])  # ZYX -> XYZ
+            parameter_object.SetParameter("Size", [str(v) for v in output_size[::-1]])  # ZYX -> XYZ
+            logging.info(f"Updated spacing from {reg_spacing} to {output_resolution} (ZYX)")
+            logging.info(f"Updated image size from {reg_size} to {output_size} (ZYX)")
 
     if prealignment_transform_path:
         if output_resolution != reg_spacing:
-            logging.warning("Pre-alignment transform at different resolution is not supported yet.")
+            logging.warning("Pre-alignment transform at different resolution is not supported yet and will be skipped.")
             T_fixed, output_shape = None, None
         else:
             logging.info("Read prealignment transform")
@@ -147,7 +147,7 @@ def apply_transforms(
         fixed_img = load_data(fixed_path, fixed_key)
         if output_resolution != reg_spacing:
             logging.info(f"Resample fixed image from resolution {reg_spacing} to {output_resolution}")
-            fixed_img = resample_volume(fixed_img, reg_spacing, output_resolution)
+            fixed_img = resample_volume(fixed_img, reg_spacing, output_resolution)  # ZYX
 
         if T_fixed is not None:
             logging.info("Rotate fixed image using prealignment transform")
@@ -177,7 +177,7 @@ def apply_transforms(
         output_shape=output_shape,
     )
 
-    resolution = [float(res) for res in parameter_object.GetParameter(0, "Spacing")][::-1]
+    resolution = [float(res) for res in output_resolution]
 
     save_attrs = {}
     attributes = dict(get_attrs(moving_path, moving_key)) if moving_path.endswith(".n5") else {}
