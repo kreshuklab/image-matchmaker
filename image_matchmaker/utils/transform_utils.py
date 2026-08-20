@@ -39,7 +39,7 @@ def write_transform_dict(transform_dict, json_path):
     for key, val in transform_dict.items():
         val["matrix"] = val["matrix"].tolist()
     with open(json_path, "w") as f:
-	    json.dump(transform_dict, f, indent=2)
+        json.dump(transform_dict, f, indent=2)
 
 
 def read_transform_dict(json_path):
@@ -202,7 +202,7 @@ def get_rotation_matrix(R):
 
 
 def get_transformation_matrix(img, gc, Vt, spacing, img_ref=None, Vt_ref=None,
-                                spacing_ref=None, spacing_out=None):
+                              spacing_ref=None, spacing_out=None):
     """
     Build the affine matrix that centers and rotates a volume onto its
     principal axes.
@@ -405,7 +405,6 @@ def grid_sample3d(volume, grid, align_corners=False, mode="trilinear"):
 
     elif mode == "trilinear":
         c0 = np.floor(coords).astype(np.int32)   # (x0, y0, z0)
-        c1 = c0 + 1                              # (x1, y1, z1)
 
         d = coords - c0
         xd, yd, zd = d[..., 0], d[..., 1], d[..., 2]

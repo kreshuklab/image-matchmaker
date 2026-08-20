@@ -29,10 +29,12 @@ def itk_scalar_img(img: np.array, resolution, ch=0):
             raise ValueError("ch must be specified when input image is 4D (C, Z, Y, X).")
         img = img[ch]
     elif img.ndim != 3:
-        raise ValueError(f"Expected a 3D (Z, Y, X) or 4D (C, Z, Y, X) array, got shape {img.shape}.")
+        raise ValueError(
+            f"Expected a 3D (Z, Y, X) or 4D (C, Z, Y, X) array, got shape {img.shape}."
+        )
 
     itk_img = itk.image_from_array(img)
-    itk_img.SetSpacing(resolution[::-1])    # ZYX -> XYZ
+    itk_img.SetSpacing(resolution[::-1])  # ZYX -> XYZ
     return itk_img
 
 
@@ -142,7 +144,7 @@ def apply_elastix_transform(transformix_filter, moving_img):
     transformix_filter.SetMovingImage(moving_img)
     transformix_filter.Update()
     output_image = transformix_filter.GetOutput()
-    output_img_np = itk.GetArrayFromImage(output_image) # already in zyx order
+    output_img_np = itk.GetArrayFromImage(output_image)  # already in zyx order
     return output_img_np
 
 
