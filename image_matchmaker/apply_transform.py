@@ -122,16 +122,18 @@ def apply_transforms(
         )
     else:
         output_resolution = json.loads(output_resolution)  # ZYX
-        if output_resolution != reg_spacing:
-            output_size = [int(round(s * rs / os)) for s, rs, os in zip(reg_size, reg_spacing, output_resolution)]
 
-            parameter_object.SetParameter("Spacing", [str(v) for v in output_resolution[::-1]])  # ZYX -> XYZ
-            parameter_object.SetParameter("Size", [str(v) for v in output_size[::-1]])  # ZYX -> XYZ
-            logging.info(f"Updated spacing from {reg_spacing} to {output_resolution} (ZYX)")
-            logging.info(f"Updated image size from {reg_size} to {output_size} (ZYX)")
+    resample = not np.allclose(output_resolution, reg_spacing)
+    if resample:
+        output_size = [int(round(s * rs / os)) for s, rs, os in zip(reg_size, reg_spacing, output_resolution)]
+
+        parameter_object.SetParameter("Spacing", [str(v) for v in output_resolution[::-1]])  # ZYX -> XYZ
+        parameter_object.SetParameter("Size", [str(v) for v in output_size[::-1]])  # ZYX -> XYZ
+        logging.info(f"Updated spacing from {reg_spacing} to {output_resolution} (ZYX)")
+        logging.info(f"Updated image size from {reg_size} to {output_size} (ZYX)")
 
     if prealignment_transform_path:
-        if output_resolution != reg_spacing:
+        if resample:
             logging.warning("Pre-alignment transform at different resolution is not supported yet and will be skipped.")
             T_fixed, output_shape = None, None
         else:
@@ -145,7 +147,7 @@ def apply_transforms(
     if fixed_path:
         logging.info("Read fixed image")
         fixed_img = load_data(fixed_path, fixed_key)
-        if output_resolution != reg_spacing:
+        if resample:
             logging.info(f"Resample fixed image from resolution {reg_spacing} to {output_resolution}")
             fixed_img = resample_volume(fixed_img, reg_spacing, output_resolution)  # ZYX
 
