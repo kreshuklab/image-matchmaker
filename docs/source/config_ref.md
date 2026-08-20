@@ -202,6 +202,9 @@ Voxel resolution along each axis using:
 
 `input_resolution` is required. `output_resolution` is optional and can either be omitted or left empty. If it is omitted or left empty, the output resolution is determined using the registration (fixed) image resolution.
 
+Pre-alignment is not currently supported together with a custom
+`output_resolution`; if both are set, the pre-alignment transform is skipped.
+
 #### `interpolation_order`
 
 B-spline interpolation order used during resampling.
