@@ -286,7 +286,7 @@ def get_axis_orient_matrix(img, axis_order):
     return T
 
 
-def rotate_img(img, rotation_matrix, output_shape=None, offset=None):
+def rotate_img(img, rotation_matrix, output_shape=None, offset=None, order=0):
     """
     Rotate an image using a given rotation matrix.
 
@@ -303,6 +303,9 @@ def rotate_img(img, rotation_matrix, output_shape=None, offset=None):
         The offset to apply to the rotated image to ensure it fits within the new
         bounding box. If not given, the offset will be determined from the rotation
         matrix.
+    order : int, optional
+        Spline interpolation order. Defaults to ``0`` (nearest neighbour), which is
+        required for instance labels; pass a higher order for intensity data.
 
     Returns
     -------
@@ -314,7 +317,7 @@ def rotate_img(img, rotation_matrix, output_shape=None, offset=None):
         matrix=rotation_matrix,
         output_shape=output_shape,  # new shape after rotation
         offset=offset,  # offset to ensure the image fits within the new bounding box
-        order=0,  # interpolation (use 0 for discrete/label data)
+        order=order,  # interpolation (0 for discrete/label data)
         mode='constant',  # fill mode
         cval=0.0  # fill value (if constant mode)
     )
