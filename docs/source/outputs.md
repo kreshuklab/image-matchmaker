@@ -217,9 +217,6 @@ Final deformable alignment using the matched landmarks.
   should deform smoothly and **must not fold over itself** (folding indicates an
   implausible, unstable deformation).
 
-The combined final transform is also written to the path set by
-`final_transform_path` in the registration config.
-
 ## Applying the transforms
 
 To warp additional images (e.g. raw EM or extra LM channels) with these results,

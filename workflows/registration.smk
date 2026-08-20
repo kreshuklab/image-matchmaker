@@ -15,7 +15,6 @@ moving_name = config["moving_image"]["name"] if "name" in config["moving_image"]
 moving_input_key = config["moving_image"]["input_key"] if "input_key" in config["moving_image"] else None
 moving_n5_path = f"{config['log_dir']}/{moving_name}.n5"
 log_dir = config["log_dir"]
-final_transform = config["final_transform_path"]
 fixed_spacing = [config["fixed_image"]["z_res"], config["fixed_image"]["y_res"], config["fixed_image"]["x_res"]]
 moving_spacing = [config["moving_image"]["z_res"], config["moving_image"]["y_res"], config["moving_image"]["x_res"]]
 

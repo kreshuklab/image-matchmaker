@@ -8,16 +8,26 @@ from pathlib import Path
 from image_matchmaker.utils import read_volume, write_volume, get_attrs, setup_logging, plot_landmark_qc, PINK, CYAN
 
 
-def landmark_label_ids(sorted_names, dtype):
-    """Return dict {name: label_id} placing IDs at the top of the dtype range.
+def landmark_label_ids(sorted_names, dtype, max_value=None, is_available=None):
+    """Return dict {name: label_id} placing IDs at the top of a safe range.
 
-    IDs are assigned from (dtype_max - n_landmarks + 1) to dtype_max in sorted-name order,
-    so the mapping is fully determined by the landmark names and dtype — independent of
-    which segmentation (fixed or moving) is being processed, ensuring consistency.
+    IDs are assigned from ``max_value - n_landmarks + 1`` to ``max_value`` in
+    sorted-name order. ``max_value`` can cap the dtype range when a downstream
+    registration stage only supports a narrower integer representation.
     """
-    max_val = int(np.iinfo(dtype).max)
-    offset = max_val - len(sorted_names) + 1
-    return {name: offset + i for i, name in enumerate(sorted_names)}
+    dtype_max = int(np.iinfo(dtype).max)
+    max_val = dtype_max if max_value is None else min(dtype_max, int(max_value))
+    ids = []
+    candidate = max_val
+    while candidate > 0 and len(ids) < len(sorted_names):
+        if is_available is None or is_available(candidate):
+            ids.append(candidate)
+        candidate -= 1
+    if len(ids) != len(sorted_names):
+        raise ValueError(
+            f"Cannot allocate {len(sorted_names)} unused landmark IDs in the range 1..{max_val}"
+        )
+    return dict(zip(sorted_names, reversed(ids)))
 
 
 def add_landmarks_to_seg(seg, landmarks_df, resolution, id_map, radius=3):
@@ -36,11 +46,10 @@ def add_landmarks_to_seg(seg, landmarks_df, resolution, id_map, radius=3):
 
     Returns modified segmentation (copy).
     """
-    min_lm_id = min(id_map.values())
-    if int(seg.max()) >= min_lm_id:
+    if np.isin(seg, list(id_map.values())).any():
         logging.warning(
-            f"Existing label max ({int(seg.max())}) >= landmark ID offset ({min_lm_id}). "
-            "Landmark labels may overwrite nucleus labels."
+            "Existing labels collide with landmark IDs. Landmark labels may overwrite "
+            "nucleus labels."
         )
     seg_out = seg.copy()
     shape = np.array(seg.shape)
@@ -111,8 +120,27 @@ def main(fixed_path, fixed_key, fixed_output_key, fixed_landmarks_csv,
         logging.warning(f"Landmarks only in moving CSV, skipping: {sorted(moving_only)}")
     fixed_lm_df = fixed_lm_df[fixed_lm_df["name"].isin(shared_names)]
     moving_lm_df = moving_lm_df[moving_lm_df["name"].isin(shared_names)]
+    if not shared_names:
+        raise ValueError("The fixed and moving landmark CSVs have no names in common")
 
-    id_map = landmark_label_ids(shared_names, fixed_seg.dtype)
+    # Rigid alignment uses an ITK float image and historically writes uint16
+    # labels. Keep landmark IDs exactly representable through that stage, even
+    # when the source segmentation uses uint32 labels.
+    landmark_max = min(
+        int(np.iinfo(fixed_seg.dtype).max),
+        int(np.iinfo(moving_seg.dtype).max),
+        int(np.iinfo(np.uint16).max),
+    )
+
+    def landmark_id_is_available(label):
+        return not (np.any(fixed_seg == label) or np.any(moving_seg == label))
+
+    id_map = landmark_label_ids(
+        shared_names,
+        fixed_seg.dtype,
+        max_value=landmark_max,
+        is_available=landmark_id_is_available,
+    )
     min_lm_id = min(id_map.values())
     logging.info(f"{len(shared_names)} corresponding landmarks, ids {min_lm_id}–{max(id_map.values())}")
 

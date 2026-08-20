@@ -26,7 +26,7 @@ conda activate imm_env
 The config is missing a key the workflow requires. Compare your config against the
 {doc}`Configuration Reference <config_ref>` and the complete example in the
 {doc}`Quick Start <quickstart>` — every registration run needs `prealignment`,
-`coherent_point_drift`, `matching`, `final_transform_path`, `mobie_export`, and
+`coherent_point_drift`, `matching`, `mobie_export`, and
 `mobie_dataset_name`, in addition to the image blocks and `log_dir`.
 
 ### "Directory cannot be locked"
