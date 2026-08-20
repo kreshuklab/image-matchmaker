@@ -1,13 +1,19 @@
-import sys
 import itk
 import click
 import logging
 import numpy as np
 from pathlib import Path
 
-from matchmaker.utils import (read_volume, write_volume, get_attrs, plot_overlay, itk_scalar_img,
-                                run_registration, itk_to_np_order, apply_transform_chanwise,
-                                setup_logging)
+from image_matchmaker.utils import (
+    read_volume,
+    write_volume,
+    get_attrs,
+    plot_overlay,
+    itk_scalar_img,
+    elastix_registration,
+    apply_transform_chanwise,
+    setup_logging,
+)
 
 
 def elastix_segm_rigid_alignment(
@@ -38,7 +44,7 @@ def elastix_segm_rigid_alignment(
     ]
 
     logging.info("Run rigid registration with elastix")
-    result_image, result_transform_parameters = run_registration(
+    result_image, result_transform_parameters = elastix_registration(
         fixed_img,
         moving_img,
         parameter_map_paths,
@@ -48,14 +54,16 @@ def elastix_segm_rigid_alignment(
     )
 
     logging.info(f"Result image shape {result_image.shape}")
-    result_img_np = itk_to_np_order(itk.GetArrayFromImage(result_image))
+    result_img_np = itk.GetArrayFromImage(result_image)
+    result_resolution = list(result_image.GetSpacing())[::-1]  # XYZ -> ZYX
+    fixed_img_scalar_np = itk.GetArrayFromImage(fixed_img)
     plot_overlay(
-        itk_to_np_order(itk.GetArrayFromImage(fixed_img)),
+        fixed_img_scalar_np,
         result_img_np,
         f"{output_dir}/plots/overlay_after_rigid_alignment.pdf",
     )
     plot_overlay(
-        itk_to_np_order(itk.GetArrayFromImage(fixed_img)),
+        fixed_img_scalar_np,
         result_img_np,
         f"{output_dir}/plots/overlay_after_rigid_alignment.png",
     )
@@ -66,7 +74,7 @@ def elastix_segm_rigid_alignment(
     )
     logging.info(f"Result image shape {result_img_np.shape}")
 
-    return result_img_np
+    return result_img_np, result_resolution
 
 
 def run_rigid_alignment(
@@ -85,11 +93,11 @@ def run_rigid_alignment(
     is also exported to a MoBIE project.
 
     Args:
-        fixed_path (str): Path to the fixed image .n5 file.
-        fixed_key (str): Key to the fixed image data in the .n5 file.
-        moving_path (str): Path to the moving image .n5 file.
-        moving_key (str): Key to the moving image data in the .n5 file.
-        output_dir (str): Directory where the aligned image should be saved.
+        fixed_img (np.ndarray): Fixed (prealigned) image volume.
+        fixed_resolution (sequence of float): Voxel spacing of the fixed image.
+        moving_img (np.ndarray): Moving (prealigned) image volume.
+        moving_resolution (sequence of float): Voxel spacing of the moving image.
+        output_dir (str): Directory where the aligned image and plots are saved.
 
     Returns:
         np.ndarray: The rigidly aligned moving image.
@@ -100,20 +108,23 @@ def run_rigid_alignment(
     logging.info("Start rigid alignment")
 
     fixed_img_np = fixed_img.astype(np.float32)
+    moving_dtype = moving_img.dtype
     moving_img_np = moving_img.astype(np.float32)
 
     logging.info("Compute rigid alignment of moving image...")
 
-    moving_img_np = elastix_segm_rigid_alignment(
+    moving_img_np, aligned_resolution = elastix_segm_rigid_alignment(
         fixed_img_np=fixed_img_np,
         fixed_resolution=fixed_resolution,
         moving_img_np=moving_img_np,
         moving_resolution=moving_resolution,
         output_dir=output_dir
     )
-    moving_img_np = moving_img_np.astype(np.uint16)
+    # Preserve the caller's storage dtype. In particular, the CPD tuning
+    # workflow embeds landmark IDs in uint32 segmentations before this step.
+    moving_img_np = moving_img_np.astype(moving_dtype)
 
-    return moving_img_np
+    return moving_img_np, aligned_resolution
 
 
 @click.command()
@@ -137,7 +148,7 @@ def main(fixed_path, fixed_key, moving_path, moving_key, output_dir, output_key,
     moving_resolution = get_attrs(moving_path, moving_key)["resolution"]
     logging.info(f"Moving image shape: {moving_img.shape}, dtype {moving_img.dtype}")
 
-    moving_rigid_aligned = run_rigid_alignment(
+    moving_rigid_aligned, aligned_resolution = run_rigid_alignment(
         fixed_img,
         fixed_resolution,
         moving_img,
@@ -147,6 +158,7 @@ def main(fixed_path, fixed_key, moving_path, moving_key, output_dir, output_key,
 
     logging.info("Save rigid aligned moving image")
     moving_attributes = dict(get_attrs(moving_path, moving_key))
+    moving_attributes["resolution"] = aligned_resolution
     write_volume(
         f=moving_path,
         arr=moving_rigid_aligned,
@@ -161,5 +173,3 @@ def main(fixed_path, fixed_key, moving_path, moving_key, output_dir, output_key,
 
 if __name__ == "__main__":
     main()
-
-# python rigid_alignment_elastix.py -fi ../examples/data/test/platy1_muscles_stardist_fixed_prealigned.n5 -fk seg -mi ../examples/data/test/platy1_muscles_stardist_moving_prealigned.n5 -mk seg -o ../examples/data/test -ok rigid -trans ../examples/data/test/rigid_transform.json

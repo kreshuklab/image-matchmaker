@@ -1,16 +1,26 @@
-import sys
 import click
 import logging
 import numpy as np
 from pathlib import Path
 import matplotlib.pyplot as plt
 
-from matchmaker.data import create_point_cloud
-from matchmaker.utils import (get_transformation_matrix, rotate_img, read_volume, get_attrs, write_volume,
-                                write_transform_dict, plot_three_slices, plot_overlay, setup_logging,
-                                get_axis_orient_matrix, resample_volume, transform_axes_vis)
+from image_matchmaker.data import create_point_cloud
+from image_matchmaker.utils import (
+    get_transformation_matrix,
+    prealignment_spacing,
+    rotate_img,
+    read_volume,
+    get_attrs,
+    write_volume,
+    write_transform_dict,
+    plot_three_slices,
+    plot_overlay,
+    setup_logging,
+    get_axis_orient_matrix,
+    transform_axes_vis,
+)
 
-from matchmaker.utils.vis import CYAN_HEX, PINK, CYAN, PINK_HEX
+from image_matchmaker.utils.vis import CYAN_HEX, PINK, CYAN, PINK_HEX, LABEL, _savefig
 
 
 def get_SVD_transform(img, spacing, save_path=None):
@@ -55,106 +65,138 @@ def get_SVD_transform(img, spacing, save_path=None):
         plt.subplot(1, 2, 2)
         plt.title("Rotated Vertices")
         plt.scatter(vr[:, 0], vr[:, 1], alpha=0.1)
-        plt.savefig(save_path, dpi=300)
+        _savefig(save_path)
 
     return gc, Vt
 
 
 def orient_axis(fixed_prealigned, moving_prealigned, output_dir):
-        int_prof_z = np.sum(moving_prealigned > 0, axis=(1, 2)) / np.sum(moving_prealigned > 0)
-        asymm_coeff_z = np.corrcoef(int_prof_z, int_prof_z)[0, 1] - np.corrcoef(int_prof_z, int_prof_z[::-1])[0, 1]
-        int_prof_y = np.sum(moving_prealigned > 0, axis=(0, 2)) / np.sum(moving_prealigned > 0)
-        asymm_coeff_y = np.corrcoef(int_prof_y, int_prof_y)[0, 1] - np.corrcoef(int_prof_y, int_prof_y[::-1])[0, 1]
-        int_prof_x = np.sum(moving_prealigned > 0, axis=(1, 0)) / np.sum(moving_prealigned > 0)
-        asymm_coeff_x = np.corrcoef(int_prof_x, int_prof_x)[0, 1] - np.corrcoef(int_prof_x, int_prof_x[::-1])[0, 1]
+    int_prof_z = np.sum(moving_prealigned > 0, axis=(1, 2)) / np.sum(
+        moving_prealigned > 0
+    )
+    asymm_coeff_z = (
+        np.corrcoef(int_prof_z, int_prof_z)[0, 1]
+        - np.corrcoef(int_prof_z, int_prof_z[::-1])[0, 1]
+    )
+    int_prof_y = np.sum(moving_prealigned > 0, axis=(0, 2)) / np.sum(
+        moving_prealigned > 0
+    )
+    asymm_coeff_y = (
+        np.corrcoef(int_prof_y, int_prof_y)[0, 1]
+        - np.corrcoef(int_prof_y, int_prof_y[::-1])[0, 1]
+    )
+    int_prof_x = np.sum(moving_prealigned > 0, axis=(1, 0)) / np.sum(
+        moving_prealigned > 0
+    )
+    asymm_coeff_x = (
+        np.corrcoef(int_prof_x, int_prof_x)[0, 1]
+        - np.corrcoef(int_prof_x, int_prof_x[::-1])[0, 1]
+    )
 
-        logging.info(f"Asymmetry coefficients in moving image:")
-        logging.info(f"Z: {asymm_coeff_z}")
-        logging.info(f"Y: {asymm_coeff_y}")
-        logging.info(f"X: {asymm_coeff_x}")
+    logging.info("Asymmetry coefficients in moving image:")
+    logging.info(f"Z: {asymm_coeff_z}")
+    logging.info(f"Y: {asymm_coeff_y}")
+    logging.info(f"X: {asymm_coeff_x}")
 
-        int_prof_z_fixed = np.sum(fixed_prealigned > 0, axis=(1, 2)) / np.sum(fixed_prealigned > 0)
-        int_prof_y_fixed = np.sum(fixed_prealigned > 0, axis=(0, 2)) / np.sum(fixed_prealigned > 0)
-        int_prof_x_fixed = np.sum(fixed_prealigned > 0, axis=(1, 0)) / np.sum(fixed_prealigned > 0)
+    int_prof_z_fixed = np.sum(fixed_prealigned > 0, axis=(1, 2)) / np.sum(
+        fixed_prealigned > 0
+    )
+    int_prof_y_fixed = np.sum(fixed_prealigned > 0, axis=(0, 2)) / np.sum(
+        fixed_prealigned > 0
+    )
+    int_prof_x_fixed = np.sum(fixed_prealigned > 0, axis=(1, 0)) / np.sum(
+        fixed_prealigned > 0
+    )
 
-        plt.figure()
-        plt.plot(int_prof_z_fixed, label="fixed", color=PINK_HEX)
-        plt.plot(int_prof_z, label="moving", color=CYAN_HEX)
-        plt.xlabel(f"Axis Z Coordinate")
-        plt.ylabel(f"Sum intensity along axis = Z")
-        plt.legend()
-        plt.savefig(f"{output_dir}/plots/axis_int_profile_Z.png", dpi=300)
+    plt.figure()
+    plt.plot(int_prof_z_fixed, label="fixed", color=PINK_HEX)
+    plt.plot(int_prof_z, label="moving", color=CYAN_HEX)
+    plt.xlabel("Axis Z Coordinate")
+    plt.ylabel("Sum intensity along axis = Z")
+    plt.legend()
+    _savefig(f"{output_dir}/plots/axis_int_profile_Z.png")
 
-        plt.figure()
-        plt.plot(int_prof_y_fixed, label="fixed", color=PINK_HEX)
-        plt.plot(int_prof_y, label="moving", color=CYAN_HEX)
-        plt.xlabel(f"Axis Y Coordinate")
-        plt.ylabel(f"Sum intensity along axis = Y")
-        plt.legend()
-        plt.savefig(f"{output_dir}/plots/axis_int_profile_Y.png", dpi=300)
+    plt.figure()
+    plt.plot(int_prof_y_fixed, label="fixed", color=PINK_HEX)
+    plt.plot(int_prof_y, label="moving", color=CYAN_HEX)
+    plt.xlabel("Axis Y Coordinate")
+    plt.ylabel("Sum intensity along axis = Y")
+    plt.legend()
+    _savefig(f"{output_dir}/plots/axis_int_profile_Y.png")
 
-        plt.figure()
-        plt.plot(int_prof_x_fixed, label="fixed", color=PINK_HEX)
-        plt.plot(int_prof_x, label="moving", color=CYAN_HEX)
-        plt.xlabel(f"Axis X Coordinate")
-        plt.ylabel(f"Sum intensity along axis = X")
-        plt.legend()
-        plt.savefig(f"{output_dir}/plots/axis_int_profile_X.png", dpi=300)
+    plt.figure()
+    plt.plot(int_prof_x_fixed, label="fixed", color=PINK_HEX)
+    plt.plot(int_prof_x, label="moving", color=CYAN_HEX)
+    plt.xlabel("Axis X Coordinate")
+    plt.ylabel("Sum intensity along axis = X")
+    plt.legend()
+    _savefig(f"{output_dir}/plots/axis_int_profile_X.png")
 
-        if np.corrcoef(int_prof_z, int_prof_z_fixed)[0, 1] > np.corrcoef(int_prof_z[::-1], int_prof_z_fixed)[0, 1]:
-            z_correct = True
+    if (
+        np.corrcoef(int_prof_z, int_prof_z_fixed)[0, 1]
+        > np.corrcoef(int_prof_z[::-1], int_prof_z_fixed)[0, 1]
+    ):
+        z_correct = True
+    else:
+        z_correct = False
+
+    if (
+        np.corrcoef(int_prof_y, int_prof_y_fixed)[0, 1]
+        > np.corrcoef(int_prof_y[::-1], int_prof_y_fixed)[0, 1]
+    ):
+        y_correct = True
+    else:
+        y_correct = False
+
+    if (
+        np.corrcoef(int_prof_x, int_prof_x_fixed)[0, 1]
+        > np.corrcoef(int_prof_x[::-1], int_prof_x_fixed)[0, 1]
+    ):
+        x_correct = True
+    else:
+        x_correct = False
+
+    logging.info(
+        f"Orientations are correct: Z - {z_correct}, Y - {y_correct}, X - {x_correct}"
+    )
+
+    if (asymm_coeff_x < asymm_coeff_y) and (asymm_coeff_x < asymm_coeff_z):
+        logging.info("Using axes Y and Z for determining orientation")
+        if z_correct and y_correct:
+            logging.info("Orientation along both axes is correct")
+            R = np.eye(4, 4)
+        elif z_correct and not y_correct:
+            logging.info("Rotate 180 degrees around Z axis")
+            R = get_axis_orient_matrix(moving_prealigned, "xyz")
         else:
-            z_correct = False
+            logging.info("Rotate 180 degrees around X axis")
+            R = get_axis_orient_matrix(moving_prealigned, "zyx")
 
-        if np.corrcoef(int_prof_y, int_prof_y_fixed)[0, 1] > np.corrcoef(int_prof_y[::-1], int_prof_y_fixed)[0, 1]:
-            y_correct = True
+    elif (asymm_coeff_y < asymm_coeff_x) and (asymm_coeff_y < asymm_coeff_z):
+        logging.info("Using axes X and Z for determining orientation")
+        if z_correct and x_correct:
+            logging.info("Orientation along both axes is correct")
+            R = np.eye(4, 4)
+        elif z_correct and not x_correct:
+            logging.info("Rotate 180 degrees around Z axis")
+            R = get_axis_orient_matrix(moving_prealigned, "xyz")
         else:
-            y_correct = False
+            logging.info("Rotate 180 degrees around Y axis")
+            R = get_axis_orient_matrix(moving_prealigned, "yzx")
 
-        if np.corrcoef(int_prof_x, int_prof_x_fixed)[0, 1] > np.corrcoef(int_prof_x[::-1], int_prof_x_fixed)[0, 1]:
-            x_correct = True
+    else:
+        logging.info("Using axes X and Y for determining orientation")
+        if x_correct and y_correct:
+            logging.info("Orientation along both axes is correct")
+            R = np.eye(4, 4)
+        elif x_correct and not y_correct:
+            logging.info("Rotate 180 degrees around X axis")
+            R = get_axis_orient_matrix(moving_prealigned, "zyx")
         else:
-            x_correct = False
+            logging.info("Rotate 180 degrees around Y axis")
+            R = get_axis_orient_matrix(moving_prealigned, "yzx")
 
-        logging.info(f"Orientations are correct: Z - {z_correct}, Y - {y_correct}, X - {x_correct}")
-
-        if (asymm_coeff_x < asymm_coeff_y) and (asymm_coeff_x < asymm_coeff_z):
-            logging.info(f"Using axes Y and Z for determining orientation")
-            if z_correct and y_correct:
-                logging.info(f"Orientation along both axes is correct")
-                R = np.eye(4, 4)
-            elif z_correct and not y_correct:
-                logging.info(f"Rotate 180 degrees around Z axis")
-                R = get_axis_orient_matrix(moving_prealigned, "xyz")
-            else:
-                logging.info(f"Rotate 180 degrees around X axis")
-                R = get_axis_orient_matrix(moving_prealigned, "zyx")
-
-        elif (asymm_coeff_y < asymm_coeff_x) and (asymm_coeff_y < asymm_coeff_z):
-            logging.info(f"Using axes X and Z for determining orientation")
-            if z_correct and x_correct:
-                logging.info(f"Orientation along both axes is correct")
-                R = np.eye(4, 4)
-            elif z_correct and not x_correct:
-                logging.info(f"Rotate 180 degrees around Z axis")
-                R = get_axis_orient_matrix(moving_prealigned, "xyz")
-            else:
-                logging.info(f"Rotate 180 degrees around Y axis")
-                R = get_axis_orient_matrix(moving_prealigned, "yzx")
-
-        else:
-            logging.info(f"Using axes X and Y for determining orientation")
-            if x_correct and y_correct:
-                logging.info(f"Orientation along both axes is correct")
-                R = np.eye(4, 4)
-            elif x_correct and not y_correct:
-                logging.info(f"Rotate 180 degrees around X axis")
-                R = get_axis_orient_matrix(moving_prealigned, "zyx")
-            else:
-                logging.info(f"Rotate 180 degrees around Y axis")
-                R = get_axis_orient_matrix(moving_prealigned, "yzx")
-
-        return R
+    return R
 
 
 def generate_rotation_overlays(fixed_prealigned, moving_prealigned, output_dir):
@@ -196,24 +238,49 @@ def prealign_samples(fixed_img, moving_img, fixed_spacing, moving_spacing, new_s
     """
     Pre-align two segmentation volumes using PCA.
 
-    Args:
-        fixed_img: fixed segmentation volume
-        moving_img: moving segmentation volume
+    Aligns the centroids and principal axes of both volumes into a common
+    output space, correcting reflections if the PCA rotation includes a mirror.
 
-    Returns:
-        fixed_rot, moving_rot, T_fixed, T_moving
+    Parameters
+    ----------
+    fixed_img : numpy.ndarray
+        Fixed segmentation volume.
+    moving_img : numpy.ndarray
+        Moving segmentation volume.
+    fixed_spacing, moving_spacing : sequence of float
+        Voxel spacing of the fixed and moving volumes.
+    new_spacing : sequence of float
+        Voxel spacing of the shared output space.
+
+    Returns
+    -------
+    dict
+        Mapping with keys ``"fixed"`` and ``"moving"``, each a list
+        ``[prealigned_volume, transform, centroid, Vt, output_shape]``.
     """
     gc_fixed, Vt_fixed = get_SVD_transform(fixed_img, fixed_spacing)
     gc_moving, Vt_moving = get_SVD_transform(moving_img, moving_spacing)
 
-    T_fixed, fixed_shape = get_transformation_matrix(fixed_img, gc_fixed, Vt_fixed, fixed_spacing,
-                                                        img_ref=moving_img, Vt_ref=Vt_moving,
-                                                        spacing_ref=moving_spacing,
-                                                        spacing_out=new_spacing)
-    T_moving, moving_shape = get_transformation_matrix(moving_img, gc_moving, Vt_moving, moving_spacing,
-                                                        img_ref=fixed_img, Vt_ref=Vt_fixed,
-                                                        spacing_ref=fixed_spacing,
-                                                        spacing_out=new_spacing)
+    T_fixed, fixed_shape = get_transformation_matrix(
+        fixed_img,
+        gc_fixed,
+        Vt_fixed,
+        fixed_spacing,
+        img_ref=moving_img,
+        Vt_ref=Vt_moving,
+        spacing_ref=moving_spacing,
+        spacing_out=new_spacing,
+    )
+    T_moving, moving_shape = get_transformation_matrix(
+        moving_img,
+        gc_moving,
+        Vt_moving,
+        moving_spacing,
+        img_ref=fixed_img,
+        Vt_ref=Vt_fixed,
+        spacing_ref=fixed_spacing,
+        spacing_out=new_spacing,
+    )
     assert np.array_equal(fixed_shape, moving_shape)
 
     fixed_rot = rotate_img(fixed_img, T_fixed, output_shape=fixed_shape)
@@ -241,7 +308,7 @@ def prealign_samples(fixed_img, moving_img, fixed_spacing, moving_spacing, new_s
         moving_rot, T_moving = mirror_img(moving_rot, T_moving)
 
     return {"fixed": [fixed_rot, T_fixed, gc_fixed, Vt_fixed, fixed_shape],
-            "moving": [moving_rot, T_moving, gc_moving, Vt_moving, moving_shape],}
+            "moving": [moving_rot, T_moving, gc_moving, Vt_moving, moving_shape]}
 
 
 def run_prealignment(
@@ -274,16 +341,19 @@ def run_prealignment(
 
     Parameters
     ----------
-    fixed_path : str
-        Path to the fixed volume file (e.g. N5, OME-Zarr).
-    fixed_key : str
-        Dataset key inside the fixed volume file.
-    moving_path : str
-        Path to the moving volume file (e.g. N5, OME-Zarr).
-    moving_key : str
-        Dataset key inside the moving volume file.
+    fixed_img : numpy.ndarray
+        Fixed segmentation volume.
+    moving_img : numpy.ndarray
+        Moving segmentation volume.
+    fixed_spacing, moving_spacing : sequence of float
+        Voxel spacing of the fixed and moving volumes.
+    new_spacing : sequence of float
+        Voxel spacing of the shared output space.
     output_dir : str
         Directory where outputs (plots, volumes, transformations) will be saved.
+    axis_orientation : str
+        How to orient the principal axes: ``auto``, ``IDENTITY``, ``X``, ``Y``,
+        or ``Z``.
 
     Outputs
     -------
@@ -318,14 +388,7 @@ def run_prealignment(
         save_path=f"{output_dir}/plots/fixed_input.pdf",
         gc=gc_fixed,
         Vt=Vt_fixed,
-        cmap="gnuplot2_r"
-    )
-    plot_three_slices(
-        fixed_img,
-        save_path=f"{output_dir}/plots/fixed_input.png",
-        gc=gc_fixed,
-        Vt=Vt_fixed,
-        cmap="gnuplot2_r"
+        cmap=LABEL
     )
 
     plot_three_slices(
@@ -333,14 +396,7 @@ def run_prealignment(
         save_path=f"{output_dir}/plots/moving_input.pdf",
         gc=gc_moving,
         Vt=Vt_moving,
-        cmap="gnuplot2_r"
-    )
-    plot_three_slices(
-        moving_img,
-        save_path=f"{output_dir}/plots/moving_input.png",
-        gc=gc_moving,
-        Vt=Vt_moving,
-        cmap="gnuplot2_r"
+        cmap=LABEL
     )
 
     plot_three_slices(
@@ -350,25 +406,10 @@ def run_prealignment(
         Vt=Vt_fixed,
         cmap=PINK,
     )
-    plot_three_slices(
-        fixed_img,
-        save_path=f"{output_dir}/plots/fixed_input_semantic.png",
-        gc=gc_fixed,
-        Vt=Vt_fixed,
-        cmap=PINK,
-
-    )
 
     plot_three_slices(
         moving_img,
         save_path=f"{output_dir}/plots/moving_input_semantic.pdf",
-        gc=gc_moving,
-        Vt=Vt_moving,
-        cmap=CYAN
-    )
-    plot_three_slices(
-        moving_img,
-        save_path=f"{output_dir}/plots/moving_input_semantic.png",
         gc=gc_moving,
         Vt=Vt_moving,
         cmap=CYAN
@@ -378,15 +419,6 @@ def run_prealignment(
         fixed_img,
         moving_img,
         save_path=f"{output_dir}/plots/overlay_input.pdf",
-        gc1=gc_fixed,
-        Vt1=Vt_fixed,
-        gc2=gc_moving,
-        Vt2=Vt_moving,
-    )
-    plot_overlay(
-        fixed_img,
-        moving_img,
-        save_path=f"{output_dir}/plots/overlay_input.png",
         gc1=gc_fixed,
         Vt1=Vt_fixed,
         gc2=gc_moving,
@@ -405,7 +437,7 @@ def run_prealignment(
     # check orientation (if moving fits to fixed)
 
     if axis_orientation == "auto":
-        logging.info(f"Try to determine axis orientation based on intensity profile of the samples")
+        logging.info("Try to determine axis orientation based on intensity profile of the samples")
         R = orient_axis(fixed_prealigned, moving_prealigned, output_dir)
         # In case the automatic estimation is incorrect, generate possible rotations
         generate_rotation_overlays(fixed_prealigned, moving_prealigned, output_dir)
@@ -443,7 +475,6 @@ def run_prealignment(
         moving_prealigned = rotate_img(moving_prealigned, R, output_shape=moving_prealigned.shape)
         T_moving = T_moving @ R
 
-
     logging.info("Prealignment done.")
 
     prealignment_transform = {
@@ -459,20 +490,18 @@ def run_prealignment(
 
     plot_three_slices(
         fixed_prealigned,
-        save_path=f"{output_dir}/plots/fixed_prealigned.png",
-        gc = (np.linalg.inv(T_fixed) @ np.append(gc_fixed, 1))[:3],
-        Vt = transform_axes_vis(Vt_fixed, T_fixed),
+        save_path=f"{output_dir}/plots/fixed_prealigned.pdf",
+        gc=(np.linalg.inv(T_fixed) @ np.append(gc_fixed, 1))[:3],
+        Vt=transform_axes_vis(Vt_fixed, T_fixed),
         cmap=PINK,
-
     )
 
     plot_three_slices(
         moving_prealigned,
         save_path=f"{output_dir}/plots/moving_prealigned.pdf",
-        gc = (np.linalg.inv(T_moving) @ np.append(gc_moving, 1))[:3],
-        Vt = transform_axes_vis(Vt_moving, T_moving),
+        gc=(np.linalg.inv(T_moving) @ np.append(gc_moving, 1))[:3],
+        Vt=transform_axes_vis(Vt_moving, T_moving),
         cmap=CYAN,
-
     )
 
     plot_overlay(
@@ -498,10 +527,22 @@ def run_prealignment(
 @click.option("-o", "--output_dir", required=True, help="Output directory")
 @click.option("-ok", "--output_key", required=True, help="Output key (same in both n5)")
 @click.option("-trans", "--output_transform_path", required=True, help="Path to write the final transform")
-@click.option("-axis_orientation", "--axis_orientation", required=True, help="How to find the correct orientation along the principal axes")
+@click.option("-axis_orientation", "--axis_orientation", required=True,
+              help="How to find the correct orientation along the principal axes")
 @click.option("-tif", "--save_tif", is_flag=True, help="Whether to save tif or not")
-def main(fixed_path, fixed_key, fixed_spacing, moving_path, moving_key, moving_spacing,
-            output_dir, output_key, output_transform_path, axis_orientation, save_tif=False):
+def main(
+    fixed_path,
+    fixed_key,
+    fixed_spacing,
+    moving_path,
+    moving_key,
+    moving_spacing,
+    output_dir,
+    output_key,
+    output_transform_path,
+    axis_orientation,
+    save_tif=False,
+):
     """
     Perform prealignment of moving image to fixed image.
 
@@ -515,7 +556,7 @@ def main(fixed_path, fixed_key, fixed_spacing, moving_path, moving_key, moving_s
         moving_path (str): Path to the moving input .n5 file.
         moving_key (str): Key to the moving image data in the .n5 file.
         output_dir (str): Directory where the results should be saved.
-
+        output_key (str): Key to the output image data in the .n5 file.
     Returns:
         None
     """
@@ -523,7 +564,7 @@ def main(fixed_path, fixed_key, fixed_spacing, moving_path, moving_key, moving_s
 
     fixed_spacing = np.asarray(fixed_spacing, dtype=np.float32)
     moving_spacing = np.asarray(moving_spacing, dtype=np.float32)
-    new_spacing = np.full_like(fixed_spacing, fixed_spacing.min())
+    new_spacing = np.asarray(prealignment_spacing(fixed_spacing), dtype=np.float32)
 
     logging.info("Reading fixed image")
     fixed_img = read_volume(fixed_path, fixed_key)
