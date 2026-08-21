@@ -1,11 +1,10 @@
 import sys
 import click
 import logging
-import numpy as np
 import tifffile as tif
 from pathlib import Path
 
-from matchmaker.utils import (read_volume, write_volume, plot_three_slices, convert_to_int)
+from image_matchmaker.utils import (read_volume, write_volume, plot_three_slices, convert_to_int, LABEL)
 
 
 def preprocess_tif_input(input_path, output_path, output_key, log_dir, x_res, y_res, z_res):
@@ -31,7 +30,7 @@ def preprocess_tif_input(input_path, output_path, output_key, log_dir, x_res, y_
             plot_three_slices(
                 image[chan],
                 log_dir / f"input_image_{Path(input_path).stem}_{chan}.png",
-                cmap="gnuplot2_r",
+                cmap=LABEL,
             )
 
     else:
@@ -39,7 +38,7 @@ def preprocess_tif_input(input_path, output_path, output_key, log_dir, x_res, y_
         plot_three_slices(
             image,
             log_dir / f"input_image_{Path(input_path).stem}.png",
-            cmap="gnuplot2_r",
+            cmap=LABEL,
         )
 
     write_volume(output_path, image, output_key, chunks=chunks, attrs=attrs)
@@ -69,7 +68,7 @@ def preprocess_n5_input(input_path, input_key, output_path, output_key, log_dir,
             plot_three_slices(
                 image[chan],
                 log_dir / f"input_image_{Path(input_path).stem}_{chan}.png",
-                cmap="gnuplot2_r",
+                cmap=LABEL,
             )
 
     else:
@@ -77,7 +76,7 @@ def preprocess_n5_input(input_path, input_key, output_path, output_key, log_dir,
         plot_three_slices(
             image,
             save_path=log_dir / f"input_image_{Path(input_path).stem}.png",
-            cmap="gnuplot2_r",
+            cmap=LABEL,
         )
 
     write_volume(output_path, image, output_key, chunks=chunks, attrs=attrs)

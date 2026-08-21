@@ -1,7 +1,7 @@
 import runpy
 from setuptools import setup, find_packages
 
-__version__ = runpy.run_path('matchmaker/__version__.py')['__version__']
+__version__ = runpy.run_path('image_matchmaker/__version__.py')['__version__']
 
 requires = [
     'click',
@@ -27,11 +27,11 @@ requires = [
 #   conda install -c conda-forge mobie_utils
 
 setup(
-    name='matchmaker',
+    name='image_matchmaker',
     version=__version__,
     description='Registration of instance segmentations .',
-    url='https://github.com/kreshuklab/matchmaker/',
-    packages=find_packages(include=['matchmaker']),
+    url='https://github.com/kreshuklab/image-matchmaker',
+    packages=find_packages(include=['image_matchmaker']),
     python_requires='>=3.6',
     install_requires=requires,
     author='Elena Buglakova',

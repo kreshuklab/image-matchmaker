@@ -1,17 +1,11 @@
 import numpy as np
-from pathlib import Path
 import open3d as o3d
 import copy
 import time
-from probreg import cpd, callbacks
+from probreg import cpd
 import logging
-import argparse
-import sys
-import matplotlib.pyplot as plt
 from probreg.transformation import Transformation
 from skimage.measure import regionprops_table
-import seaborn as sns
-
 import pandas as pd
 
 use_cuda = False
@@ -23,7 +17,9 @@ if use_cuda:
     asnumpy = cp.asnumpy
 else:
     cp = np
-    to_cpu = lambda x: x
+
+    def to_cpu(x):
+        return x
 
     def asnumpy(x):
         return x
@@ -42,9 +38,8 @@ class PrintIterationsCallback(object):
     def __init__(self):
         self._cnt = 0
 
-
     def __call__(self, transformation: Transformation) -> None:
-        logging.info(f"Iteration {self._cnt}")        
+        logging.info(f"Iteration {self._cnt}")
         self._cnt += 1
 
 
@@ -75,18 +70,25 @@ def create_matched_pcds(
 
 
 def pcd_to_elastix(pcd_path, elastix_path):
-    """_summary_
+    """Write a point cloud as an Elastix ``point`` file, in physical units.
+
+    The coordinate order must match the axis convention of the images the point sets are
+    registered with, so this function is only correct together with :func:`itk_scalar_img`:
+    ``extract_centroids`` yields points in ``(x, y, z)`` and ``itk_scalar_img`` puts the
+    volume into ITK's ``(x, y, z)`` index order, so the points are written ``x y z``.
+    Changing either one alone silently misaligns the
+    ``CorrespondingPointsEuclideanDistanceMetric`` against the image metric.
 
     Args:
-        pcd_path: Point cloud in PCD format
+        pcd_path: Point cloud in PCD format, with positions in ``(x, y, z)`` µm.
         elastix_path: Point cloud in Elastix format, for example:
             point
             5
             2214.0 282.2 0.0
             2445.0 2013.0 0.0
             795.0 366.0 0.0
-            153.0 609.0
-            324.0 2322.0
+            153.0 609.0 0.0
+            324.0 2322.0 0.0
     """
 
     pcd = o3d.t.io.read_point_cloud(pcd_path)
@@ -95,10 +97,27 @@ def pcd_to_elastix(pcd_path, elastix_path):
         f.write("point\n")
         f.write(f"{len(points)}\n")
         for x, y, z in points:
-            f.write(f"{z} {x} {y}\n")
+            f.write(f"{x} {y} {z}\n")
 
 
 def extract_centroids(segm, resolution):
+    """
+    Extract per-instance centroids from an instance segmentation.
+
+    Parameters
+    ----------
+    segm : numpy.ndarray
+        3D instance segmentation (one label per object), in ZYX order.
+    resolution : sequence of float
+        Voxel spacing ``(z, y, x)``; centroids are scaled into physical units.
+
+    Returns
+    -------
+    labels : numpy.ndarray
+        Instance label ids.
+    center_coords : numpy.ndarray
+        ``(N, 3)`` centroid coordinates in ``(x, y, z)`` order.
+    """
     coords_df = pd.DataFrame(regionprops_table(segm, properties=("label", "centroid")))
     center_coords = np.array(
         [
@@ -112,15 +131,51 @@ def extract_centroids(segm, resolution):
 
 
 def create_pcd(center_coords, labels):
+    """
+    Build an Open3D point cloud from centroid coordinates and labels.
+
+    Parameters
+    ----------
+    center_coords : numpy.ndarray
+        ``(N, 3)`` point coordinates.
+    labels : numpy.ndarray
+        ``(N,)`` instance label ids, stored as a per-point attribute.
+
+    Returns
+    -------
+    open3d.t.geometry.PointCloud
+        Point cloud with ``positions`` and a ``label`` attribute.
+    """
     pcd = o3d.t.geometry.PointCloud()
     pcd.point.positions = o3d.core.Tensor(center_coords)
     pcd.point.label = o3d.core.Tensor(labels[:, None])
     return pcd
 
 
-def run_cpd(fixed_pcd, moving_pcd, w, beta, lmd, maxiter):
-    # source_pt = asnumpy(moving_pcd.point.positions.numpy())
-    # target_pt = asnumpy(fixed_pcd.point.positions.numpy())
+def cpd_from_pcds(fixed_pcd, moving_pcd, w, beta, lmd, maxiter):
+    """
+    Run non-rigid Coherent Point Drift (CPD) to register two point clouds.
+
+    Parameters
+    ----------
+    fixed_pcd : open3d.t.geometry.PointCloud
+        Target (fixed) point cloud.
+    moving_pcd : open3d.t.geometry.PointCloud
+        Source (moving) point cloud to be deformed onto ``fixed_pcd``.
+    w : float
+        Outlier weight (fraction of points assumed to be noise).
+    beta : float
+        Width of the Gaussian smoothing kernel.
+    lmd : float
+        Regularization weight (trade-off between fit and smoothness).
+    maxiter : int
+        Maximum number of EM iterations.
+
+    Returns
+    -------
+    open3d.t.geometry.PointCloud
+        The registered (deformed) moving point cloud.
+    """
 
     source_pt = cp.asarray(moving_pcd.point.positions.numpy(), dtype=cp.float32)
     target_pt = cp.asarray(fixed_pcd.point.positions.numpy(), dtype=cp.float32)
@@ -141,8 +196,6 @@ def run_cpd(fixed_pcd, moving_pcd, w, beta, lmd, maxiter):
     )
     elapsed = time.time() - start
     logging.info(f"time: {elapsed}")
-
-    # print("result: ", to_cpu(tf_param.w), to_cpu(tf_param.g))
 
     result = to_cpu(tf_param.transform(source_pt))
     registered_pcd = copy.deepcopy(moving_pcd)

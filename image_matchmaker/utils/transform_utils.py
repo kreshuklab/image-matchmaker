@@ -5,14 +5,59 @@ from scipy.ndimage import affine_transform, zoom
 from elf.wrapper.resized_volume import ResizedVolume
 
 
+def prealignment_spacing(fixed_spacing):
+    """
+    Voxel spacing of the shared prealignment space: isotropic at the finest fixed axis.
+
+    Parameters
+    ----------
+    fixed_spacing : sequence of float
+        Voxel spacing of the fixed volume.
+
+    Returns
+    -------
+    list of float
+        Isotropic voxel spacing of the prealignment space.
+    """
+    return [float(min(fixed_spacing))] * len(fixed_spacing)
+
+
 def write_transform_dict(transform_dict, json_path):
+    """
+    Write a transform dictionary to a JSON file.
+
+    Each entry's ``"matrix"`` (a NumPy array) is converted to a nested list so
+    it can be serialized.
+
+    Parameters
+    ----------
+    transform_dict : dict
+        Mapping of name to ``{"matrix": numpy.ndarray, ...}`` entries.
+    json_path : str
+        Destination JSON path.
+    """
     for key, val in transform_dict.items():
         val["matrix"] = val["matrix"].tolist()
     with open(json_path, "w") as f:
-	    json.dump(transform_dict, f, indent=2)
+        json.dump(transform_dict, f, indent=2)
 
 
 def read_transform_dict(json_path):
+    """
+    Read a transform dictionary from a JSON file.
+
+    Each entry's ``"matrix"`` is converted back into a NumPy array.
+
+    Parameters
+    ----------
+    json_path : str
+        Path to a JSON file written by :func:`write_transform_dict`.
+
+    Returns
+    -------
+    dict
+        Mapping of name to ``{"matrix": numpy.ndarray, ...}`` entries.
+    """
     with open(json_path, "r") as f:
         transform_dict = json.load(f)
 
@@ -80,6 +125,26 @@ def crop_to_bbox(img):
 
 
 def resample_volume(img, old_spacing, new_spacing, order=0):
+    """
+    Resample a volume from one voxel spacing to another.
+
+    Parameters
+    ----------
+    img : numpy.ndarray
+        Input volume.
+    old_spacing : sequence of float
+        Current voxel spacing (per axis).
+    new_spacing : sequence of float
+        Target voxel spacing (per axis).
+    order : int, optional
+        Spline interpolation order; use ``0`` (nearest neighbour) for label
+        masks (default ``0``).
+
+    Returns
+    -------
+    numpy.ndarray
+        The resampled volume.
+    """
     scale = np.asarray(old_spacing) / np.asarray(new_spacing)
     return zoom(img, scale, order=order)
 
@@ -137,7 +202,42 @@ def get_rotation_matrix(R):
 
 
 def get_transformation_matrix(img, gc, Vt, spacing, img_ref=None, Vt_ref=None,
-                                spacing_ref=None, spacing_out=None):
+                              spacing_ref=None, spacing_out=None):
+    """
+    Build the affine matrix that centers and rotates a volume onto its
+    principal axes.
+
+    Combines a translation to the origin, the PCA rotation, and a translation
+    onto the centre of the output shape. When a reference image is given, the
+    output shape is the union that also fits the reference after its own
+    rotation.
+
+    Parameters
+    ----------
+    img : numpy.ndarray
+        Volume to be transformed.
+    gc : numpy.ndarray
+        Centre of mass (translation to the origin).
+    Vt : numpy.ndarray
+        Principal-axis rotation (as returned by the SVD/PCA step).
+    spacing : sequence of float
+        Voxel spacing of ``img``.
+    img_ref : numpy.ndarray, optional
+        Reference volume used to compute a common output shape.
+    Vt_ref : numpy.ndarray, optional
+        Principal-axis rotation of the reference volume.
+    spacing_ref : sequence of float, optional
+        Voxel spacing of the reference volume.
+    spacing_out : sequence of float, optional
+        Output voxel spacing (defaults to ``spacing``).
+
+    Returns
+    -------
+    T : numpy.ndarray
+        The 4x4 affine transformation matrix.
+    new_shape : numpy.ndarray
+        Shape of the transformed output volume.
+    """
     if spacing_out is None:
         spacing_out = spacing
         spacing_out_ref = spacing_ref
@@ -186,7 +286,7 @@ def get_axis_orient_matrix(img, axis_order):
     return T
 
 
-def rotate_img(img, rotation_matrix, output_shape=None, offset=None):
+def rotate_img(img, rotation_matrix, output_shape=None, offset=None, order=0):
     """
     Rotate an image using a given rotation matrix.
 
@@ -203,6 +303,9 @@ def rotate_img(img, rotation_matrix, output_shape=None, offset=None):
         The offset to apply to the rotated image to ensure it fits within the new
         bounding box. If not given, the offset will be determined from the rotation
         matrix.
+    order : int, optional
+        Spline interpolation order. Defaults to ``0`` (nearest neighbour), which is
+        required for instance labels; pass a higher order for intensity data.
 
     Returns
     -------
@@ -214,7 +317,7 @@ def rotate_img(img, rotation_matrix, output_shape=None, offset=None):
         matrix=rotation_matrix,
         output_shape=output_shape,  # new shape after rotation
         offset=offset,  # offset to ensure the image fits within the new bounding box
-        order=0,  # interpolation (use 0 for discrete/label data)
+        order=order,  # interpolation (0 for discrete/label data)
         mode='constant',  # fill mode
         cval=0.0  # fill value (if constant mode)
     )
@@ -302,7 +405,6 @@ def grid_sample3d(volume, grid, align_corners=False, mode="trilinear"):
 
     elif mode == "trilinear":
         c0 = np.floor(coords).astype(np.int32)   # (x0, y0, z0)
-        c1 = c0 + 1                              # (x1, y1, z1)
 
         d = coords - c0
         xd, yd, zd = d[..., 0], d[..., 1], d[..., 2]

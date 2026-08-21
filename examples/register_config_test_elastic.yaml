@@ -1,14 +1,12 @@
 fixed_image:
   source_path: "examples/data/platy1_muscles_stardist_fixed.tif"
   path: "examples/data/deformed_data/platy1_muscles_stardist_fixed_rotated.tif"
-  output_name: "fixed_image"
   x_res: 1
   y_res: 1
   z_res: 1
 
 moving_image:
   path: "examples/data/deformed_data/platy1_muscles_stardist_elastic.tif"
-  output_name: "moving_image"
   x_res: 1
   y_res: 1
   z_res: 1
@@ -16,7 +14,6 @@ moving_image:
   ref_url:
 
 log_dir: "data/test_elastic_registration"
-final_transform_path: "data/test_elastic_registration/final_transform.json"
 
 prealignment:
   axis_orientation: "auto" # auto or one of the options listed in svd_prealignment/axis_orientation
@@ -25,11 +22,12 @@ coherent_point_drift:
   w: 0.00001
   lmd: 0.1
   beta: 100
-  maxiter: 100 # Can be set to 10-20 for debugging purpose, should be 100-150
+  maxiter: 10 # Can be set to 10-20 for debugging purpose, should be 100-150
 
-ILP:
+matching:
+  method: ilp        # ilp | hungarian | sinkhorn
   min_neighbours: 10
-  max_dist: 30
+  max_dist: 10  # reduce if matching step runs out of memory
 
 mobie_export: False
 semantic_seg: True
