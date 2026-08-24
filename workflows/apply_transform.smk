@@ -82,7 +82,7 @@ rule apply_transform_file:
         interpolation_order = lambda w: interpolation_orders[TARGET_OUTPUTS.index(w.out_file)],
     shell:
         """
-        python image_matchmaker/apply_transform.py \
+        python -m image_matchmaker.apply_transform \
             {params.opts} \
             --moving_path {params.moving_path} \
             --moving_key {params.moving_key} \
@@ -119,7 +119,7 @@ rule apply_transform_n5:
         interpolation_order = lambda w: interpolation_orders[TARGET_OUTPUTS.index(w.out_dir)],
     shell:
         """
-        python image_matchmaker/apply_transform.py \
+        python -m image_matchmaker.apply_transform \
             {params.opts} \
             --moving_path {params.moving_path} \
             --moving_key {params.moving_key} \
