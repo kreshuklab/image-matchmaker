@@ -1,13 +1,12 @@
-import subprocess
 import yaml
 import shutil
 import numpy as np
 import tifffile as tiff
 from pathlib import Path
-from contextlib import nullcontext
 from importlib.resources import files, as_file
 
 from image_matchmaker.data_processing.deform_test_data import deform_test_data
+from image_matchmaker.workflows import run_snakemake
 from image_matchmaker.utils import (
     load_config,
     read_volume,
@@ -20,9 +19,7 @@ from image_matchmaker.utils import (
 
 def run_pipline(
     registration_config_path=None,
-    registration_snakefile=None,
     transform_config_path=None,
-    transform_snakefile=None,
     cores=8,
     test_dir="tmp_pytest",
     enable_aniso=False,
@@ -47,19 +44,6 @@ def run_pipline(
     else:
         transform_config = load_config(transform_config_path)
 
-    # Load snakefiles
-    if registration_snakefile is None:
-        reg_sf = files("image_matchmaker").joinpath("workflows/registration.smk")
-        reg_ctx = as_file(reg_sf)
-    else:
-        reg_ctx = nullcontext(registration_snakefile)
-
-    if transform_snakefile is None:
-        tf_sf = files("image_matchmaker").joinpath("workflows/apply_transform.smk")
-        tf_ctx = as_file(tf_sf)
-    else:
-        tf_ctx = nullcontext(transform_snakefile)
-
     # Generate deformed data
     deform_test_data(config=registration_config, enable_aniso=enable_aniso, enable_elastic=enable_elastic)
 
@@ -71,16 +55,11 @@ def run_pipline(
         yaml.dump(registration_config, f)
 
     # Run registration snakemake workflow
-    with reg_ctx as snakefile_path:
-        result = subprocess.run(
-            [
-                "snakemake",
-                "--snakefile", str(snakefile_path),
-                "--configfile", tmp_config_path,
-                "--cores", str(cores),
-            ],
-            check=True,
-        )
+    run_snakemake(
+        workflow="registration",
+        configfile=tmp_config_path,
+        cores=cores,
+    )
 
     log_dir = Path(transform_config["log_dir"].replace("data/test_apply_transform", str(test_dir)))
     log_dir.mkdir(parents=True, exist_ok=True)
@@ -101,16 +80,11 @@ def run_pipline(
         yaml.dump(transform_config, f)
 
     # Run apply_transform snakemake workflow
-    with tf_ctx as snakefile_path:
-        result = subprocess.run(
-            [
-                "snakemake",
-                "--snakefile", str(snakefile_path),
-                "--configfile", tmp_config_path,
-                "--cores", str(cores),
-            ],
-            check=True,
-        )
+    run_snakemake(
+        workflow="apply-transform",
+        configfile=tmp_config_path,
+        cores=cores,
+    )
 
     # Compare results
     moving_name = registration_config["moving_image"].get("name", "moving_image")
