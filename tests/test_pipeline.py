@@ -4,35 +4,61 @@ import shutil
 import numpy as np
 import tifffile as tiff
 from pathlib import Path
+from contextlib import nullcontext
+from importlib.resources import files, as_file
 
-from examples.deform_test_data import deform_test_data
-from tests.compare_results import assert_arrays_equal
+from image_matchmaker.data_processing.deform_test_data import deform_test_data
 from image_matchmaker.utils import (
     load_config,
     read_volume,
     download_file,
     check_no_new_ids,
     compute_centroid_distances,
+    assert_arrays_equal,
 )
 
 
 def run_pipline(
-    registration_config_path,
-    registration_snakefile,
-    transform_config_path,
-    transform_snakefile,
+    registration_config_path=None,
+    registration_snakefile=None,
+    transform_config_path=None,
+    transform_snakefile=None,
     cores=8,
     test_dir="tmp_pytest",
     enable_aniso=False,
     enable_elastic=False,
 ):
     test_dir = Path(test_dir)
+
     if test_dir.exists() and test_dir.is_dir():
         shutil.rmtree(test_dir)
     test_dir.mkdir(parents=True)
 
-    registration_config = load_config(registration_config_path)
-    transform_config = load_config(transform_config_path)
+    # Load config files
+    if registration_config_path is None:
+        reg_config = files("image_matchmaker").joinpath("configs/register_config_test_rigid.yaml").read_text(encoding="utf-8")
+        registration_config = yaml.safe_load(reg_config)
+    else:
+        registration_config = load_config(registration_config_path)
+
+    if transform_config_path is None:
+        tf_config = files("image_matchmaker").joinpath("configs/register_config_test_rigid_apply_transform.yaml").read_text(encoding="utf-8")
+        transform_config = yaml.safe_load(tf_config)
+    else:
+        transform_config = load_config(transform_config_path)
+
+    # Load snakefiles
+    if registration_snakefile is None:
+        reg_sf = files("image_matchmaker").joinpath("workflows/registration.smk")
+        reg_ctx = as_file(reg_sf)
+    else:
+        reg_ctx = nullcontext(registration_snakefile)
+
+    if transform_snakefile is None:
+        tf_sf = files("image_matchmaker").joinpath("workflows/apply_transform.smk")
+        tf_ctx = as_file(tf_sf)
+    else:
+        tf_ctx = nullcontext(transform_snakefile)
 
     # Generate deformed data
     deform_test_data(config=registration_config, enable_aniso=enable_aniso, enable_elastic=enable_elastic)
@@ -45,15 +71,16 @@ def run_pipline(
         yaml.dump(registration_config, f)
 
     # Run registration snakemake workflow
-    result = subprocess.run(
-        [
-            "snakemake",
-            "--snakefile", registration_snakefile,
-            "--configfile", tmp_config_path,
-            "--cores", str(cores),
-        ],
-        check=True,
-    )
+    with reg_ctx as snakefile_path:
+        result = subprocess.run(
+            [
+                "snakemake",
+                "--snakefile", str(snakefile_path),
+                "--configfile", tmp_config_path,
+                "--cores", str(cores),
+            ],
+            check=True,
+        )
 
     log_dir = Path(transform_config["log_dir"].replace("data/test_apply_transform", str(test_dir)))
     log_dir.mkdir(parents=True, exist_ok=True)
@@ -74,15 +101,16 @@ def run_pipline(
         yaml.dump(transform_config, f)
 
     # Run apply_transform snakemake workflow
-    result = subprocess.run(
-        [
-            "snakemake",
-            "--snakefile", transform_snakefile,
-            "--configfile", tmp_config_path,
-            "--cores", str(cores),
-        ],
-        check=True,
-    )
+    with tf_ctx as snakefile_path:
+        result = subprocess.run(
+            [
+                "snakemake",
+                "--snakefile", str(snakefile_path),
+                "--configfile", tmp_config_path,
+                "--cores", str(cores),
+            ],
+            check=True,
+        )
 
     # Compare results
     moving_name = registration_config["moving_image"].get("name", "moving_image")
@@ -120,6 +148,4 @@ def run_pipline(
 
 
 def test_workflow():
-
-    run_pipline("examples/register_config_test_rigid.yaml", "workflows/registration.smk",
-                "examples/register_config_test_rigid_apply_transform.yaml", "workflows/apply_transform.smk")
+    run_pipline()
