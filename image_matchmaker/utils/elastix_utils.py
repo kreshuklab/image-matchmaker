@@ -2,6 +2,8 @@ import itk
 import logging
 import numpy as np
 from pathlib import Path
+from contextlib import ExitStack
+from importlib.resources import as_file, files
 
 
 def initial_alignment(ventral_img_np, dorsal_img_np):
@@ -166,3 +168,16 @@ def apply_transform_chanwise(transform_parameter_object, moving_img_np, resoluti
             f"Expected moving image with shape (Z,Y,X) or (C,Z,Y,X), got {moving_img_np.shape}."
         )
     return result_img
+
+
+def get_parameter_map_paths(parameter_map_paths, default_parameter_maps):
+    with ExitStack() as stack:
+        if parameter_map_paths is None:
+            parameter_map_paths = []
+            for default_pm in default_parameter_maps:
+                resource = files("image_matchmaker.configs.elastix").joinpath(default_pm)
+                parameter_map_path = stack.enter_context(as_file(resource))
+                parameter_map_paths.append(str(parameter_map_path))
+        else:
+            parameter_map_paths = [str(path) for path in parameter_map_paths]
+    return parameter_map_paths

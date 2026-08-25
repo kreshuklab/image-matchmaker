@@ -7,7 +7,7 @@ import logging
 from pathlib import Path
 from skimage.color import label2rgb
 
-from image_matchmaker.preprocessing import percentile_norm
+from image_matchmaker.data_processing.preprocessing import percentile_norm
 
 # Change to 'png' or None (infer from path extension) to switch output format
 PLOT_FORMAT = 'pdf'
