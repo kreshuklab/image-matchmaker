@@ -1,0 +1,50 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+
+[project]
+name = "image_matchmaker"
+version = "0.0.1"
+description = "Registration of instance segmentations."
+readme = "README.md"
+requires-python = ">=3.6"
+license = { text = "MIT" }
+authors = [
+    { name = "Elena Buglakova", email = "elena.buglakova@embl.de" }
+]
+
+dependencies = [
+    "click",
+    "cvxpy",
+    "itk-elastix",
+    "matplotlib",
+    "numpy",
+    "open3d",
+    "pandas",
+    "probreg",
+    "python-elf",
+    "pyyaml",
+    "scikit-image",
+    "scipy",
+    "seaborn",
+    "tifffile",
+    "transforms3d",
+    "z5py",
+]
+
+
+[project.scripts]
+image-matchmaker = "image_matchmaker.cli:main"
+
+
+[tool.setuptools.packages.find]
+include = ["image_matchmaker*"]
+
+
+[tool.setuptools.package-data]
+image_matchmaker = [
+  "**/*.yaml",
+  "**/*.smk",
+  "**/*.txt",
+]
