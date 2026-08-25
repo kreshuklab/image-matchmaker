@@ -4,7 +4,7 @@ import numpy as np
 from pathlib import Path
 import matplotlib.pyplot as plt
 
-from image_matchmaker.data import create_point_cloud
+from image_matchmaker.data_processing.data import create_point_cloud
 from image_matchmaker.utils import (
     get_transformation_matrix,
     prealignment_spacing,
