@@ -174,9 +174,8 @@ cython_debug/
 .pypirc
 
 # test results
-examples/data/test/
-examples/data/deformed_data/
-examples/data/test_data/
+example_data/deformed_data/
+example_data/test_data/
 /data
 
 # huge data
@@ -188,7 +187,7 @@ examples/data/test_data/
 # Documentation images
 !docs/source/_static/images/*.png
 # allow example tif files
-!examples/data/platy1_muscles_stardist_fixed.tif
+!example_data/platy1_muscles_stardist_fixed.tif
 
 .DS_Store
 
