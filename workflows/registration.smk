@@ -1,10 +1,6 @@
 import pandas as pd
 from pathlib import Path
 
-root_dir = f"{Path(workflow.basedir).resolve().parent}/"
-print(f"working directory: {root_dir}")
-workdir: root_dir
-
 print(config["fixed_image"])
 print(config["moving_image"])
 

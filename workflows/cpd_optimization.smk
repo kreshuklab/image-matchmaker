@@ -1,8 +1,5 @@
 from pathlib import Path
 
-root_dir = f"{Path(workflow.basedir).resolve().parent}/"
-workdir: root_dir
-
 fixed_input_key   = config["fixed_image"]["input_key"]
 fixed_aligned_key = config["fixed_image"]["aligned_key"]
 
