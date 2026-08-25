@@ -17,8 +17,8 @@ moving_image:
   z_res: 1.0
 
 landmarks:
-  fixed: "examples/data/fixed_landmarks.csv"
-  moving: "examples/data/moving_landmarks.csv"
+  fixed: "example_data/fixed_landmarks.csv"
+  moving: "example_data/moving_landmarks.csv"
 
 prealignment:
   axis_orientation: "auto"

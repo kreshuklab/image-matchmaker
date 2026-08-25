@@ -1,5 +1,5 @@
 fixed_image:
-  input_path: "examples/data/deformed_data/platy1_muscles_stardist_fixed_rotated.tif"
+  input_path: "example_data/deformed_data/platy1_muscles_stardist_fixed_rotated.tif"
   input_key: "input"
 
 moving_images:
@@ -18,7 +18,7 @@ moving_images:
       z_res:
     interpolation_order: 0
   -
-    input_path: "examples/data/deformed_data/platy1_muscles_stardist_rigid.tif"
+    input_path: "example_data/deformed_data/platy1_muscles_stardist_rigid.tif"
     input_key: "input"
     input_resolution:
       x_res: 1
@@ -29,7 +29,7 @@ moving_images:
     output_resolution:
     interpolation_order: 0
   -
-    input_path: "examples/data/deformed_data/platy1_muscles_stardist_rigid.tif"
+    input_path: "example_data/deformed_data/platy1_muscles_stardist_rigid.tif"
     input_key: "input"
     input_resolution:
       x_res: 1
