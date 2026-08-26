@@ -78,6 +78,7 @@ def apply_transform(moving_img, input_resolution, parameter_object, interpolatio
 @click.option("-op", "--output_path", required=True, help="Path to save warped image")
 @click.option("-ok", "--output_key", required=True, help="Key of moving output")
 @click.option("-or", "--output_resolution", required=False, default=None, help="Resolution of moving output.")
+@click.option("-ne", "--n5_exists", default=False, help="Whether the .n5 folder exists or not")
 @click.option("-io", "--interpolation_order", required=True, type=int, help="Order of interpolation")
 @click.option("-ld", "--log_dir", required=True, help="Log directory")
 @click.option("-pm", "--parameter_map_path", required=True, help="Path to the parameter map",)
@@ -92,6 +93,7 @@ def apply_transforms(
     output_path,
     output_key,
     output_resolution,
+    n5_exists,
     interpolation_order,
     log_dir,
     parameter_map_path,
@@ -193,7 +195,7 @@ def apply_transforms(
         logging.info("Plot overlay image")
         plot_overlay(fixed_img, warped, log_dir / f"{moving_name}_warped_overlay.png",)
 
-    save_data(warped, output_path, output_key=output_key, **save_attrs)
+    save_data(warped, output_path, output_key=output_key, n5_exists=n5_exists, **save_attrs)
 
     if T_fixed is not None:
         logging.info("Plot warped moving image after pre-alignment")
@@ -212,7 +214,7 @@ def apply_transforms(
         else:
             raise NotImplementedError
 
-        save_data(warp_prealigned, prealigned_path, output_key=output_key, **save_attrs)
+        save_data(warp_prealigned, prealigned_path, output_key=output_key, n5_exists=True, **save_attrs)
 
 
 if __name__ == "__main__":

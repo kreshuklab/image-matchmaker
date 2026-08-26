@@ -104,12 +104,20 @@ def set_attrs(f, key: str, attrs_dict: dict):
         print(f"Attributes {k} for {key} written to {f.filename}")
 
 
-def write_volume(f, arr: np.array, key, chunks=(1, 512, 512), attrs=None):
+def write_volume(f, arr: np.array, key, n5_exists=True, chunks=(1, 512, 512), attrs=None):
     """
     Write an array to a dataset in an n5/zarr container.
 
     Creates the dataset (gzip-compressed) if it does not exist, otherwise
     overwrites it.
+
+    Notes
+    -----
+    `n5_exists` is currently determined by the Snakemake workflow rather
+    than inside this function. This is a temporary workaround: checking
+    `Path(f).exists()` here does not work reliably when this function is
+    called from Snakemake, whereas passing the value from the Snakefile
+    resolves the issue.
 
     Parameters
     ----------
@@ -119,6 +127,9 @@ def write_volume(f, arr: np.array, key, chunks=(1, 512, 512), attrs=None):
         Array to write.
     key : str
         Dataset key to write to.
+    n5_exists : bool, optional
+        Whether the N5 container already exists. Currently supplied by
+        snakemake (default ``True``).
     chunks : tuple of int, optional
         Chunk shape for the dataset (default ``(1, 512, 512)``).
     attrs : dict, optional
@@ -129,7 +140,7 @@ def write_volume(f, arr: np.array, key, chunks=(1, 512, 512), attrs=None):
     dtype = arr.dtype
 
     if isinstance(f, (str, PurePath)):
-        f = z5py.File(f, "a")
+        f = z5py.File(f, "a" if n5_exists else "w")
 
     if key not in f.keys():
         ds = f.create_dataset(
@@ -162,13 +173,13 @@ def load_data(path, key=None):
     return data.astype(np.float32)
 
 
-def save_data(data, output_path, output_key=None, **kwargs):
+def save_data(data, output_path, output_key=None, n5_exists=True, **kwargs):
     logging.info("Write results")
     Path(output_path).parent.mkdir(parents=True, exist_ok=True)
     if output_path.endswith((".tif", ".tiff")):
         tiff.imwrite(output_path, data)
     elif output_path.endswith(".n5"):
         assert output_key
-        write_volume(output_path, data, output_key, **kwargs)
+        write_volume(output_path, data, output_key, n5_exists=n5_exists, **kwargs)
     else:
         raise NotImplementedError

@@ -1,5 +1,6 @@
 import json
 import re
+from pathlib import Path
 
 moving_images = config["moving_images"]
 moving_paths = [item["input_path"] for item in moving_images]
@@ -117,6 +118,7 @@ rule apply_transform_n5:
         output_key = lambda w: output_keys[TARGET_OUTPUTS.index(w.out_dir)],
         output_resolution_opt = lambda w: get_output_resolution_opt(TARGET_OUTPUTS.index(w.out_dir)),
         interpolation_order = lambda w: interpolation_orders[TARGET_OUTPUTS.index(w.out_dir)],
+        n5_exists = lambda w: Path(output_paths[TARGET_OUTPUTS.index(w.out_dir)]).exists(),
     shell:
         """
         python -m image_matchmaker.registration.apply_transform \
@@ -127,7 +129,8 @@ rule apply_transform_n5:
             --output_path {params.output_path} \
             --output_key {params.output_key} \
             {params.output_resolution_opt} \
+            --n5_exists {params.n5_exists} \
             --interpolation_order {params.interpolation_order} \
             --log_dir {log_dir} \
-            --parameter_map_path {input.parameter_map_path}
+            --parameter_map_path {input.parameter_map_path} \
         """
