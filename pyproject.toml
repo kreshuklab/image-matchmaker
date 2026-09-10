@@ -8,7 +8,7 @@ name = "image-matchmaker"
 version = "0.0.1"
 description = "Registration of instance segmentations."
 readme = "README.md"
-requires-python = ">=3.6"
+requires-python = ">=3.11"
 license = { text = "MIT" }
 authors = [
     { name = "Elena Buglakova", email = "elena.buglakova@embl.de" }
