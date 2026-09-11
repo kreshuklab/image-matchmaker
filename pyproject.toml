@@ -16,10 +16,10 @@ authors = [
 
 dependencies = [
     "click",
-    "cvxpy",
+    "cvxpy==1.7.5",
     "itk-elastix",
     "matplotlib",
-    "numpy",
+    "numpy==1.26.4",
     "open3d",
     "optuna",
     "pandas",
