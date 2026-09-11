@@ -90,6 +90,7 @@ def run_pipline(
     moving_name = registration_config["moving_image"].get("name", "moving_image")
     moving_path = test_dir / f"{moving_name}.n5"
 
+    input_img = read_volume(moving_path, "input")
     result_img = read_volume(moving_path, "pointset_alignment_prealignment_space")
     warped_img = read_volume(moving_path, "pointset_alignment_transform_prealigned")
 
@@ -109,8 +110,8 @@ def run_pipline(
     # (e.g. NumPy 1.x vs 2.x), so we validate structural consistency instead
     # of strict array equality.
 
-    no_new_id, _ = check_no_new_ids(result_img, ref_img)
-    assert no_new_id
+    no_new_id, new_ids = check_no_new_ids(input_img, result_img)
+    assert no_new_id, f"Found new ids in result_img: {new_ids}"
 
     centroid_distances = compute_centroid_distances(result_img, ref_img, exclude_id=0)
     max_distance = np.max(centroid_distances)
