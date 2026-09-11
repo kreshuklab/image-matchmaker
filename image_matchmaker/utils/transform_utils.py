@@ -2,7 +2,6 @@ import json
 import numpy as np
 import transforms3d as tf3d
 from scipy.ndimage import affine_transform, zoom
-from elf.wrapper.resized_volume import ResizedVolume
 
 
 def prealignment_spacing(fixed_spacing):
@@ -65,14 +64,6 @@ def read_transform_dict(json_path):
         val["matrix"] = np.array(val["matrix"])
 
     return transform_dict
-
-
-def downscale_seg(seg, factor):
-    new_shape = np.array(seg.shape) // factor
-    downsampled_seg = ResizedVolume(seg, shape=new_shape)[:]
-    print("Downsampled shape", downsampled_seg.shape)
-
-    return downsampled_seg
 
 
 def pad_img(img):

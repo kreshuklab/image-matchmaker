@@ -24,7 +24,6 @@ dependencies = [
     "optuna",
     "pandas",
     "probreg",
-    "python-elf",
     "pyyaml",
     "scikit-image",
     "scipy",
