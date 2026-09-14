@@ -61,12 +61,12 @@ def run_pipline(
         cores=cores,
     )
 
-    log_dir = Path(transform_config["log_dir"].replace("data/test_apply_transform", str(test_dir)))
+    log_dir = Path(transform_config["log_dir"].replace("data/test_rigid_registration", str(test_dir)))
     log_dir.mkdir(parents=True, exist_ok=True)
 
     for moving_img in transform_config["moving_images"]:
         moving_img["input_path"] = moving_img["input_path"].replace("data/test_rigid_registration", str(test_dir))
-        moving_img["output_path"] = moving_img["output_path"].replace("data/test_apply_transform", str(test_dir))
+        moving_img["output_path"] = moving_img["output_path"].replace("data/test_rigid_registration", str(test_dir))
     transform_config["log_dir"] = str(log_dir)
     transform_config["parameter_map_path"] = transform_config[
         "parameter_map_path"
