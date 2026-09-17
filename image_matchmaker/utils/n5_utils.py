@@ -183,3 +183,22 @@ def save_data(data, output_path, output_key=None, n5_exists=True, **kwargs):
         write_volume(output_path, data, output_key, n5_exists=n5_exists, **kwargs)
     else:
         raise NotImplementedError
+
+
+def get_spacings(config):
+    """Extracts fixed and moving image spacings from the configuration."""
+    fixed_cfg = config["fixed_image"]
+    moving_cfg = config["moving_image"]
+
+    fixed_spacing = [fixed_cfg["z_res"], fixed_cfg["y_res"], fixed_cfg["x_res"]]
+    moving_spacing = [moving_cfg["z_res"], moving_cfg["y_res"], moving_cfg["x_res"]]
+
+    return fixed_spacing, moving_spacing
+
+
+def get_paths(config):
+    """Extracts fixed and moving image paths from the configuration."""
+    fixed_path = config["fixed_image"]["path"]
+    moving_path = config["moving_image"]["path"]
+
+    return fixed_path, moving_path
