@@ -22,7 +22,6 @@ def run_pipline(
     transform_config_path=None,
     cores=8,
     test_dir="tmp_pytest",
-    enable_aniso=False,
     enable_elastic=False,
 ):
     test_dir = Path(test_dir)
@@ -45,7 +44,7 @@ def run_pipline(
         transform_config = load_config(transform_config_path)
 
     # Generate deformed data
-    deform_test_data(config=registration_config, enable_aniso=enable_aniso, enable_elastic=enable_elastic)
+    deform_test_data(config=registration_config, enable_elastic=enable_elastic)
 
     registration_config["log_dir"] = str(test_dir)
     registration_config["matching"]["max_dist"] = 10
