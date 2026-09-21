@@ -56,7 +56,7 @@ def run_pipline(
 
     # Run registration snakemake workflow
     run_snakemake(
-        workflow="registration",
+        workflow="register",
         configfile=tmp_config_path,
         cores=cores,
     )
@@ -81,7 +81,7 @@ def run_pipline(
 
     # Run apply_transform snakemake workflow
     run_snakemake(
-        workflow="apply-transform",
+        workflow="apply",
         configfile=tmp_config_path,
         cores=cores,
     )
