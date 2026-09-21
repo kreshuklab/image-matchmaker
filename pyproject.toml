@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "image-matchmaker"
-version = "0.0.1"
+version = "0.1.0"
 description = "Registration of instance segmentations."
 readme = "README.md"
 requires-python = ">=3.11"
