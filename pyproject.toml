@@ -11,7 +11,7 @@ readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "MIT" }
 authors = [
-    { name = "Elena Buglakova", email = "elena.buglakova@embl.de" }
+    { name = "Elena Buglakova" }
 ]
 
 dependencies = [
