@@ -1,7 +1,7 @@
 import numpy as np
 from pathlib import Path
 import transforms3d as tf3d
-from scipy.ndimage import zoom
+from scipy.ndimage import zoom, center_of_mass
 from skimage.filters import gaussian
 
 from image_matchmaker.utils import (get_transformation_matrix, rotate_img, load_data, save_data,
@@ -9,18 +9,75 @@ from image_matchmaker.utils import (get_transformation_matrix, rotate_img, load_
                                 crop_to_bbox, resample_volume, get_spacings, get_paths)
 
 
-def remove_instances(seg, prob=0.05):
-    # Get all unique instance IDs, excluding background (assumed to be 0)
-    instance_ids = np.unique(seg)
-    instance_ids = instance_ids[instance_ids != 0]
+def remove_instances(seg, fraction=0.05, mode="random_instances"):
+    """Remove instances or a spatial region from a 3D instance segmentation.
 
-    # Randomly select 10% of the instance IDs
-    num_to_remove = int(len(instance_ids) * prob)
-    print(f"Number of instances to remove: {num_to_remove}")
-    selected_ids = np.random.choice(instance_ids, size=num_to_remove, replace=False)
+    Args:
+        seg: Input instance segmentation with background label 0.
+        fraction: Fraction of instances or volume dimensions to remove,
+            depending on the mode.
+        mode: Removal strategy: "random_instances", "clustered_instances",
+            "box", or "sphere".
 
-    # Create a mask for the selected IDs and set them to 0
-    mask = np.isin(seg, selected_ids)
+    Returns:
+        Segmentation with the selected instances or region set to 0.
+    """
+    if fraction >= 1 or fraction < 0:
+        raise ValueError("fraction must be between 0 and 1")
+
+    if mode in ("random_instances", "clustered_instances"):
+        instance_ids = np.unique(seg)
+        instance_ids = instance_ids[instance_ids != 0]
+        num_to_remove = int(len(instance_ids) * fraction)
+        print(f"Number of instances to remove: {num_to_remove}")
+
+        if num_to_remove == 0:
+            return seg.copy()
+
+        if mode == "random_instances":
+            selected_ids = np.random.choice(
+                instance_ids, size=num_to_remove, replace=False
+            )
+        else:   # mode == "clustered_instances"
+            coords = np.argwhere(seg > 0)
+            center = coords[np.random.randint(len(coords))]
+
+            instance_centers = np.asarray(
+                center_of_mass(seg > 0, seg, instance_ids)
+            )
+
+            distances = np.linalg.norm(instance_centers - center, axis=1)
+            selected_ids = instance_ids[np.argsort(distances)[:num_to_remove]]
+
+        mask = np.isin(seg, selected_ids)
+
+    elif mode in ("box", "sphere"):
+        D, H, W = seg.shape
+        size = fraction * np.array([D, H, W])
+        center = np.array([np.random.randint(D), np.random.randint(H), np.random.randint(W)])
+        z, y, x = np.ogrid[:D, :H, :W]
+
+        if mode == "box":
+            half_size = size / 2
+            mask = (
+                (np.abs(z - center[0]) <= half_size[0])
+                & (np.abs(y - center[1]) <= half_size[1])
+                & (np.abs(x - center[2]) <= half_size[2])
+            )
+        else:   # mode == "sphere"
+            radius = size / 2
+            mask = (
+                ((z - center[0]) / radius[0]) ** 2
+                + ((y - center[1]) / radius[1]) ** 2
+                + ((x - center[2]) / radius[2]) ** 2
+                <= 1
+            )
+
+        print(f"Removed {np.sum(mask):,} voxels")
+
+    else:
+        raise NotImplementedError(f"Unsupported removal mode: {mode}")
+
     result = seg.copy()
     result[mask] = 0
     print(f"Number of instances left: {len(np.unique(result))}")
@@ -115,7 +172,8 @@ def elastic_deform(volume, alpha=(1.,1.,1.), sigma=None, grid_spacing=16, mode="
 
 
 def deform_data(volume, elastic=False, alpha=None, sigma=None, grid_spacing=None,
-                rotation=[0,0,0], remove_p=0., input_spacing=(1,1,1), output_spacing=(1,1,1)):
+                rotation=[0,0,0], remove_fraction=0., remove_mode="random_instances",
+                input_spacing=(1,1,1), output_spacing=(1,1,1)):
     """
     Deform a 3D volume(ZYX) with the following sequential operations (if the corresponding
     parameters are given):
@@ -138,18 +196,19 @@ def deform_data(volume, elastic=False, alpha=None, sigma=None, grid_spacing=None
     if not np.array_equal(output_spacing, input_spacing):
         result = resample_volume(result, input_spacing, output_spacing)
 
-    if remove_p > 0:
-        result = remove_instances(result, prob=remove_p)
+    if remove_fraction > 0:
+        result = remove_instances(result, fraction=remove_fraction, mode=remove_mode)
 
     result = crop_to_bbox(result)
 
     return result
 
 
-def deform_test_data(cfg_path="", config=None, enable_elastic=False,
-                        alpha=0.9, sigma=2, grid_spacing=16, rotate_angles_fixed=[20,345,30],
-                        rotate_angles_moving=[155,30,65], remove_p=0.05, seed=42,
-                        save_as_n5=False, chunks=(128,512,512), visualize=True):
+def deform_test_data(cfg_path="", config=None, enable_elastic=False, alpha=0.9,
+                    sigma=2, grid_spacing=16, rotate_angles_fixed=[20,345,30],
+                    rotate_angles_moving=[155,30,65], remove_fraction=0.05,
+                    remove_mode="random_instances", seed=42, save_as_n5=False,
+                    chunks=(128,512,512), visualize=True):
     if config is None:
         config = load_config(cfg_path)
 
@@ -171,7 +230,8 @@ def deform_test_data(cfg_path="", config=None, enable_elastic=False,
 
     seg_moving = deform_data(seg_moving, elastic=enable_elastic, alpha=alpha, sigma=sigma,
                             grid_spacing=grid_spacing, rotation=rotate_angles_moving,
-                            remove_p=remove_p, output_spacing=moving_spacing)
+                            remove_fraction=remove_fraction, remove_mode=remove_mode,
+                            output_spacing=moving_spacing)
     print("Moving volume shape", seg_moving.shape)
 
     fixed_path, moving_path = get_paths(config)
@@ -194,5 +254,5 @@ def deform_test_data(cfg_path="", config=None, enable_elastic=False,
 
 
 if __name__ == "__main__":
-    deform_test_data(cfg_path="examples/register_config_test_rigid.yaml")
-    deform_test_data(cfg_path="examples/register_config_test_elastic.yaml", enable_elastic=True)
+    deform_test_data(cfg_path="image_matchmaker/configs/register_config_test_rigid.yaml")
+    deform_test_data(cfg_path="image_matchmaker/configs/register_config_test_elastic.yaml", enable_elastic=True)
