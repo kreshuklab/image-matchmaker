@@ -25,8 +25,11 @@ def remove_instances(seg, fraction=0.05, mode="random_instances"):
     if fraction >= 1 or fraction < 0:
         raise ValueError("fraction must be between 0 and 1")
 
+    instance_ids = np.unique(seg)
+    num_instances = len(instance_ids)
+    print(f"Number of instances before removal: {num_instances}")
+
     if mode in ("random_instances", "clustered_instances"):
-        instance_ids = np.unique(seg)
         instance_ids = instance_ids[instance_ids != 0]
         num_to_remove = int(len(instance_ids) * fraction)
         print(f"Number of instances to remove: {num_to_remove}")
@@ -80,7 +83,10 @@ def remove_instances(seg, fraction=0.05, mode="random_instances"):
 
     result = seg.copy()
     result[mask] = 0
-    print(f"Number of instances left: {len(np.unique(result))}")
+
+    num_instances_left = len(np.unique(result))
+    print(f"Number of instances left: {num_instances_left}")
+    print(f"Fraction of instances that are removed: {1-num_instances_left/num_instances:.2%}")
 
     return result
 
