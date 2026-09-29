@@ -199,3 +199,6 @@ tmp*
 
 hpc_configs/
 *.out
+
+paper/
+deformed_data/
