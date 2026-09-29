@@ -202,3 +202,29 @@ def cpd_from_pcds(fixed_pcd, moving_pcd, w, beta, lmd, maxiter):
     registered_pcd.point.positions = o3d.core.Tensor(result)
 
     return registered_pcd
+
+
+def create_point_cloud(segm):
+    """
+    Extract per-instance centroids in voxel units, in the array's own axis order.
+
+    Unlike :func:`extract_centroids`, coordinates are neither scaled to physical
+    units nor reordered, so a ZYX segmentation yields ZYX points.
+
+    Parameters
+    ----------
+    segm : numpy.ndarray
+        Instance segmentation (one label per object).
+
+    Returns
+    -------
+    pos : numpy.ndarray
+        ``(N, ndim)`` centroid coordinates in voxels, same axis order as ``segm``.
+    segm_labels : numpy.ndarray
+        Instance label ids.
+    """
+    props = pd.DataFrame(regionprops_table(segm, properties=("label", "centroid")))
+    segm_labels = props["label"].to_numpy()
+    centroid_columns = [col for col in props.columns if col.startswith("centroid")]
+    pos = props[centroid_columns].to_numpy().astype(np.float32)
+    return pos, segm_labels
