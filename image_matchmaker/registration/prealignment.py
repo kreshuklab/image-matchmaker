@@ -45,6 +45,13 @@ def get_SVD_transform(img, spacing, save_path=None):
 
     logging.info("Run SVD ...")
     U, S, Vt = np.linalg.svd(pos_c, full_matrices=False)
+
+    # Canonicalize SVD signs for reproducible PCA orientation
+    max_abs_cols = np.argmax(np.abs(U), axis=0)
+    signs = np.sign(U[max_abs_cols, np.arange(U.shape[1])])
+    U *= signs
+    Vt *= signs[:, np.newaxis]
+
     logging.info("U")
     logging.info(str(U))
     logging.info("S")
