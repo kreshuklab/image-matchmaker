@@ -37,6 +37,8 @@ TARGET_OUTPUTS = [f"{p}/{k}" if p.endswith(".n5") else p for p, k in zip(output_
 FILE_OUTPUTS = [p for p in TARGET_OUTPUTS if not ".n5/" in p]
 N5_OUTPUTS = [p for p in TARGET_OUTPUTS if ".n5/" in p]
 
+N5_ATTRIBUTES = sorted({str(Path(p).parent / "attributes.json") for p in N5_OUTPUTS})
+
 
 def get_all_opts(d):
     opts = []
@@ -58,6 +60,18 @@ def get_output_resolution_opt(index):
 rule all:
     input:
         TARGET_OUTPUTS,
+
+
+if N5_ATTRIBUTES:
+    rule prepare_n5:
+        output:
+            attributes = N5_ATTRIBUTES
+        run:
+            for path in output.attributes:
+                path = Path(path)
+                path.parent.mkdir(parents=True, exist_ok=True)
+                if not path.exists():
+                    path.write_text(json.dumps({"n5": "2.0.0"}, indent=4) + "\n")
 
 
 rule apply_transform_file:
@@ -100,6 +114,7 @@ rule apply_transform_file:
 rule apply_transform_n5:
     input:
         parameter_map_path = parameter_map_path,
+        n5_attributes = N5_ATTRIBUTES,
         moving_img = lambda w: moving_paths[TARGET_OUTPUTS.index(w.out_dir)]
     output:
         out_dir = directory("{out_dir}")
@@ -118,7 +133,6 @@ rule apply_transform_n5:
         output_key = lambda w: output_keys[TARGET_OUTPUTS.index(w.out_dir)],
         output_resolution_opt = lambda w: get_output_resolution_opt(TARGET_OUTPUTS.index(w.out_dir)),
         interpolation_order = lambda w: interpolation_orders[TARGET_OUTPUTS.index(w.out_dir)],
-        n5_exists = lambda w: Path(output_paths[TARGET_OUTPUTS.index(w.out_dir)]).exists(),
     shell:
         """
         python -m image_matchmaker.registration.apply_transform \
@@ -129,7 +143,6 @@ rule apply_transform_n5:
             --output_path {params.output_path} \
             --output_key {params.output_key} \
             {params.output_resolution_opt} \
-            --n5_exists {params.n5_exists} \
             --interpolation_order {params.interpolation_order} \
             --log_dir {log_dir} \
             --parameter_map_path {input.parameter_map_path} \
