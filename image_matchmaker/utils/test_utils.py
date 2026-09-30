@@ -168,3 +168,8 @@ def check_no_new_ids(vol1, vol2):
     new_ids = np.setdiff1d(ids2, ids1)
 
     return len(new_ids) == 0, new_ids
+
+
+def assert_arrays_equal(arr1, arr2):
+    assert arr1.dtype == arr2.dtype
+    assert np.array_equal(arr1, arr2)

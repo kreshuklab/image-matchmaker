@@ -108,9 +108,6 @@ def write_volume(f, arr: np.array, key, chunks=(1, 512, 512), attrs=None):
     """
     Write an array to a dataset in an n5/zarr container.
 
-    Creates the dataset (gzip-compressed) if it does not exist, otherwise
-    overwrites it.
-
     Parameters
     ----------
     f : z5py.File or str or pathlib.Path

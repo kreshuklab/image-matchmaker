@@ -13,11 +13,17 @@ from image_matchmaker.utils import (
     elastix_registration,
     apply_transform_chanwise,
     setup_logging,
+    get_parameter_map_paths,
+)
+
+DEFAULT_RIGID_PARAMETER_MAPS = (
+    "ParameterMap_segm_rigid_registration_corr.txt",
 )
 
 
 def elastix_segm_rigid_alignment(
-    fixed_img_np, fixed_resolution, moving_img_np, moving_resolution, output_dir
+    fixed_img_np, fixed_resolution, moving_img_np, moving_resolution, output_dir,
+    parameter_map_paths=None,
 ):
     """
     Run rigid alignment of the ventral and dorsal datasets using elastix.
@@ -38,10 +44,7 @@ def elastix_segm_rigid_alignment(
     logging.info("Moving image")
     logging.info(f"{moving_img}")
 
-    SCRIPT_DIR = Path(__file__).resolve().parent
-    parameter_map_paths = [
-        f"{SCRIPT_DIR}/ParameterMap_segm_rigid_registration_corr.txt"
-    ]
+    parameter_map_paths = get_parameter_map_paths(parameter_map_paths, DEFAULT_RIGID_PARAMETER_MAPS)
 
     logging.info("Run rigid registration with elastix")
     result_image, result_transform_parameters = elastix_registration(

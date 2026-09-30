@@ -2,7 +2,6 @@ import json
 import numpy as np
 import transforms3d as tf3d
 from scipy.ndimage import affine_transform, zoom
-from elf.wrapper.resized_volume import ResizedVolume
 
 
 def prealignment_spacing(fixed_spacing):
@@ -65,49 +64,6 @@ def read_transform_dict(json_path):
         val["matrix"] = np.array(val["matrix"])
 
     return transform_dict
-
-
-def downscale_seg(seg, factor):
-    new_shape = np.array(seg.shape) // factor
-    downsampled_seg = ResizedVolume(seg, shape=new_shape)[:]
-    print("Downsampled shape", downsampled_seg.shape)
-
-    return downsampled_seg
-
-
-def pad_img(img):
-    shape = img.shape
-    diagonal = int(np.ceil(np.linalg.norm(shape)))
-    print("Diagonal", diagonal)
-
-    # Calculate how much padding is needed on each axis
-    pad_widths = []
-    for dim in shape:
-        total_pad = diagonal - dim
-        before = total_pad // 2
-        after = total_pad - before
-        pad_widths.append((before, after))
-
-    # Apply zero padding
-    padded = np.pad(img, pad_width=pad_widths, mode='constant', constant_values=0)
-    print("New shape after padding:", padded.shape)
-
-    return padded
-
-
-def pad_to_same_shape(arr1, arr2):
-    """Pad two arrays with zeros to the same shape at the end."""
-    D1, H1, W1 = arr1.shape
-    D2, H2, W2 = arr2.shape
-    max_D, max_H, max_W = max(D1, D2), max(H1, H2), max(W1, W2)
-
-    def pad_end(arr, target_shape, value=0):
-        pad_D = target_shape[0] - arr.shape[0]
-        pad_H = target_shape[1] - arr.shape[1]
-        pad_W = target_shape[2] - arr.shape[2]
-        return np.pad(arr, ((0, pad_D), (0, pad_H), (0, pad_W)), mode="constant", constant_values=value)
-
-    return pad_end(arr1, (max_D, max_H, max_W)), pad_end(arr2, (max_D, max_H, max_W))
 
 
 def crop_to_bbox(img):
@@ -188,11 +144,6 @@ def get_translation_matrix(translation):
     M = np.identity(4)
     M[0:3, 3] = translation
     return M
-
-
-def get_rotation(angles):
-    R = tf3d.euler.euler2mat(*angles, axes='szyx')
-    return R
 
 
 def get_rotation_matrix(R):
@@ -324,47 +275,6 @@ def rotate_img(img, rotation_matrix, output_shape=None, offset=None, order=0):
 
     print(f"Shape after rotation: {rotated_img.shape}")
     return rotated_img
-
-
-def to_dense_mask(mask, background=0, mapping=None):
-    """
-    Convert a sparse instance segmentation mask into a dense continuous mask.
-
-    Returns:
-        dense_mask : np.ndarray (same shape as input)
-        mapping    : dict {old_id: new_id}
-    """
-
-    mask = mask.astype(np.int64)
-    unique_ids = np.unique(mask)
-
-    if mapping is None:
-        new_mapping = {background: 0}
-        next_id = 1
-    else:
-        new_mapping = dict(mapping)
-        new_mapping[background] = 0
-        next_id = max(new_mapping.values()) + 1
-
-    known_ids = np.fromiter(new_mapping.keys(), dtype=np.int64)
-    missing_ids = np.setdiff1d(unique_ids, known_ids, assume_unique=False)
-    missing_ids = missing_ids[missing_ids != background]
-
-    if missing_ids.size > 0:
-        new_ids = np.arange(next_id, next_id + len(missing_ids), dtype=np.int64)
-        add_mapping = dict(zip(missing_ids, new_ids))
-        new_mapping.update(add_mapping)
-
-    all_old_ids = np.fromiter(new_mapping.keys(), dtype=np.int64)
-    all_new_ids = np.fromiter(new_mapping.values(), dtype=np.int64)
-
-    lut_size = all_old_ids.max() + 1
-    lut = np.zeros(lut_size, dtype=np.int64)
-    lut[all_old_ids] = all_new_ids
-
-    dense_mask = lut[mask]
-
-    return dense_mask, new_mapping
 
 
 def grid_sample3d(volume, grid, align_corners=False, mode="trilinear"):

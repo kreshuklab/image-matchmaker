@@ -1,16 +1,16 @@
 fixed_image:
-  source_path: "examples/data/platy1_muscles_stardist_fixed.tif"
-  path: "examples/data/deformed_data/platy1_muscles_stardist_aniso_fixed.tif"
+  source_path: "example_data/platy1_muscles_stardist_fixed.tif"
+  path: "example_data/deformed_data/platy1_muscles_stardist_aniso_fixed.tif"
   x_res: 1
   y_res: 1
   z_res: 1
 
 moving_image:
-  path: "examples/data/deformed_data/platy1_muscles_stardist_aniso_rigid.tif"
+  path: "example_data/deformed_data/platy1_muscles_stardist_aniso_rigid.tif"
   x_res: 2
   y_res: 1
   z_res: 1
-  ref_path: "examples/data/test_data/moving_aniso_rigid_aligned.tif"
+  ref_path: "example_data/test_data/moving_aniso_rigid_aligned.tif"
   ref_url: "https://github.com/kreshuklab/image-matchmaker/releases/download/test_data-v0.3/moving_aniso_rigid_aligned.tif"
 
 log_dir: "data/test_rigid_registration"
