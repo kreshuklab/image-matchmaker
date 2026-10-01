@@ -715,3 +715,84 @@ def transform_axes_vis(Vt, T):
     R = U @ Vt_svd
     Vt_vis = Vt @ R
     return Vt_vis / np.linalg.norm(Vt_vis, axis=1, keepdims=True)
+
+
+def plot_removal(original, degraded, save_path=None, mode="random_instances",):
+    """Plot original, degraded, and removed regions on three orthogonal slices.
+
+    Args:
+        original: Original 3D instance segmentation.
+        degraded: Degraded 3D instance segmentation.
+        save_path: Path to save the figure.
+        mode: Removal mode {"random_instances", "clustered_instances",
+            "box", or "sphere"}.
+    """
+    assert original.ndim == 3
+    assert degraded.shape == original.shape
+    if mode not in ("random_instances", "clustered_instances", "box", "sphere"):
+        raise ValueError(f"Unsupported removal mode: {mode}")
+
+    removed = (original > 0) & (degraded == 0)
+
+    if not np.any(removed):
+        print("No removed voxels to visualize")
+        return
+
+    # Select the slice with the largest amount of removed material.
+    z_pos = int(np.argmax(removed.sum(axis=(1, 2))))
+    y_pos = int(np.argmax(removed.sum(axis=(0, 2))))
+    x_pos = int(np.argmax(removed.sum(axis=(0, 1))))
+
+    slices = [
+        ("z", z_pos, original[z_pos], degraded[z_pos], removed[z_pos]),
+        ("y", y_pos, original[:, y_pos, :], degraded[:, y_pos, :], removed[:, y_pos, :]),
+        ("x", x_pos, original[:, :, x_pos], degraded[:, :, x_pos], removed[:, :, x_pos]),
+    ]
+
+    fig, axes = plt.subplots(3, 3, figsize=(15, 15))
+
+    for col, (axis, pos, orig, deg, rem) in enumerate(slices):
+        # Original
+        ax = axes[0, col]
+        ax.imshow(label2rgb(orig, bg_label=0, bg_color=(1, 1, 1)))
+        ax.set_title(f"{axis} slice at {pos}")
+
+        # Degraded
+        ax = axes[1, col]
+        ax.imshow(label2rgb(deg, bg_label=0, bg_color=(1, 1, 1)))
+
+        # Removed
+        ax = axes[2, col]
+        ax.imshow(label2rgb(orig, bg_label=0, bg_color=(1, 1, 1)))
+
+        if mode in ("random_instances", "clustered_instances"):
+            # Show the boundaries of removed instances.
+            ax.contour(rem, levels=[0.5], colors="red", linewidths=1.5)
+
+        else:
+            # Show both the removed voxels and their region boundary.
+            ax.imshow(
+                np.ma.masked_where(~rem, rem),
+                cmap="Reds",
+                alpha=0.7,
+                vmin=0,
+                vmax=1,
+            )
+            ax.contour(rem, levels=[0.5], colors="red", linewidths=1.5)
+
+        for row in range(3):
+            axes[row, col].set_xticks([])
+            axes[row, col].set_yticks([])
+
+    axes[0, 0].set_ylabel("Original", fontsize=12)
+    axes[1, 0].set_ylabel("Degraded", fontsize=12)
+    axes[2, 0].set_ylabel("Removed", fontsize=12)
+
+    plt.tight_layout()
+
+    if save_path is None:
+        plt.show()
+    else:
+        _savefig(save_path, fig=fig)
+
+    plt.close(fig)

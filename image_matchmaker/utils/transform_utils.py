@@ -101,7 +101,37 @@ def pad_to_same_shape(arr1, arr2):
     return pad_end(arr1, (max_D, max_H, max_W)), pad_end(arr2, (max_D, max_H, max_W))
 
 
-def crop_to_bbox(img):
+def pad_to_common_bbox(arr1, bbox1, arr2, bbox2):
+    """Pad two cropped volumes into their common bounding-box coordinate frame."""
+    bbox1 = np.asarray(bbox1).reshape(3, 2)
+    bbox2 = np.asarray(bbox2).reshape(3, 2)
+
+    min_coord = np.minimum(bbox1[:, 0], bbox2[:, 0])
+    max_coord = np.maximum(bbox1[:, 1], bbox2[:, 1])
+    shape = max_coord - min_coord
+
+    out1 = np.zeros(shape, dtype=arr1.dtype)
+    out2 = np.zeros(shape, dtype=arr2.dtype)
+
+    start1 = bbox1[:, 0] - min_coord
+    start2 = bbox2[:, 0] - min_coord
+
+    slices1 = tuple(
+        slice(start, start + size)
+        for start, size in zip(start1, arr1.shape)
+    )
+    slices2 = tuple(
+        slice(start, start + size)
+        for start, size in zip(start2, arr2.shape)
+    )
+
+    out1[slices1] = arr1
+    out2[slices2] = arr2
+
+    return out1, out2
+
+
+def crop_to_bbox(img, return_bbox=False):
     """Crops a 3D volume to the minimal bounding box around all nonzero voxels."""
     # Find where the volume is nonzero (i.e., contains instances)
     nonzero = np.argwhere(img)
@@ -112,6 +142,10 @@ def crop_to_bbox(img):
 
     # Crop the volume
     cropped = img[z_min:z_max, y_min:y_max, x_min:x_max]
+
+    if return_bbox:
+        return cropped, (z_min, z_max, y_min, y_max, x_min, x_max)
+
     return cropped
 
 

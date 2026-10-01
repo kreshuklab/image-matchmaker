@@ -6,7 +6,8 @@ from skimage.filters import gaussian
 
 from image_matchmaker.utils import (get_transformation_matrix, rotate_img, load_data, save_data,
                                 plot_three_slices, plot_overlay, grid_sample3d, load_config,
-                                crop_to_bbox, resample_volume, get_spacings, get_paths)
+                                crop_to_bbox, resample_volume, get_spacings, get_paths,
+                                plot_removal, pad_to_common_bbox)
 
 
 def remove_instances(seg, fraction=0.05, mode="random_instances"):
@@ -205,9 +206,9 @@ def deform_data(volume, elastic=False, alpha=None, sigma=None, grid_spacing=None
     if remove_fraction > 0:
         result = remove_instances(result, fraction=remove_fraction, mode=remove_mode)
 
-    result = crop_to_bbox(result)
+    result, bbox = crop_to_bbox(result, return_bbox=True)
 
-    return result
+    return result, bbox
 
 
 def deform_test_data(cfg_path="", config=None, enable_elastic=False, alpha=0.9,
@@ -221,20 +222,30 @@ def deform_test_data(cfg_path="", config=None, enable_elastic=False, alpha=0.9,
     if seed is not None:
         np.random.seed(seed)
 
+    print("Removal mode:", remove_mode)
     data_dir = Path(config["fixed_image"]["path"]).parent
     data_dir.mkdir(parents=True, exist_ok=True)
 
     fixed_spacing, moving_spacing = get_spacings(config)
     fixed_attrs = {"resolution": fixed_spacing,}
     moving_attrs = {"resolution": moving_spacing,}
+    print("Fixed spacing:", fixed_spacing)
+    print("Moving spacing:", moving_spacing)
 
     seg_fixed = load_data(config["fixed_image"]["source_path"])
     seg_moving = seg_fixed.copy()
 
-    seg_fixed = deform_data(seg_fixed, rotation=rotate_angles_fixed, output_spacing=fixed_spacing)
+    seg_fixed, _ = deform_data(seg_fixed, rotation=rotate_angles_fixed, output_spacing=fixed_spacing)
     print("Fixed volume shape", seg_fixed.shape)
 
-    seg_moving = deform_data(seg_moving, elastic=enable_elastic, alpha=alpha, sigma=sigma,
+    if visualize:
+        seg_moving_vis, bbox_vis = deform_data(seg_moving, elastic=enable_elastic, alpha=alpha,
+                                                sigma=sigma, grid_spacing=grid_spacing,
+                                                rotation=rotate_angles_moving, remove_fraction=0.,
+                                                output_spacing=moving_spacing)
+        print("Moving visualized volume shape", seg_moving_vis.shape)
+
+    seg_moving, bbox_rm = deform_data(seg_moving, elastic=enable_elastic, alpha=alpha, sigma=sigma,
                             grid_spacing=grid_spacing, rotation=rotate_angles_moving,
                             remove_fraction=remove_fraction, remove_mode=remove_mode,
                             output_spacing=moving_spacing)
@@ -251,14 +262,17 @@ def deform_test_data(cfg_path="", config=None, enable_elastic=False, alpha=0.9,
     if visualize:
         plot_dir = data_dir / "plots"
         plot_dir.mkdir(parents=True, exist_ok=True)
-        iso_name = "" if np.all(moving_spacing == 1) else "aniso_"
+        iso_name = "" if (moving_spacing == [moving_spacing[0]] * len(moving_spacing)) else "aniso_"
         elastic_name = "elastic" if enable_elastic else "rigid"
 
         plot_three_slices(seg_fixed, save_path=plot_dir/f"seg_{iso_name}fixed.png")
         plot_three_slices(seg_moving, save_path=plot_dir/f"seg_{iso_name}{elastic_name}.png")
         plot_overlay(seg_fixed, seg_moving, save_path=plot_dir/f"{iso_name}{elastic_name}_overlay.png")
 
+        seg_moving_vis, seg_moving_rm = pad_to_common_bbox(seg_moving_vis, bbox_vis, seg_moving, bbox_rm)
+        plot_removal(seg_moving_vis, seg_moving_rm, save_path=plot_dir/f"{iso_name}{elastic_name}_removal.png")
+
 
 if __name__ == "__main__":
     deform_test_data(cfg_path="image_matchmaker/configs/register_config_test_rigid.yaml")
-    deform_test_data(cfg_path="image_matchmaker/configs/register_config_test_elastic.yaml", enable_elastic=True)
+    # deform_test_data(cfg_path="image_matchmaker/configs/register_config_test_elastic.yaml", enable_elastic=True)
