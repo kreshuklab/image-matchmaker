@@ -10,7 +10,8 @@ from image_matchmaker.utils import (get_transformation_matrix, rotate_img, load_
                                 plot_removal, pad_to_common_bbox)
 
 
-def remove_instances(seg, fraction=0.05, mode="random_instances"):
+def remove_instances(seg, fraction=0.05, mode="random_instances", exclude_ids=[],
+                    max_tries=1000, center=None,):
     """Remove instances or a spatial region from a 3D instance segmentation.
 
     Args:
@@ -19,12 +20,18 @@ def remove_instances(seg, fraction=0.05, mode="random_instances"):
             depending on the mode.
         mode: Removal strategy: "random_instances", "clustered_instances",
             "box", or "sphere".
+        exclude_ids: Instance IDs that must not be removed.
+        max_tries: Maximum attempts for "box" and "sphere" modes.
+        center: Region center as (z, y, x) for "clustered_instances", "box" or
+            "sphere" modes. If None, a random center is selected.
 
     Returns:
         Segmentation with the selected instances or region set to 0.
     """
     if fraction >= 1 or fraction < 0:
         raise ValueError("fraction must be between 0 and 1")
+    if max_tries < 1:
+        raise ValueError("max_tries must be at least 1")
 
     instance_ids = np.unique(seg)
     num_instances = len(instance_ids)
@@ -32,19 +39,25 @@ def remove_instances(seg, fraction=0.05, mode="random_instances"):
 
     if mode in ("random_instances", "clustered_instances"):
         instance_ids = instance_ids[instance_ids != 0]
+
         num_to_remove = int(len(instance_ids) * fraction)
         print(f"Number of instances to remove: {num_to_remove}")
-
         if num_to_remove == 0:
             return seg.copy()
+
+        instance_ids = instance_ids[~np.isin(instance_ids, exclude_ids)]
+        if num_to_remove > len(instance_ids):
+            raise ValueError("Not enough instances available after applying exclude_ids")
 
         if mode == "random_instances":
             selected_ids = np.random.choice(
                 instance_ids, size=num_to_remove, replace=False
             )
         else:   # mode == "clustered_instances"
-            coords = np.argwhere(seg > 0)
-            center = coords[np.random.randint(len(coords))]
+            if center is None:
+                coords = np.argwhere(seg > 0)
+                center = coords[np.random.randint(len(coords))]
+            print("Center of removal:", center)
 
             instance_centers = np.asarray(
                 center_of_mass(seg > 0, seg, instance_ids)
@@ -58,24 +71,51 @@ def remove_instances(seg, fraction=0.05, mode="random_instances"):
     elif mode in ("box", "sphere"):
         D, H, W = seg.shape
         size = fraction * np.array([D, H, W])
-        center = np.array([np.random.randint(D), np.random.randint(H), np.random.randint(W)])
         z, y, x = np.ogrid[:D, :H, :W]
 
-        if mode == "box":
-            half_size = size / 2
-            mask = (
-                (np.abs(z - center[0]) <= half_size[0])
-                & (np.abs(y - center[1]) <= half_size[1])
-                & (np.abs(x - center[2]) <= half_size[2])
-            )
-        else:   # mode == "sphere"
-            radius = size / 2
-            mask = (
-                ((z - center[0]) / radius[0]) ** 2
-                + ((y - center[1]) / radius[1]) ** 2
-                + ((x - center[2]) / radius[2]) ** 2
-                <= 1
-            )
+        excluded_mask = np.isin(seg, exclude_ids)
+        given_center = center is not None
+
+        for _ in range(1 if given_center else max_tries):
+            if not given_center:
+                center = np.array([
+                    np.random.randint(D),
+                    np.random.randint(H),
+                    np.random.randint(W),
+                ])
+            else:
+                center = np.asarray(center)
+
+            if mode == "box":
+                half_size = size / 2
+                mask = (
+                    (np.abs(z - center[0]) <= half_size[0])
+                    & (np.abs(y - center[1]) <= half_size[1])
+                    & (np.abs(x - center[2]) <= half_size[2])
+                )
+            else:   # mode == "sphere"
+                radius = size / 2
+                mask = (
+                    ((z - center[0]) / radius[0]) ** 2
+                    + ((y - center[1]) / radius[1]) ** 2
+                    + ((x - center[2]) / radius[2]) ** 2
+                    <= 1
+                )
+
+            if not np.any(mask & excluded_mask):
+                print("Center of removal:", center)
+                break
+        else:
+            if given_center:
+                raise ValueError(
+                    f"The specified center {center.tolist()} causes the "
+                    f"{mode} region to overlap excluded instances."
+                )
+            else:
+                raise RuntimeError(
+                    f"Could not find a valid {mode} region after {max_tries} attempts "
+                    f"without removing excluded instances."
+                )
 
         print(f"Removed {np.sum(mask):,} voxels")
 
@@ -180,7 +220,8 @@ def elastic_deform(volume, alpha=(1.,1.,1.), sigma=None, grid_spacing=16, mode="
 
 def deform_data(volume, elastic=False, alpha=None, sigma=None, grid_spacing=None,
                 rotation=[0,0,0], remove_fraction=0., remove_mode="random_instances",
-                input_spacing=(1,1,1), output_spacing=(1,1,1)):
+                exclude_ids=[], remove_center=None, input_spacing=(1,1,1),
+                output_spacing=(1,1,1)):
     """
     Deform a 3D volume(ZYX) with the following sequential operations (if the corresponding
     parameters are given):
@@ -204,7 +245,8 @@ def deform_data(volume, elastic=False, alpha=None, sigma=None, grid_spacing=None
         result = resample_volume(result, input_spacing, output_spacing)
 
     if remove_fraction > 0:
-        result = remove_instances(result, fraction=remove_fraction, mode=remove_mode)
+        result = remove_instances(result, fraction=remove_fraction, mode=remove_mode,
+                                    exclude_ids=exclude_ids, center=remove_center)
 
     result, bbox = crop_to_bbox(result, return_bbox=True)
 
@@ -214,7 +256,8 @@ def deform_data(volume, elastic=False, alpha=None, sigma=None, grid_spacing=None
 def deform_test_data(cfg_path="", config=None, enable_elastic=False, alpha=0.9,
                     sigma=2, grid_spacing=16, rotate_angles_fixed=[20,345,30],
                     rotate_angles_moving=[155,30,65], remove_fraction=0.05,
-                    remove_mode="random_instances", seed=42, save_as_n5=False,
+                    remove_mode="random_instances", exclude_ids=[],
+                    remove_center=None, seed=42, save_as_n5=False,
                     chunks=(128,512,512), visualize=True):
     if config is None:
         config = load_config(cfg_path)
@@ -248,6 +291,7 @@ def deform_test_data(cfg_path="", config=None, enable_elastic=False, alpha=0.9,
     seg_moving, bbox_rm = deform_data(seg_moving, elastic=enable_elastic, alpha=alpha, sigma=sigma,
                             grid_spacing=grid_spacing, rotation=rotate_angles_moving,
                             remove_fraction=remove_fraction, remove_mode=remove_mode,
+                            exclude_ids=exclude_ids, remove_center=remove_center,
                             output_spacing=moving_spacing)
     print("Moving volume shape", seg_moving.shape)
 
