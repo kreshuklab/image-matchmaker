@@ -1,12 +1,12 @@
 fixed_image:
-  source_path: "examples/data/platy1_muscles_stardist_fixed.tif"
-  path: "examples/data/deformed_data/platy1_muscles_stardist_fixed_rotated.tif"
+  source_path: "example_data/platy1_muscles_stardist_fixed.tif"
+  path: "example_data/deformed_data/platy1_muscles_stardist_fixed_rotated.tif"
   x_res: 1
   y_res: 1
   z_res: 1
 
 moving_image:
-  path: "examples/data/deformed_data/platy1_muscles_stardist_elastic.tif"
+  path: "example_data/deformed_data/platy1_muscles_stardist_elastic.tif"
   x_res: 1
   y_res: 1
   z_res: 1
