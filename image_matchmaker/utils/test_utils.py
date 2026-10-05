@@ -59,103 +59,106 @@ def download_file(path, url):
         print(f"and save it to:\n{path}")
 
 
-def compute_centroids(mask, exclude_id=None):
+def compute_centroids(mask, exclude_id=None, ids=None):
     """
-    Compute centroids for all instance IDs within a segmentation mask.
-
-    Each non-excluded instance ID is treated as a separate label, and the
-    centroid is computed as the mean coordinate of all voxels/pixels
-    belonging to that label.
+    Compute centroids for selected instance IDs within a segmentation mask.
 
     Args:
-        mask (np.ndarray): Segmentation mask of arbitrary dimension.
-        exclude_id (int | None): Optional label ID to ignore (e.g. background).
+        mask (np.ndarray): Segmentation mask.
+        exclude_id (int | None): Optional label ID to ignore.
+        ids (list[int] | None): Optional instance IDs to evaluate.
 
     Returns:
         tuple[np.ndarray, np.ndarray]:
-            - centroids (N x D array): Centroid coordinates for each label.
-            - valid_ids (N array): Corresponding label IDs for each centroid.
+            - centroids (N x D array): Centroid coordinates.
+            - valid_ids (N array): Corresponding instance IDs.
     """
-
-    ids = np.unique(mask)
     if exclude_id is not None:
         assert isinstance(exclude_id, int), '`exclude_id` should be an integer ID'
+
+    if ids is not None:
+        assert all(isinstance(i, (int, np.integer)) for i in ids), \
+            '`ids` should be a list of integers'
+        ids = np.asarray(ids, dtype=int)
+        ids = np.unique(ids)
+    else:
+        ids = np.unique(mask)
+
+    if exclude_id is not None:
         ids = ids[ids != exclude_id]
 
     if len(ids) == 0:
         return np.zeros((0, mask.ndim)), np.zeros((0,), dtype=int)
 
-    if exclude_id is not None:
-        coords = np.argwhere(mask != exclude_id)
-        labels = mask[mask != exclude_id]
-    else:
-        coords = np.argwhere(np.ones_like(mask, dtype=bool))
-        labels = mask.ravel()
+    valid = np.isin(mask, ids)
+    coords = np.argwhere(valid)
+    labels = mask[valid]
 
-    labels = labels.astype(int)
+    unique_ids, inverse = np.unique(labels, return_inverse=True)
 
-    max_id = int(labels.max())
-    sums = np.zeros((max_id + 1, mask.ndim), dtype=np.float64)
-    np.add.at(sums, labels, coords)
+    sums = np.zeros((len(unique_ids), mask.ndim), dtype=np.float64)
+    np.add.at(sums, inverse, coords)
 
-    counts = np.bincount(labels)
-    valid = counts > 0
-    centroids = sums[valid] / counts[valid, None]
-    valid_ids = np.arange(len(counts))[valid]
+    counts = np.bincount(inverse)
+    centroids = sums / counts[:, None]
 
-    # Only keep IDs that actually exist in `ids`
-    mask_valid = np.isin(valid_ids, ids)
-    return centroids[mask_valid], valid_ids[mask_valid]
+    return centroids, unique_ids
 
 
-def compute_centroid_distances(mask1, mask2, exclude_id=None, matching=None,
-                               match1_idx=None, match2_idx=None,):
+def compute_centroid_distances(mask1, mask2, ids=None, exclude_id=None, matching=False,
+        match1_idx=None, match2_idx=None,):
     """
     Compute centroid distances between two segmentation masks.
 
-    If `matching` is None, distances are computed only for shared instance IDs.
-    Otherwise, distances are computed using the provided matched index pairs
-    (`match1_idx`, `match2_idx`).
+    If matching=False, `ids` specifies the instance IDs to evaluate, and the
+    same IDs must exist in both masks.
+
+    If matching=True, `match1_idx` and `match2_idx` specify corresponding
+    centroid indices between mask1 and mask2. In this case, `ids` is ignored.
 
     Args:
         mask1 (np.ndarray): First segmentation mask.
         mask2 (np.ndarray): Second segmentation mask.
-        exclude_id (int | None): Optional label to ignore (e.g., background).
-        matching (bool | None): Whether matched index pairs are provided.
-        match1_idx (np.ndarray | None): Indices of matched instances in mask1.
-        match2_idx (np.ndarray | None): Indices of matched instances in mask2.
+        ids (list[int] | None): Instance IDs to evaluate when matching=False.
+        exclude_id (int | None): Optional label ID to ignore.
+        matching (bool): Whether explicit centroid matching is provided.
+        match1_idx (np.ndarray | None): Matched centroid indices in mask1.
+        match2_idx (np.ndarray | None): Matched centroid indices in mask2.
 
     Returns:
-        dict: Contains mean, median, and maximum centroid distance values.
+        np.ndarray: Centroid distance for each evaluated instance.
     """
-    exclude_id = exclude_id if matching is None else None
+    assert isinstance(matching, bool), '`matching` should be a boolean'
 
-    mask1_centroids, mask1_ids = compute_centroids(mask1, exclude_id=exclude_id)
-    mask2_centroids, mask2_ids = compute_centroids(mask2, exclude_id=exclude_id)
+    if matching:
+        assert match1_idx is not None and match2_idx is not None, \
+            '`match1_idx` and `match2_idx` are required when matching=True'
+        assert len(match1_idx) == len(match2_idx), \
+            '`match1_idx` and `match2_idx` should have the same length'
 
-    if matching is None:
-        shared_ids = np.intersect1d(mask1_ids, mask2_ids)
-        if len(shared_ids) > 0:
-            mask1_idx = np.isin(mask1_ids, shared_ids)
-            mask2_idx = np.isin(mask2_ids, shared_ids)
-            mask1_c = mask1_centroids[mask1_idx]
-            mask2_c = mask2_centroids[mask2_idx]
-            centroid_distances = np.linalg.norm(mask1_c - mask2_c, axis=1)
-        else:
-            raise RuntimeError("No shared id found.")
+        centroids1, ids1 = compute_centroids(mask1, exclude_id=exclude_id)
+        centroids2, ids2 = compute_centroids(mask2, exclude_id=exclude_id)
+
+        match1_idx = np.asarray(match1_idx, dtype=int)
+        match2_idx = np.asarray(match2_idx, dtype=int)
+
+        if (
+            np.any(match1_idx < 0) or np.any(match1_idx >= len(centroids1)) or
+            np.any(match2_idx < 0) or np.any(match2_idx >= len(centroids2))
+        ):
+            raise IndexError("Matched centroid index is out of range.")
+
+        centroids1 = centroids1[match1_idx]
+        centroids2 = centroids2[match2_idx]
 
     else:
-        assert match1_idx is not None and match2_idx is not None
+        centroids1, ids1 = compute_centroids(mask1, exclude_id=exclude_id, ids=ids)
+        centroids2, ids2 = compute_centroids(mask2, exclude_id=exclude_id, ids=ids)
 
-        centroid_distances = []
-        for idx1, idx2 in zip(match1_idx, match2_idx):
-            c1 = mask1_centroids[idx1]
-            c2 = mask2_centroids[idx2]
-            centroid_distances.append(np.linalg.norm(c1 - c2))
+        if not np.array_equal(ids1, ids2):
+            raise ValueError("Instance IDs do not match between mask1 and mask2.")
 
-        centroid_distances = np.array(centroid_distances)
-
-    return centroid_distances
+    return np.linalg.norm(centroids1 - centroids2, axis=1)
 
 
 def check_no_new_ids(vol1, vol2):
