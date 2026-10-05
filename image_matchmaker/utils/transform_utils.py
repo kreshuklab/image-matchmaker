@@ -105,22 +105,7 @@ def resample_volume(img, old_spacing, new_spacing, order=0):
     return zoom(img, scale, order=order)
 
 
-def get_rotated_shape(img, rotation_matrix, gc, spacing, spacing_out=None):
-    """
-    Compute the extent of a volume after rotating it around its centre ``gc``.
-
-    The extent is symmetric around ``gc``, so a volume placed with ``gc`` at
-    the output centre always fits, and the result does not depend on the sign
-    of the principal axes. The shape is odd, so ``new_shape // 2`` is the exact
-    centre and 180 degree flips around it keep ``gc`` in place.
-
-    Returns
-    -------
-    new_shape : numpy.ndarray
-        Output shape in voxels of ``spacing_out``.
-    half_extent : numpy.ndarray
-        Largest distance from ``gc`` to a rotated corner along each output axis.
-    """
+def get_rotated_shape(img, rotation_matrix, spacing, spacing_out=None):
     if spacing_out is None:
         spacing_out = spacing
 
@@ -138,18 +123,21 @@ def get_rotated_shape(img, rotation_matrix, gc, spacing, spacing_out=None):
         [dz, dy, dx]
     ], dtype=np.float32)
 
-    corners = (corners - gc) * spacing
+    corners *= spacing
 
     # Step 2: Apply the rotation matrix
     rotated_corners = corners @ rotation_matrix[0:3, 0:3]  # Apply rotation
 
     rotated_corners /= spacing_out
 
-    # Step 3: Calculate the new shape
-    half_extent = np.abs(rotated_corners).max(axis=0)
-    new_shape = 2 * np.ceil(half_extent).astype(int) + 1
+    # Step 3: Find min and max of the rotated corners
+    min_coords = rotated_corners.min(axis=0)
+    max_coords = rotated_corners.max(axis=0)
 
-    return new_shape, half_extent
+    # Step 4: Calculate the new shape
+    new_shape = (np.ceil(max_coords - min_coords).astype(int))
+
+    return new_shape, min_coords, max_coords
 
 
 def get_translation_matrix(translation):
@@ -164,7 +152,7 @@ def get_rotation_matrix(R):
     return M
 
 
-def get_transformation_matrix(img, gc, Vt, spacing, img_ref=None, gc_ref=None, Vt_ref=None,
+def get_transformation_matrix(img, gc, Vt, spacing, img_ref=None, Vt_ref=None,
                               spacing_ref=None, spacing_out=None):
     """
     Build the affine matrix that centers and rotates a volume onto its
@@ -187,8 +175,6 @@ def get_transformation_matrix(img, gc, Vt, spacing, img_ref=None, gc_ref=None, V
         Voxel spacing of ``img``.
     img_ref : numpy.ndarray, optional
         Reference volume used to compute a common output shape.
-    gc_ref : numpy.ndarray, optional
-        Centre of mass of the reference volume.
     Vt_ref : numpy.ndarray, optional
         Principal-axis rotation of the reference volume.
     spacing_ref : sequence of float, optional
@@ -216,12 +202,14 @@ def get_transformation_matrix(img, gc, Vt, spacing, img_ref=None, gc_ref=None, V
     rot_in = rot.copy()
 
     # 3. get new shape
-    new_shape, half_extent = get_rotated_shape(img, rot_in, gc, spacing, spacing_out)
+    new_shape, min_coords, max_coords = get_rotated_shape(img, rot_in, spacing, spacing_out)
     if img_ref is not None:
-        assert gc_ref is not None and Vt_ref is not None
+        assert Vt_ref is not None
         rot_ref = get_rotation_matrix(Vt_ref.T)
-        _, half_extent_ref = get_rotated_shape(img_ref, rot_ref, gc_ref, spacing_ref, spacing_out_ref)
-        new_shape = 2 * np.ceil(np.maximum(half_extent, half_extent_ref)).astype(int) + 1
+        _, min_coords_ref, max_coords_ref = get_rotated_shape(img_ref, rot_ref, spacing_ref, spacing_out_ref)
+        union_min = np.minimum(min_coords, min_coords_ref)
+        union_max = np.maximum(max_coords, max_coords_ref)
+        new_shape = np.ceil(union_max - union_min).astype(int)
     # 4. center image on new shape
     new_shape_center = np.array(new_shape) // 2
     center_to_new_shape = get_translation_matrix(-new_shape_center)
@@ -238,13 +226,12 @@ def get_transformation_matrix(img, gc, Vt, spacing, img_ref=None, gc_ref=None, V
 
 
 def get_axis_orient_matrix(img, axis_order):
-    img_center = 0.5 * (np.array(img.shape) - 1)
     # 1. center image on origin
-    center_to_origin = get_translation_matrix(img_center)
+    center_to_origin = get_translation_matrix(np.array(img.shape) // 2)
     # 2. rotate image
     R = tf3d.euler.euler2mat(np.pi, 0, 0, f"s{axis_order}")
     rot = get_rotation_matrix(R)
-    center_to_new_shape = get_translation_matrix(-img_center)
+    center_to_new_shape = get_translation_matrix(-np.array(img.shape) // 2)
     # 5. combine all transforms: get transformation matrix
     T = center_to_origin @ rot @ center_to_new_shape
     return T
