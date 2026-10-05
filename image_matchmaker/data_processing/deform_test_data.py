@@ -1,4 +1,3 @@
-import yaml
 import numpy as np
 import tifffile as tif
 from pathlib import Path
@@ -6,9 +5,17 @@ import transforms3d as tf3d
 from scipy.ndimage import zoom
 from skimage.filters import gaussian
 
-from image_matchmaker.utils import (get_transformation_matrix, rotate_img, write_volume,
-                                plot_three_slices, plot_overlay, grid_sample3d, load_config,
-                                crop_to_bbox, resample_volume)
+from image_matchmaker.utils import (
+    get_transformation_matrix,
+    rotate_img,
+    write_volume,
+    plot_three_slices,
+    plot_overlay,
+    grid_sample3d,
+    load_config,
+    crop_to_bbox,
+    resample_volume,
+)
 
 
 def remove_instances(seg, prob=0.05, seed=None):
@@ -32,11 +39,12 @@ def remove_instances(seg, prob=0.05, seed=None):
     return seg
 
 
-def save_volume(path, array, key="seg", chunks=(128, 512, 512), resolution=[1,1,1],
-                save_tif=True):
+def save_volume(
+    path, array, key="seg", chunks=(128, 512, 512), resolution=[1, 1, 1], save_tif=True
+):
     assert path.endswith(".n5")
 
-    write_volume(f=path, arr=array, key=key, chunks=chunks, attrs={"resolution":resolution,},)
+    write_volume(f=path, arr=array, key=key, chunks=chunks, attrs={"resolution": resolution, }, )
 
     if save_tif:
         tif.imwrite(path.replace(".n5", ".tif"), array)
@@ -63,8 +71,15 @@ def rigid_deform(fixed, angles, voxel_spacing=None):
     return moving
 
 
-def elastic_deform(volume, alpha=(1.,1.,1.), sigma=None, grid_spacing=16, mode="nearest",
-                    align_corners=False, seed=None,):
+def elastic_deform(
+    volume,
+    alpha=(1.0, 1.0, 1.0),
+    sigma=None,
+    grid_spacing=16,
+    mode="nearest",
+    align_corners=False,
+    seed=None,
+):
     """
     Apply elastic deformation to a 3D volume.
 
@@ -137,9 +152,20 @@ def elastic_deform(volume, alpha=(1.,1.,1.), sigma=None, grid_spacing=16, mode="
     return sampled.astype(volume.dtype)
 
 
-def deform_test_data(cfg_path="", config=None, enable_aniso=False, enable_elastic=False,
-                        alpha=0.9, sigma=2, grid_spacing=16, rotate_angles_fixed=[20,345,30],
-                        rotate_angles_moving=[155,30,65], remove_p=0.05, seed=42, visualize=True):
+def deform_test_data(
+    cfg_path="",
+    config=None,
+    enable_aniso=False,
+    enable_elastic=False,
+    alpha=0.9,
+    sigma=2,
+    grid_spacing=16,
+    rotate_angles_fixed=[20, 345, 30],
+    rotate_angles_moving=[155, 30, 65],
+    remove_p=0.05,
+    seed=42,
+    visualize=True,
+):
     if config is None:
         config = load_config(cfg_path)
 
@@ -184,5 +210,6 @@ def deform_test_data(cfg_path="", config=None, enable_aniso=False, enable_elasti
 
 
 if __name__ == "__main__":
-    deform_test_data(cfg_path="examples/register_config_test_rigid.yaml")
-    deform_test_data(cfg_path="examples/register_config_test_elastic.yaml", enable_elastic=True)
+    cfg_dir = Path(__file__).parents[1] / "configs"
+    deform_test_data(cfg_path=cfg_dir / "register_config_test_rigid.yaml")
+    deform_test_data(cfg_path=cfg_dir / "register_config_test_elastic.yaml", enable_elastic=True)
