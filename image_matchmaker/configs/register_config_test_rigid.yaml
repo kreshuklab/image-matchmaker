@@ -11,7 +11,7 @@ moving_image:
   y_res: 1
   z_res: 1
   ref_path: "example_data/test_data/moving_pointset_aligned.tif"
-  ref_url: "https://github.com/kreshuklab/image-matchmaker/releases/download/test_data-v1.1/moving_pointset_aligned.tif"
+  ref_url: "https://github.com/kreshuklab/image-matchmaker/releases/download/test_data-v1.2/moving_pointset_aligned.tif"
 
 log_dir: "data/test_rigid_registration"
 
