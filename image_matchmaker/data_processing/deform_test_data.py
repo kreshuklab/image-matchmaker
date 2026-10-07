@@ -1,3 +1,4 @@
+import logging
 import numpy as np
 from pathlib import Path
 import transforms3d as tf3d
@@ -7,7 +8,7 @@ from skimage.filters import gaussian
 from image_matchmaker.utils import (get_transformation_matrix, rotate_img, load_data, save_data,
                                 plot_three_slices, plot_overlay, grid_sample3d, load_config,
                                 crop_to_bbox, resample_volume, get_spacings, get_paths,
-                                plot_removal, pad_to_common_bbox)
+                                plot_removal, pad_to_common_bbox, setup_logging)
 
 
 def remove_instances(seg, fraction=0.05, mode="random_instances", exclude_ids=[],
@@ -35,13 +36,13 @@ def remove_instances(seg, fraction=0.05, mode="random_instances", exclude_ids=[]
 
     instance_ids = np.unique(seg)
     num_instances = len(instance_ids)
-    print(f"Number of instances before removal: {num_instances}")
+    logging.info(f"Number of instances before removal: {num_instances}")
 
     if mode in ("random_instances", "clustered_instances"):
         instance_ids = instance_ids[instance_ids != 0]
 
         num_to_remove = int(len(instance_ids) * fraction)
-        print(f"Number of instances to remove: {num_to_remove}")
+        logging.info(f"Number of instances to remove: {num_to_remove}")
         if num_to_remove == 0:
             return seg.copy()
 
@@ -57,7 +58,7 @@ def remove_instances(seg, fraction=0.05, mode="random_instances", exclude_ids=[]
             if center is None:
                 coords = np.argwhere(seg > 0)
                 center = coords[np.random.randint(len(coords))]
-            print("Center of removal:", center)
+            logging.info(f"Center of removal: {center}")
 
             instance_centers = np.asarray(
                 center_of_mass(seg > 0, seg, instance_ids)
@@ -103,7 +104,7 @@ def remove_instances(seg, fraction=0.05, mode="random_instances", exclude_ids=[]
                 )
 
             if not np.any(mask & excluded_mask):
-                print("Center of removal:", center)
+                logging.info(f"Center of removal: {center}")
                 break
         else:
             if given_center:
@@ -117,7 +118,7 @@ def remove_instances(seg, fraction=0.05, mode="random_instances", exclude_ids=[]
                     f"without removing excluded instances."
                 )
 
-        print(f"Removed {np.sum(mask):,} voxels")
+        logging.info(f"Removed {np.sum(mask):,} voxels")
 
     else:
         raise NotImplementedError(f"Unsupported removal mode: {mode}")
@@ -126,8 +127,9 @@ def remove_instances(seg, fraction=0.05, mode="random_instances", exclude_ids=[]
     result[mask] = 0
 
     num_instances_left = len(np.unique(result))
-    print(f"Number of instances left: {num_instances_left}")
-    print(f"Fraction of instances that are removed: {1-num_instances_left/num_instances:.2%}")
+    logging.info(f"Number of instances left: {num_instances_left}")
+    logging.info(f"Number of instances removed: {num_instances-num_instances_left}")
+    logging.info(f"Fraction of instances that are removed: {1-num_instances_left/num_instances:.2%}")
 
     return result
 
@@ -265,35 +267,37 @@ def deform_test_data(cfg_path="", config=None, enable_elastic=False, alpha=0.9,
     if seed is not None:
         np.random.seed(seed)
 
-    print("Removal mode:", remove_mode)
     data_dir = Path(config["fixed_image"]["path"]).parent
     data_dir.mkdir(parents=True, exist_ok=True)
+
+    setup_logging(data_dir, "deform_test_data.log")
+    logging.info(f"Removal mode: {remove_mode}")
 
     fixed_spacing, moving_spacing = get_spacings(config)
     fixed_attrs = {"resolution": fixed_spacing,}
     moving_attrs = {"resolution": moving_spacing,}
-    print("Fixed spacing:", fixed_spacing)
-    print("Moving spacing:", moving_spacing)
+    logging.info(f"Fixed spacing: {fixed_spacing}")
+    logging.info(f"Moving spacing: {moving_spacing}")
 
     seg_fixed = load_data(config["fixed_image"]["source_path"])
     seg_moving = seg_fixed.copy()
 
     seg_fixed, _ = deform_data(seg_fixed, rotation=rotate_angles_fixed, output_spacing=fixed_spacing)
-    print("Fixed volume shape", seg_fixed.shape)
+    logging.info(f"Fixed volume shape: {seg_fixed.shape}")
 
     if visualize:
         seg_moving_vis, bbox_vis = deform_data(seg_moving, elastic=enable_elastic, alpha=alpha,
                                                 sigma=sigma, grid_spacing=grid_spacing,
                                                 rotation=rotate_angles_moving, remove_fraction=0.,
                                                 output_spacing=moving_spacing)
-        print("Moving visualized volume shape", seg_moving_vis.shape)
+        logging.info(f"Moving visualized volume shape: {seg_moving_vis.shape}")
 
     seg_moving, bbox_rm = deform_data(seg_moving, elastic=enable_elastic, alpha=alpha, sigma=sigma,
                             grid_spacing=grid_spacing, rotation=rotate_angles_moving,
                             remove_fraction=remove_fraction, remove_mode=remove_mode,
                             exclude_ids=exclude_ids, remove_center=remove_center,
                             output_spacing=moving_spacing)
-    print("Moving volume shape", seg_moving.shape)
+    logging.info(f"Moving volume shape: {seg_moving.shape}")
 
     fixed_path, moving_path = get_paths(config)
     if save_as_n5:
