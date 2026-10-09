@@ -1,17 +1,8 @@
 import itk
 import logging
 import numpy as np
-from pathlib import Path
 from contextlib import ExitStack
 from importlib.resources import as_file, files
-
-
-def initial_alignment(ventral_img_np, dorsal_img_np):
-    """
-    Place samples close enough that elastix registration works. In this case it's just a rotation around Y axis.
-    """
-    dorsal_img_np_rotated = dorsal_img_np[:, ::-1, :, ::-1]
-    return ventral_img_np, dorsal_img_np_rotated
 
 
 def itk_scalar_img(img: np.array, resolution, ch=0):
@@ -116,23 +107,6 @@ def elastix_pointset_registration(
     result_transform_parameters = elastix_object.GetTransformParameterObject()
 
     return result_image, result_transform_parameters
-
-
-def serialize_parameter_object(parameter_object, prefix, write_dir):
-    write_dir = Path(write_dir)
-    for index in range(parameter_object.GetNumberOfParameterMaps()):
-        parameter_map = parameter_object.GetParameterMap(index)
-        parameter_object.WriteParameterFile(
-            parameter_map, write_dir / f"{prefix}_{index}.txt"
-        )
-
-
-def deserialize_parameter_object(prefix, cur_dir=Path("./")):
-    parameter_files = sorted(list(cur_dir.glob(f"{prefix}*.txt")))
-    parameter_files = [str(fname) for fname in parameter_files]
-    parameter_object = itk.ParameterObject.New()
-    parameter_object.ReadParameterFile(parameter_files)
-    return parameter_object
 
 
 def create_transformix_object(transform_parameter_object):

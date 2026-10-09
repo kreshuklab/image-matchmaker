@@ -4,8 +4,8 @@ import numpy as np
 from pathlib import Path
 import matplotlib.pyplot as plt
 
-from image_matchmaker.data_processing.data import create_point_cloud
 from image_matchmaker.utils import (
+    create_point_cloud,
     get_transformation_matrix,
     prealignment_spacing,
     rotate_img,
@@ -45,6 +45,13 @@ def get_SVD_transform(img, spacing, save_path=None):
 
     logging.info("Run SVD ...")
     U, S, Vt = np.linalg.svd(pos_c, full_matrices=False)
+
+    # Canonicalize SVD signs for reproducible PCA orientation
+    max_abs_cols = np.argmax(np.abs(U), axis=0)
+    signs = np.sign(U[max_abs_cols, np.arange(U.shape[1])])
+    U *= signs
+    Vt *= signs[:, np.newaxis]
+
     logging.info("U")
     logging.info(str(U))
     logging.info("S")
@@ -267,6 +274,7 @@ def prealign_samples(fixed_img, moving_img, fixed_spacing, moving_spacing, new_s
         Vt_fixed,
         fixed_spacing,
         img_ref=moving_img,
+        gc_ref=gc_moving,
         Vt_ref=Vt_moving,
         spacing_ref=moving_spacing,
         spacing_out=new_spacing,
@@ -277,6 +285,7 @@ def prealign_samples(fixed_img, moving_img, fixed_spacing, moving_spacing, new_s
         Vt_moving,
         moving_spacing,
         img_ref=fixed_img,
+        gc_ref=gc_fixed,
         Vt_ref=Vt_fixed,
         spacing_ref=fixed_spacing,
         spacing_out=new_spacing,

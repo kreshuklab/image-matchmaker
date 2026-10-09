@@ -108,17 +108,6 @@ def write_volume(f, arr: np.array, key, n5_exists=True, chunks=(1, 512, 512), at
     """
     Write an array to a dataset in an n5/zarr container.
 
-    Creates the dataset (gzip-compressed) if it does not exist, otherwise
-    overwrites it.
-
-    Notes
-    -----
-    `n5_exists` is currently determined by the Snakemake workflow rather
-    than inside this function. This is a temporary workaround: checking
-    `Path(f).exists()` here does not work reliably when this function is
-    called from Snakemake, whereas passing the value from the Snakefile
-    resolves the issue.
-
     Parameters
     ----------
     f : z5py.File or str or pathlib.Path
