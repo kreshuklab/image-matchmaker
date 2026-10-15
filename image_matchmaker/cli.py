@@ -9,6 +9,9 @@ def workflow_options(func):
     func = click.option("--cores", default=8, type=int, show_default=True,)(func)
     func = click.option("--work-dir", default=".", type=click.Path(file_okay=False),
                         show_default=True,)(func)
+    func = click.option("--unlock", is_flag=True, help="Unlock the working directory.")(func)
+    func = click.option("--rerun-incomplete", is_flag=True,
+                        help="Rerun jobs with incomplete output files.",)(func)
 
     return func
 
@@ -20,23 +23,23 @@ def main():
 
 @main.command()
 @workflow_options
-def register(configfile, cores, work_dir):
+def register(configfile, cores, work_dir, unlock, rerun_incomplete):
     """Run registration."""
-    run_snakemake("register", configfile, cores, work_dir)
+    run_snakemake("register", configfile, cores, work_dir, unlock, rerun_incomplete)
 
 
 @main.command()
 @workflow_options
-def apply(configfile, cores, work_dir):
+def apply(configfile, cores, work_dir, unlock, rerun_incomplete):
     """Apply a registration transform."""
-    run_snakemake("apply", configfile, cores, work_dir)
+    run_snakemake("apply", configfile, cores, work_dir, unlock, rerun_incomplete)
 
 
-@main.command()
+@main.command("optimize-cpd")
 @workflow_options
-def optimize_cpd(configfile, cores, work_dir):
+def optimize_cpd(configfile, cores, work_dir, unlock, rerun_incomplete):
     """Run CPD optimization."""
-    run_snakemake("optimize-cpd", configfile, cores, work_dir)
+    run_snakemake("optimize-cpd", configfile, cores, work_dir, unlock, rerun_incomplete)
 
 
 if __name__ == "__main__":

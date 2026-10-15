@@ -10,7 +10,8 @@ WORKFLOWS = {
 }
 
 
-def run_snakemake(workflow, configfile, cores=8, work_dir="."):
+def run_snakemake(workflow, configfile, cores=8, work_dir=".", unlock=False,
+                    rerun_incomplete=False,):
     if workflow not in WORKFLOWS:
         raise ValueError(f"Unknown workflow: {workflow}")
 
@@ -19,15 +20,16 @@ def run_snakemake(workflow, configfile, cores=8, work_dir="."):
     )
 
     with as_file(resource) as snakefile:
-        subprocess.run(
-            [
-                sys.executable,
-                "-m",
-                "snakemake",
-                "--snakefile", str(snakefile),
-                "--configfile", str(configfile),
-                "--directory", str(work_dir),
-                "--cores", str(cores),
-            ],
-            check=True,
-        )
+        cmd = [
+            sys.executable, "-m", "snakemake",
+            "--snakefile", str(snakefile),
+            "--configfile", str(configfile),
+            "--directory", str(work_dir),
+            "--cores", str(cores),
+        ]
+        if unlock:
+            cmd.append("--unlock")
+        if rerun_incomplete:
+            cmd.append("--rerun-incomplete")
+
+        subprocess.run(cmd, check=True)
