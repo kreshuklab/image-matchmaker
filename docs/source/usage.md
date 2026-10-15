@@ -12,15 +12,15 @@ Image-Matchmaker can be used in three ways:
 This is the recommended way to run image-matchmaker and is covered in the
 {doc}`Quick Start <quickstart>`. Activate the conda environment first
 (e.g. `conda activate imm_env`); the workflows do not manage the environment
-for you. `--configfile` is required — the workflows no longer ship with a default
+for you. `--config` is required — the workflows no longer ship with a default
 config. The two workflows are:
 
 ```bash
 # full registration
-snakemake -s workflows/registration.smk --configfile <config.yaml> --cores 8
+image-matchmaker register --config <config.yaml> --cores 8
 
 # apply the resulting transforms to other images
-snakemake -s workflows/apply_transform.smk --configfile <config.yaml> --cores 8
+image-matchmaker apply --config <config.yaml> --cores 8
 ```
 
 See the {doc}`Configuration Reference <config_ref>` for the config fields and
@@ -34,10 +34,10 @@ yourself. Every script accepts `--help` for the full list of options.
 
 The stages, in pipeline order:
 
-### `raw_to_n5.py` — convert inputs to `.n5`
+### `data_processing.raw_to_n5` — convert inputs to `.n5`
 
 ```bash
-python image_matchmaker/raw_to_n5.py --input_path <img> --output_path <out.n5> \
+python -m image_matchmaker.data_processing.raw_to_n5 --input_path <img> --output_path <out.n5> \
     --output_key input --log_dir <dir> --x_res 1 --y_res 1 --z_res 1
 ```
 
@@ -50,7 +50,7 @@ python image_matchmaker/raw_to_n5.py --input_path <img> --output_path <out.n5> \
 | `--log_dir` (`-log`) | yes | Log directory |
 | `--x_res` / `--y_res` / `--z_res` | no | Voxel resolution (default `1.0`); image is read as (C)ZYX |
 
-### `prealignment.py` — SVD pre-alignment
+### `registration.prealignment` — SVD pre-alignment
 
 | Option | Required | Description |
 |--------|----------|-------------|
@@ -63,7 +63,7 @@ python image_matchmaker/raw_to_n5.py --input_path <img> --output_path <out.n5> \
 | `--axis_orientation` | yes | How to orient the principal axes (`auto`, `IDENTITY`, `X`, `Y`, `Z`) |
 | `--save_tif` (`-tif`) | no | Also save a `.tif` (flag) |
 
-### `rigid_alignment_elastix.py` — rigid Elastix alignment
+### `registration.rigid_alignment_elastix` — rigid Elastix alignment
 
 | Option | Required | Description |
 |--------|----------|-------------|
@@ -72,7 +72,7 @@ python image_matchmaker/raw_to_n5.py --input_path <img> --output_path <out.n5> \
 | `--output_dir` (`-o`) / `--output_key` (`-ok`) | yes | Output directory and key |
 | `--save_tif` (`-tif`) | no | Also save a `.tif` (flag) |
 
-### `cpd_nonrigid_registration.py` — Coherent Point Drift
+### `registration.cpd_nonrigid_registration` — Coherent Point Drift
 
 | Option | Required | Description |
 |--------|----------|-------------|
@@ -81,7 +81,7 @@ python image_matchmaker/raw_to_n5.py --input_path <img> --output_path <out.n5> \
 | `--output_dir` (`-o`) | yes | Output directory |
 | `--w`, `--beta`, `--lmd`, `--maxiter` | yes | CPD parameters (see {doc}`Configuration Reference <config_ref>`) |
 
-### `match_pointclouds.py` — feature matching
+### `registration.match_pointclouds` — feature matching
 
 | Option | Required | Description |
 |--------|----------|-------------|
@@ -97,7 +97,7 @@ python image_matchmaker/raw_to_n5.py --input_path <img> --output_path <out.n5> \
 The matching plot (`point_matching`, with the xy, xz and yz projections as three panels)
 is written to a `plots/` subfolder of the output directory.
 
-### `elastix_deformable_pointset_registration.py` — deformable B-spline
+### `registration.elastix_deformable_pointset_registration` — deformable B-spline
 
 | Option | Required | Description |
 |--------|----------|-------------|
@@ -108,7 +108,7 @@ is written to a `plots/` subfolder of the output directory.
 | `--prealigned_output_key` (`-pok`) | yes | Output key for the result after applying the pre-alignment transform |
 | `--prealignment_transform` (`-transform`) | yes | Pre-alignment transform path |
 
-### `apply_transform.py` — apply transforms to other images
+### `registration.apply_transform` — apply transforms to other images
 
 | Option | Required | Description |
 |--------|----------|-------------|
@@ -144,16 +144,16 @@ so `projections=("xz",)` gives a single view. All of them write through `PLOT_FO
 the note below.
 
 Higher-level stage functions are available from their modules, e.g.
-`prealign_samples` / `run_prealignment` (`image_matchmaker.prealignment`),
-`run_cpd` (`image_matchmaker.cpd_nonrigid_registration`), and `run_matching`
-(`image_matchmaker.match_pointclouds`).
+`prealign_samples` / `run_prealignment` (`image_matchmaker.registration.prealignment`),
+`run_cpd` (`image_matchmaker.registration.cpd_nonrigid_registration`), and `run_matching`
+(`image_matchmaker.registration.match_pointclouds`).
 
 A minimal example — pre-align two masks and save an overlay:
 
 ```python
 import numpy as np
 
-from image_matchmaker.prealignment import prealign_samples
+from image_matchmaker.registration.prealignment import prealign_samples
 from image_matchmaker.utils import read_volume, plot_overlay, prealignment_spacing
 
 seg_fixed = read_volume("fixed_image.n5", key="seg")
@@ -177,6 +177,3 @@ plot_overlay(fixed_prealigned, moving_prealigned, save_path="overlay.pdf")
 `image_matchmaker.utils.vis.PLOT_FORMAT`, which is `"pdf"`. The suffix you pass in
 `save_path` is *rewritten* to it, so asking for `overlay.png` still writes `overlay.pdf`.
 Set `PLOT_FORMAT = None` to keep the suffix you pass.
-
-For complete, runnable examples of the Python API see `examples/registration_test.py`
-(pre-alignment). Refer to each function's source for its full signature.

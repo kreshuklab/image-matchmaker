@@ -2,9 +2,9 @@
 
 ## Registration config
 
-Configuration file passed to `workflows/registration.smk` via `--configfile`.
-See `examples/register_config_test_rigid.yaml` and
-`examples/register_config_test_elastic.yaml` for complete working examples.
+Configuration file passed to the registration workflow via `--config`.
+See `image_matchmaker/configs/register_config_test_rigid.yaml` and
+`image_matchmaker/configs/register_config_test_elastic.yaml` for complete working examples.
 
 ### `fixed_image` / `moving_image`
 
@@ -158,7 +158,8 @@ Name of the MoBIE dataset to create.
 
 ## Transform config
 
-Configuration file passed to `workflows/apply_transform.smk` via `--configfile`.
+Configuration file for the apply transform workflow, specified via `--config`.
+See `image_matchmaker/configs/register_config_test_rigid_apply_transform.yaml` for complete working examples.
 
 ### `fixed_image` (optional)
 

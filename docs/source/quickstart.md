@@ -26,22 +26,16 @@ You can either:
 ## 2. Run registration
 
 With the conda environment activated (e.g. `conda activate imm_env`), run the
-registration workflow. `--configfile` is required — there is no default config:
+registration workflow. `--config` is required — there is no default config:
 
 ```bash
-snakemake -s workflows/registration.smk \
-    --configfile /path/to/the/registration/config.yaml \
+image-matchmaker register \
+    --config /path/to/the/registration/config.yaml \
     --cores 8
 ```
 
 To try it immediately on the bundled example data, first generate the example data
-(see {doc}`Example Data <example_data>`) and then run the shipped config:
-
-```bash
-snakemake -s workflows/registration.smk \
-    --configfile examples/register_config_test_rigid.yaml \
-    --cores 8
-```
+(see {doc}`Example Data <example_data>`) and then run the shipped config.
 
 ### Registration config (example)
 
@@ -104,8 +98,8 @@ After registration finishes successfully, the resulting transforms can be applie
 Run:
 
 ```bash
-snakemake -s workflows/apply_transform.smk \
-    --configfile /path/to/the/transform/config.yaml \
+image-matchmaker apply \
+    --config /path/to/the/transform/config.yaml \
     --cores 8
 ```
 

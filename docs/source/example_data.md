@@ -1,16 +1,16 @@
 # Example data
 
 The repository ships a small example dataset and ready-made configuration files
-under `examples/`, so you can try the pipeline without preparing your own data.
+under `example_data/`, so you can try the pipeline without preparing your own data.
 The example data is committed directly to the repository (no git-lfs), so a plain
 `git clone` includes it.
 
 ## What is included
 
-- `examples/data/platy1_muscles_stardist_fixed.tif` — a base 3D instance
+- `example_data/platy1_muscles_stardist_fixed.tif` — a base 3D instance
   segmentation mask. The moving datasets and the `.n5` copies are generated locally
   by the deformation script below.
-- Ready-to-use registration configs in `examples/`:
+- Ready-to-use registration configs in `image_matchmaker/configs/`:
   - `register_config_test_rigid.yaml`
   - `register_config_test_elastic.yaml`
   - `register_config_test_aniso_rigid.yaml`
@@ -29,7 +29,7 @@ repository root:
 python examples/deform_test_data.py
 ```
 
-The script generates the following under `examples/data/deformed_data/`, each as
+The script generates the following under `example_data/deformed_data/`, each as
 both `.tif` and `.n5` (plus overlay plots):
 
 - a rotated fixed image (`platy1_muscles_stardist_fixed_rotated`)

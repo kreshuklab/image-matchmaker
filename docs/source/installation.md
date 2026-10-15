@@ -24,18 +24,18 @@ pytest -s
 ```
 
 This runs the full registration and apply-transform pipeline on test data using the
-rigid example configuration (`examples/register_config_test_rigid.yaml`), so it
+rigid example configuration (`image_matchmaker/configs/register_config_test_rigid.yaml`), so it
 takes a few minutes rather than finishing instantly. On the first run it also
 downloads reference data from the project's GitHub release, so an internet
 connection is required.
 
 If the download fails, download the
 reference data manually from the
-[release page](https://github.com/kreshuklab/image-matchmaker/releases/tag/test_data-v1.0)
+[release page](https://github.com/kreshuklab/image-matchmaker/releases/tag/test_data-v1.2)
 and place it under:
 
 ```text
-examples/data/test_data/
+example_data/test_data/
 ```
 
 To silence warnings during the test, append `-p no:warnings`:
