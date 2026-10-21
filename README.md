@@ -50,9 +50,9 @@ The `--config` option is required. See the [Quick Start](https://image-matchmake
 
 Full documentation is available at **https://image-matchmaker.readthedocs.io/**, including:
 
-- [Installation](https://image-matchmaker.readthedocs.io/en/latest/installation.html) — set up the conda environment.
+- [Installation](https://image-matchmaker.readthedocs.io/en/latest/installation.html) — install via pip or from source.
 - [Quickstart](https://image-matchmaker.readthedocs.io/en/latest/quickstart.html) — run your first registration.
-- [Usage](https://image-matchmaker.readthedocs.io/en/latest/usage.html) — Snakemake workflow, command-line scripts, and Python API.
+- [Usage](https://image-matchmaker.readthedocs.io/en/latest/usage.html) — CLI workflow, individual scripts, and Python API.
 - [Configuration reference](https://image-matchmaker.readthedocs.io/en/latest/config_ref.html) — registration and transform parameters.
 - [Outputs](https://image-matchmaker.readthedocs.io/en/latest/outputs.html) — files produced by each stage.
 - [Troubleshooting](https://image-matchmaker.readthedocs.io/en/latest/troubleshooting.html) — common issues and solutions.
