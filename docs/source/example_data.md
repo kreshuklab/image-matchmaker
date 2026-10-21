@@ -1,6 +1,6 @@
 # Example data
 
-Image Matchmaker provides example data and configuration files to help you try the registration pipeline without preparing your own data.
+Image-Matchmaker provides example data and configuration files to help you try the registration pipeline without preparing your own data.
 
 The availability of the example data depends on how you install the package:
 
