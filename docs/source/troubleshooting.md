@@ -12,14 +12,23 @@ The workflows no longer ship with a default config file, so `--config` must be
 passed on every run. Point it at your registration or transform config (see the
 {doc}`Quick Start <quickstart>`).
 
-### `command not found` / import errors when a rule runs
+### `command not found` or import errors
 
-The workflows no longer manage a conda environment per rule. Activate the
-environment yourself before invoking Snakemake:
+Make sure Image-Matchmaker is installed in the Python environment you are using.
+
+For a pip installation, activate the environment where you installed the package, if applicable. For a source installation, activate the development environment:
 
 ```bash
 conda activate imm_env
 ```
+
+Then check that the CLI is available:
+
+```bash
+image-matchmaker --help
+```
+
+If the command is still unavailable, reinstall the package in the active environment.
 
 ### `KeyError` when starting a run
 

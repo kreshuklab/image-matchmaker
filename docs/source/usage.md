@@ -2,18 +2,19 @@
 
 Image-Matchmaker can be used in three ways:
 
-1. **The Snakemake workflow** — run the whole pipeline from a config file
-   (recommended).
+1. **The CLI workflow** — run the whole pipeline from a config file (recommended).
 2. **Individual scripts** — run a single pipeline stage from the command line.
 3. **Python API** — import and call functions directly.
 
-## 1. Snakemake workflow (recommended)
+## 1. CLI workflow (recommended)
 
 This is the recommended way to run image-matchmaker and is covered in the
-{doc}`Quick Start <quickstart>`. Activate the conda environment first
-(e.g. `conda activate imm_env`); the workflows do not manage the environment
-for you. `--config` is required — the workflows no longer ship with a default
-config. The two workflows are:
+{doc}`Quick Start <quickstart>`. The CLI uses Snakemake internally to chain the
+pipeline steps together.
+
+If you installed Image-Matchmaker from source in a Conda environment, activate that environment before running the commands. For a pip installation, use the Python environment in which the package is installed.
+
+The `--config` option is required; no default configuration is provided. The available workflows are:
 
 ```bash
 # full registration
@@ -24,7 +25,7 @@ image-matchmaker apply --config <config.yaml> --cores 8
 ```
 
 See the {doc}`Configuration Reference <config_ref>` for the config fields and
-{doc}`Understanding the Outputs <outputs>` for what each run produces.
+{doc}`Understanding the Outputs <outputs>` for details about the results produced by each run.
 
 ## 2. Running individual scripts
 

@@ -50,7 +50,13 @@ maxiter: [100]
 
 ## Configuration
 
-The optimization is driven by `image_matchmaker/configs/cpd_optimization_config.yaml`. Key fields:
+The optimization requires a YAML configuration file. The example configuration `cpd_optimization_config.yaml` is included in the package and can be downloaded from the [GitHub Releases](https://github.com/kreshuklab/image-matchmaker/releases/tag/example_data) page.
+
+- **pip installation:** Download the configuration from the release assets and update its paths for your data.
+
+- **Installation from source:** Use `image_matchmaker/configs/cpd_optimization_config.yaml`.
+
+The optimization is driven by this configuration. Key fields:
 
 ```yaml
 fixed_image:
@@ -72,8 +78,8 @@ moving_image:
   z_res: 1.0
 
 landmarks:
-  fixed: "examples/data/fixed_landmarks.csv"
-  moving: "examples/data/moving_landmarks.csv"
+  fixed: "example_data/fixed_landmarks.csv"
+  moving: "example_data/moving_landmarks.csv"
 
 prealignment:
   axis_orientation: "auto"
@@ -85,6 +91,8 @@ optuna:
   search_space: "default"
   n_jobs: 1                                    # trials to evaluate in parallel
 ```
+
+Update the paths and parameters for your data before running the optimization.
 
 ### `optuna.search_space`
 
@@ -274,7 +282,7 @@ delete the sentinel and re-run snakemake, which reruns just the `plot_overlays` 
 
 ```bash
 rm {log_dir}/05_landmark_overlays/plot_overlays.done
-snakemake -s workflows/cpd_optimization.smk --configfile <your config> --cores 4
+image-matchmaker optimize-cpd --config <your config> --cores 4
 ```
 
 Deleting the plot files themselves does *not* trigger a rerun — snakemake tracks only the

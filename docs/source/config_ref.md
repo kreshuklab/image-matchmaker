@@ -2,7 +2,14 @@
 
 ## Registration config
 
-Configuration file passed to the registration workflow via `--config`.
+The registration workflow requires a YAML configuration file passed via `--config`.
+
+Example configurations are included in the package and are also available for download from the [GitHub Releases](https://github.com/kreshuklab/image-matchmaker/releases/tag/example_data) page.
+
+- **pip installation:** Download the example configuration files from the release assets and save them locally.
+
+- **Installation from source:** Use the configurations under `image_matchmaker/configs/`.
+
 See `image_matchmaker/configs/register_config_test_rigid.yaml` and
 `image_matchmaker/configs/register_config_test_elastic.yaml` for complete working examples.
 
@@ -17,8 +24,8 @@ Path to the input segmentation mask (`.tif`/`.tiff` or `.n5`).
 #### `source_path` (optional, only for tests)
 
 Path to the original, undeformed segmentation mask. Only used by the example
-data generation script (`examples/deform_test_data.py`) to synthesize deformed
-moving data; not required for a normal registration run.
+data generation script (`image_matchmaker/data_processing/deform_test_data.py`)
+to synthesize deformed moving data; not required for a normal registration run.
 
 #### `input_key` (optional)
 

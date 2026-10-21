@@ -25,14 +25,15 @@ You can either:
 
 ## 2. Run registration
 
-With the conda environment activated (e.g. `conda activate imm_env`), run the
-registration workflow. `--config` is required — there is no default config:
+Run the registration workflow using the configuration file:
 
 ```bash
-image-matchmaker register \
-    --config /path/to/the/registration/config.yaml \
-    --cores 8
+image-matchmaker register --config /path/to/config.yaml --cores 8
 ```
+
+The `--config` option is required. See the {doc}`Configuration Reference <config_ref>` for available settings and example configurations.
+
+If you installed Image-Matchmaker from source in a Conda environment, activate that environment before running the command.
 
 To try it immediately on the bundled example data, first generate the example data
 (see {doc}`Example Data <example_data>`) and then run the shipped config.
