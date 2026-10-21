@@ -31,7 +31,11 @@ Run the registration workflow using the configuration file:
 image-matchmaker register --config /path/to/config.yaml --cores 8
 ```
 
-The `--config` option is required. See the {doc}`Configuration Reference <config_ref>` for available settings and example configurations.
+The `--config` option is required. The `--cores` option sets the maximum number of CPU cores available to Snakemake and defaults to `8`.
+
+By default, the workflow runs in the current working directory (`--work-dir .`). Relative paths in the configuration are resolved against the working directory, so set `--work-dir` if you want the workflow to run elsewhere. Ensure that the paths in your configuration are valid relative to that directory.
+
+See the {doc}`Usage <usage>` page for all CLI options. See the {doc}`Configuration Reference <config_ref>` for available settings and example configurations.
 
 If you installed Image-Matchmaker from source in a Conda environment, activate that environment before running the command.
 

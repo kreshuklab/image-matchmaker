@@ -23,15 +23,18 @@ These configurations are referenced by the {doc}`Quick Start <quickstart>` and u
 
 ## Generate synthetic moving data
 
-The moving datasets are created by deforming the provided fixed segmentation mask. Run, from the
-repository root:
+The moving datasets are created by deforming the provided fixed segmentation mask.
+
+If you cloned the repository, run the following command from the repository root:
 
 ```bash
 python -m image_matchmaker.data_processing.deform_test_data
 ```
 
+If you installed Image-Matchmaker via pip, you can run the same command from your working directory, provided that the example configuration files and input data referenced by those configurations are present at the expected relative paths.
+
 The script generates the following under `example_data/deformed_data/`, each as
-both `.tif` and `.n5` (plus overlay plots):
+both `.tif` and `.n5`, along with overlay plots:
 
 - a rotated fixed image (`platy1_muscles_stardist_fixed_rotated`)
 - a rigidly transformed moving mask (`platy1_muscles_stardist_rigid`)

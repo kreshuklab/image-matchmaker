@@ -14,7 +14,7 @@ pipeline steps together.
 
 If you installed Image-Matchmaker from source in a Conda environment, activate that environment before running the commands. For a pip installation, use the Python environment in which the package is installed.
 
-The `--config` option is required; no default configuration is provided. The available workflows are:
+The available workflows are:
 
 ```bash
 # full registration
@@ -23,6 +23,31 @@ image-matchmaker register --config <config.yaml> --cores 8
 # apply the resulting transforms to other images
 image-matchmaker apply --config <config.yaml> --cores 8
 ```
+
+The `--config` option is required; no default configuration is provided.
+
+### Command-line options
+
+The same options are available for all three workflows.
+
+| Option | Default | Description |
+|---|---|---|
+| `--config` | Required | Path to an existing YAML configuration file. |
+| `--cores` | `8` | Maximum number of CPU cores Snakemake can use for the workflow. |
+| `--work-dir` | `.` | Working directory used by Snakemake. Relative paths in the configuration are resolved against this directory, not necessarily against the directory from which you launch the command. |
+| `--unlock` | Disabled | Unlock the Snakemake working directory after a previous run has left it locked. Use this to unlock the directory rather than to run the workflow. |
+| `--rerun-incomplete` | Disabled | Rerun jobs whose output files are marked as incomplete. |
+
+For example, to run the registration workflow with a specific working directory:
+
+```bash
+image-matchmaker register \
+    --config /path/to/config.yaml \
+    --work-dir /path/to/workdir \
+    --cores 8
+```
+
+In this example, relative input and output paths in the configuration are interpreted relative to `/path/to/workdir`. Choose a working directory that makes those paths resolve correctly. If you use relative paths for the configuration file itself, consider providing an absolute path to avoid ambiguity when changing the working directory.
 
 See the {doc}`Configuration Reference <config_ref>` for the config fields and
 {doc}`Understanding the Outputs <outputs>` for details about the results produced by each run.
