@@ -6,8 +6,7 @@ The Coherent Point Drift (CPD) step has four parameters (`w`, `beta`, `lmd`,
 minimizing the mean **Landmark Registration Error (LRE)** between user-provided
 corresponding landmarks after CPD.
 
-This is a **separate** Snakemake workflow (`workflows/cpd_optimization.smk`), not
-part of the main registration pipeline. Its output, `best_cpd_params.yaml`, is a
+This is a **separate** Snakemake workflow (`image_matchmaker/workflows/cpd_optimization.smk`), not part of the main registration pipeline. Its output, `best_cpd_params.yaml`, is a
 drop-in replacement for the `coherent_point_drift` section of your registration
 config.
 
@@ -51,7 +50,13 @@ maxiter: [100]
 
 ## Configuration
 
-The optimization is driven by `examples/cpd_optimization_config.yaml`. Key fields:
+The optimization requires a YAML configuration file. The example configuration `cpd_optimization_config.yaml` is included in the package and can be downloaded from the [GitHub Releases](https://github.com/kreshuklab/image-matchmaker/releases/tag/example_data) page.
+
+- **pip installation:** Download the configuration from the release assets and update its paths for your data.
+
+- **Installation from source:** Use `image_matchmaker/configs/cpd_optimization_config.yaml`.
+
+The optimization is driven by this configuration. Key fields:
 
 ```yaml
 fixed_image:
@@ -73,8 +78,8 @@ moving_image:
   z_res: 1.0
 
 landmarks:
-  fixed: "examples/data/fixed_landmarks.csv"
-  moving: "examples/data/moving_landmarks.csv"
+  fixed: "example_data/fixed_landmarks.csv"
+  moving: "example_data/moving_landmarks.csv"
 
 prealignment:
   axis_orientation: "auto"
@@ -86,6 +91,8 @@ optuna:
   search_space: "default"
   n_jobs: 1                                    # trials to evaluate in parallel
 ```
+
+Update the paths and parameters for your data before running the optimization.
 
 ### `optuna.search_space`
 
@@ -111,7 +118,7 @@ standalone: it writes the full search space to `<log_dir>/dataset_cpd_ranges.yam
 echoes the suggested `beta` values, which you can paste into `search_space`:
 
 ```bash
-python image_matchmaker/cpd_parameter_tuning/suggest_cpd_ranges.py \
+python -m image_matchmaker.cpd_parameter_tuning.suggest_cpd_ranges \
     --path <segmentation>.n5 \
     --key svd_prealignment \
     --log_dir <output_dir> \
@@ -151,8 +158,7 @@ filesystem:
 
 ```bash
 export LOCAL_TMPDIR=/scratch/$USER   # node-local disk
-snakemake -s workflows/cpd_optimization.smk \
-          --configfile examples/cpd_optimization_config.yaml \
+image-matchmaker optimize-cpd --config <config.yaml> \
           --cores 4                  # at least optuna.n_jobs
 ```
 
@@ -164,9 +170,7 @@ so an interrupted search resumes where it left off (`load_if_exists`).
 With the conda environment activated:
 
 ```bash
-snakemake -s workflows/cpd_optimization.smk \
-          --configfile examples/cpd_optimization_config.yaml \
-          --cores 4
+image-matchmaker optimize-cpd --config <config.yaml> --cores 4
 ```
 
 Give `--cores` at least `optuna.n_jobs` — with fewer, Snakemake scales the search down
@@ -278,7 +282,7 @@ delete the sentinel and re-run snakemake, which reruns just the `plot_overlays` 
 
 ```bash
 rm {log_dir}/05_landmark_overlays/plot_overlays.done
-snakemake -s workflows/cpd_optimization.smk --configfile <your config> --cores 4
+image-matchmaker optimize-cpd --config <your config> --cores 4
 ```
 
 Deleting the plot files themselves does *not* trigger a rerun — snakemake tracks only the
@@ -287,7 +291,7 @@ sentinel.
 The same script can be called directly, which is useful when tweaking a plot:
 
 ```bash
-python image_matchmaker/cpd_parameter_tuning/plot_overlays.py \
+python -m image_matchmaker.cpd_parameter_tuning.plot_overlays \
     --config <your config> \
     --fixed_path {log_dir}/<fixed_name>.n5 \
     --moving_path {log_dir}/<moving_name>.n5

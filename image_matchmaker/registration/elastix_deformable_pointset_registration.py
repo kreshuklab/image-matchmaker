@@ -20,7 +20,14 @@ from image_matchmaker.utils import (
     pcd_to_elastix,
     create_matched_pcds,
     setup_logging,
-    elastix_pointset_registration
+    elastix_pointset_registration,
+    get_parameter_map_paths,
+)
+
+DEFAULT_POINTSET_PARAMETER_MAPS = (
+    "ParameterMap_rigid_pointset.txt",
+    "ParameterMap_bspline_pointset_rough.txt",
+    "ParameterMap_bspline_pointset_fine.txt",
 )
 
 
@@ -31,6 +38,7 @@ def run_pointset_registration(
     moving_resolution,
     matched_label_df,
     output_dir,
+    parameter_map_paths=None,
 ):
     """
     Run the deformable B-spline registration stage from segmentation volumes.
@@ -103,12 +111,7 @@ def run_pointset_registration(
         f"{output_dir}/plots/deformable_pointset_alignment_before.png",
     )
 
-    SCRIPT_DIR = Path(__file__).resolve().parent
-    parameter_map_paths = [
-        f"{SCRIPT_DIR}/ParameterMap_rigid_pointset.txt",
-        f"{SCRIPT_DIR}/ParameterMap_bspline_pointset_rough.txt",
-        f"{SCRIPT_DIR}/ParameterMap_bspline_pointset_fine.txt",
-    ]
+    parameter_map_paths = get_parameter_map_paths(parameter_map_paths, DEFAULT_POINTSET_PARAMETER_MAPS)
 
     logging.info("Start registration")
     log_name = "elastix_log_deformable.log"
