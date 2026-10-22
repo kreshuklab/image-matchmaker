@@ -45,20 +45,20 @@ Visualization
 .. autofunction:: image_matchmaker.utils.plot_displacement_field
 .. autofunction:: image_matchmaker.utils.plot_matching_qc
 .. autofunction:: image_matchmaker.utils.plot_landmark_overlay
-.. autofunction:: image_matchmaker.mobie_export.export_to_mobie
+.. autofunction:: image_matchmaker.data_processing.mobie_export.export_to_mobie
 
 Pipeline stages
 ---------------
 
 The main entry function for each registration stage, in pipeline order:
 
-.. autofunction:: image_matchmaker.prealignment.run_prealignment
-.. autofunction:: image_matchmaker.rigid_alignment_elastix.run_rigid_alignment
-.. autofunction:: image_matchmaker.cpd_nonrigid_registration.run_cpd
-.. autofunction:: image_matchmaker.match_pointclouds.run_matching
-.. autofunction:: image_matchmaker.elastix_deformable_pointset_registration.run_pointset_registration
+.. autofunction:: image_matchmaker.registration.prealignment.run_prealignment
+.. autofunction:: image_matchmaker.registration.rigid_alignment_elastix.run_rigid_alignment
+.. autofunction:: image_matchmaker.registration.cpd_nonrigid_registration.run_cpd
+.. autofunction:: image_matchmaker.registration.match_pointclouds.run_matching
+.. autofunction:: image_matchmaker.registration.elastix_deformable_pointset_registration.run_pointset_registration
 
 Applying transforms
 -------------------
 
-.. autofunction:: image_matchmaker.apply_transform.apply_transform
+.. autofunction:: image_matchmaker.registration.apply_transform.apply_transform

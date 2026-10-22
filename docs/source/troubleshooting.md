@@ -8,18 +8,27 @@ Common problems and how to resolve them. For how to read the diagnostic plots, s
 
 ### `WorkflowError: No config file` / missing config values
 
-The workflows no longer ship with a default config file, so `--configfile` must be
+The workflows no longer ship with a default config file, so `--config` must be
 passed on every run. Point it at your registration or transform config (see the
 {doc}`Quick Start <quickstart>`).
 
-### `command not found` / import errors when a rule runs
+### `command not found` or import errors
 
-The workflows no longer manage a conda environment per rule. Activate the
-environment yourself before invoking Snakemake:
+Make sure Image-Matchmaker is installed in the Python environment you are using.
+
+For a pip installation, activate the environment where you installed the package, if applicable. For a source installation, activate the development environment:
 
 ```bash
 conda activate imm_env
 ```
+
+Then check that the CLI is available:
+
+```bash
+image-matchmaker --help
+```
+
+If the command is still unavailable, reinstall the package in the active environment.
 
 ### `KeyError` when starting a run
 
@@ -35,7 +44,7 @@ A previous Snakemake run was interrupted and left the working directory locked.
 Unlock it and re-run:
 
 ```bash
-snakemake -s workflows/registration.smk --configfile <config.yaml> --unlock
+image-matchmaker register --config <config.yaml> --unlock
 ```
 
 ### Run stops with incomplete output files
@@ -43,8 +52,7 @@ snakemake -s workflows/registration.smk --configfile <config.yaml> --unlock
 If a run was interrupted, Snakemake may flag partial outputs. Re-run with:
 
 ```bash
-snakemake -s workflows/registration.smk --configfile <config.yaml> \
-    --cores 8 --rerun-incomplete
+image-matchmaker register --config <config.yaml> --cores 8 --rerun-incomplete
 ```
 
 ### `pytest -s` fails to download reference data
@@ -52,8 +60,8 @@ snakemake -s workflows/registration.smk --configfile <config.yaml> \
 The test downloads reference data from the project's GitHub release on first run. If
 the download fails (e.g. no internet), download it
 manually from the
-[release page](https://github.com/kreshuklab/image-matchmaker/releases/tag/test_data-v1.0)
-and place it under `examples/data/test_data/` (see {doc}`Installation <installation>`).
+[release page](https://github.com/kreshuklab/image-matchmaker/releases/tag/test_data-v1.2)
+and place it under `example_data/test_data/` (see {doc}`Installation <installation>`).
 
 ### Feature matching runs out of memory
 
