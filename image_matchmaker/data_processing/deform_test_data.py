@@ -134,6 +134,68 @@ def remove_instances(seg, fraction=0.05, mode="random_instances", exclude_ids=[]
     return result
 
 
+def move_instances(seg, max_displacement, mode="translate_instances"):
+    """Randomly move instances or their individual voxels in a 3D segmentation.
+
+    Args:
+        seg: Input instance segmentation with background label 0.
+        max_displacement: Maximum absolute displacement in voxels, as a scalar
+            or (z, y, x) tuple.
+        mode: "translate_instances" or "move_voxels".
+
+    Returns:
+        Segmentation with moved foreground voxels.
+    """
+    logging.info("Movement mode: %s", mode)
+
+    max_displacement = np.asarray(max_displacement)
+    if max_displacement.ndim == 0:
+        max_displacement = np.repeat(max_displacement, 3)
+    if (max_displacement.shape != (3,) or
+            np.any(max_displacement < 0) or
+            np.any(max_displacement != max_displacement.astype(int))):
+        raise ValueError("max_displacement must be a non-negative integer or 3-tuple")
+
+    max_displacement = max_displacement.astype(int)
+    if mode not in ("translate_instances", "move_voxels"):
+        raise ValueError(f"Unsupported movement mode: {mode}")
+    if not np.any(max_displacement):
+        return seg.copy()
+
+    coords = np.argwhere(seg > 0)
+    logging.info("Foreground voxels before movement: %d", len(coords))
+    if len(coords) == 0:
+        return seg.copy()
+
+    labels = seg[tuple(coords.T)]
+
+    if mode == "translate_instances":
+        _, inverse = np.unique(labels, return_inverse=True)
+        shifts = np.random.randint(
+            -max_displacement, max_displacement + 1, size=(inverse.max() + 1, 3)
+        )
+        displacements = shifts[inverse]
+    else:  # mode == "move_voxels"
+        displacements = np.random.randint(
+            -max_displacement, max_displacement + 1, size=coords.shape
+        )
+
+    moved_coords = coords + displacements
+    valid = np.all((moved_coords >= 0) & (moved_coords < seg.shape), axis=1)
+    moved_coords, labels = moved_coords[valid], labels[valid]
+
+    # Resolve collisions by randomly selecting one voxel per destination.
+    order = np.random.permutation(len(moved_coords))
+    flat_indices = np.ravel_multi_index(moved_coords[order].T, seg.shape)
+    unique_indices, first = np.unique(flat_indices, return_index=True)
+
+    result = np.zeros_like(seg)
+    result.ravel()[unique_indices] = labels[order[first]]
+    logging.info("Foreground voxels after movement: %d", np.count_nonzero(result))
+
+    return result
+
+
 def rigid_deform(volume, angles, input_spacing):
     if not isinstance(angles, (list, tuple)):
         raise TypeError()
@@ -221,7 +283,8 @@ def elastic_deform(volume, alpha=(1.,1.,1.), sigma=None, grid_spacing=16, mode="
 
 
 def deform_data(volume, elastic=False, alpha=None, sigma=None, grid_spacing=None,
-                rotation=[0,0,0], remove_fraction=0., remove_mode="random_instances",
+                rotation=[0,0,0], move_max_displacement=None, move_mode="translate_instances",
+                remove_fraction=0., remove_mode="random_instances",
                 exclude_ids=[], remove_center=None, input_spacing=(1,1,1),
                 output_spacing=(1,1,1)):
     """
@@ -229,7 +292,7 @@ def deform_data(volume, elastic=False, alpha=None, sigma=None, grid_spacing=None
     parameters are given):
 
     Input -> Elastic deformation (control grid based) -> Rigid deformation (rotation)
-        -> Resample -> Remove Instances -> Crop to minimized bbox
+        -> Resample -> Move instances/voxels -> Remove instances -> Crop to minimized bbox
     """
     input_spacing = np.asarray(input_spacing, dtype=np.float32)
     output_spacing = np.asarray(output_spacing, dtype=np.float32)
@@ -246,6 +309,9 @@ def deform_data(volume, elastic=False, alpha=None, sigma=None, grid_spacing=None
     if not np.array_equal(output_spacing, input_spacing):
         result = resample_volume(result, input_spacing, output_spacing)
 
+    if move_max_displacement is not None:
+        result = move_instances(result, max_displacement=move_max_displacement, mode=move_mode)
+
     if remove_fraction > 0:
         result = remove_instances(result, fraction=remove_fraction, mode=remove_mode,
                                     exclude_ids=exclude_ids, center=remove_center)
@@ -257,7 +323,8 @@ def deform_data(volume, elastic=False, alpha=None, sigma=None, grid_spacing=None
 
 def deform_test_data(cfg_path="", config=None, enable_elastic=False, alpha=0.9,
                     sigma=2, grid_spacing=16, rotate_angles_fixed=[20,345,30],
-                    rotate_angles_moving=[155,30,65], remove_fraction=0.05,
+                    rotate_angles_moving=[155,30,65], move_max_displacement=None,
+                    move_mode="translate_instances", remove_fraction=0.05,
                     remove_mode="random_instances", exclude_ids=[],
                     remove_center=None, seed=42, save_as_n5=False,
                     chunks=(128,512,512), visualize=True):
@@ -288,12 +355,15 @@ def deform_test_data(cfg_path="", config=None, enable_elastic=False, alpha=0.9,
     if visualize:
         seg_moving_vis, bbox_vis = deform_data(seg_moving, elastic=enable_elastic, alpha=alpha,
                                                 sigma=sigma, grid_spacing=grid_spacing,
-                                                rotation=rotate_angles_moving, remove_fraction=0.,
+                                                rotation=rotate_angles_moving,
+                                                move_max_displacement=move_max_displacement,
+                                                move_mode=move_mode, remove_fraction=0.,
                                                 output_spacing=moving_spacing)
         logging.info(f"Moving visualized volume shape: {seg_moving_vis.shape}")
 
     seg_moving, bbox_rm = deform_data(seg_moving, elastic=enable_elastic, alpha=alpha, sigma=sigma,
                             grid_spacing=grid_spacing, rotation=rotate_angles_moving,
+                            move_max_displacement=move_max_displacement, move_mode=move_mode,
                             remove_fraction=remove_fraction, remove_mode=remove_mode,
                             exclude_ids=exclude_ids, remove_center=remove_center,
                             output_spacing=moving_spacing)
