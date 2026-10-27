@@ -25,23 +25,22 @@ You can either:
 
 ## 2. Run registration
 
-With the conda environment activated (e.g. `conda activate imm_env`), run the
-registration workflow. `--configfile` is required — there is no default config:
+Run the registration workflow using the configuration file:
 
 ```bash
-snakemake -s workflows/registration.smk \
-    --configfile /path/to/the/registration/config.yaml \
-    --cores 8
+image-matchmaker register --config /path/to/config.yaml --cores 8
 ```
+
+The `--config` option is required. The `--cores` option sets the maximum number of CPU cores available to Snakemake and defaults to `8`.
+
+By default, the workflow runs in the current working directory (`--work-dir .`). Relative paths in the configuration are resolved against the working directory, so set `--work-dir` if you want the workflow to run elsewhere. Ensure that the paths in your configuration are valid relative to that directory.
+
+See the {doc}`Usage <usage>` page for all CLI options. See the {doc}`Configuration Reference <config_ref>` for available settings and example configurations.
+
+If you installed Image-Matchmaker from source in a Conda environment, activate that environment before running the command.
 
 To try it immediately on the bundled example data, first generate the example data
-(see {doc}`Example Data <example_data>`) and then run the shipped config:
-
-```bash
-snakemake -s workflows/registration.smk \
-    --configfile examples/register_config_test_rigid.yaml \
-    --cores 8
-```
+(see {doc}`Example Data <example_data>`) and then run the shipped config.
 
 ### Registration config (example)
 
@@ -104,8 +103,8 @@ After registration finishes successfully, the resulting transforms can be applie
 Run:
 
 ```bash
-snakemake -s workflows/apply_transform.smk \
-    --configfile /path/to/the/transform/config.yaml \
+image-matchmaker apply \
+    --config /path/to/the/transform/config.yaml \
     --cores 8
 ```
 
