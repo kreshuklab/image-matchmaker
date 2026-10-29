@@ -1,5 +1,6 @@
 import json
 import re
+from pathlib import Path
 
 moving_images = config["moving_images"]
 moving_paths = [item["input_path"] for item in moving_images]
@@ -36,6 +37,8 @@ TARGET_OUTPUTS = [f"{p}/{k}" if p.endswith(".n5") else p for p, k in zip(output_
 FILE_OUTPUTS = [p for p in TARGET_OUTPUTS if not ".n5/" in p]
 N5_OUTPUTS = [p for p in TARGET_OUTPUTS if ".n5/" in p]
 
+N5_ATTRIBUTES = sorted({str(Path(p).parent / "attributes.json") for p in N5_OUTPUTS})
+
 
 def get_all_opts(d):
     opts = []
@@ -57,6 +60,18 @@ def get_output_resolution_opt(index):
 rule all:
     input:
         TARGET_OUTPUTS,
+
+
+if N5_ATTRIBUTES:
+    rule prepare_n5:
+        output:
+            attributes = N5_ATTRIBUTES
+        run:
+            for path in output.attributes:
+                path = Path(path)
+                path.parent.mkdir(parents=True, exist_ok=True)
+                if not path.exists():
+                    path.write_text(json.dumps({"n5": "2.0.0"}, indent=4) + "\n")
 
 
 rule apply_transform_file:
@@ -82,7 +97,7 @@ rule apply_transform_file:
         interpolation_order = lambda w: interpolation_orders[TARGET_OUTPUTS.index(w.out_file)],
     shell:
         """
-        python image_matchmaker/apply_transform.py \
+        python -m image_matchmaker.registration.apply_transform \
             {params.opts} \
             --moving_path {params.moving_path} \
             --moving_key {params.moving_key} \
@@ -99,6 +114,7 @@ rule apply_transform_file:
 rule apply_transform_n5:
     input:
         parameter_map_path = parameter_map_path,
+        n5_attributes = N5_ATTRIBUTES,
         moving_img = lambda w: moving_paths[TARGET_OUTPUTS.index(w.out_dir)]
     output:
         out_dir = directory("{out_dir}")
@@ -119,7 +135,7 @@ rule apply_transform_n5:
         interpolation_order = lambda w: interpolation_orders[TARGET_OUTPUTS.index(w.out_dir)],
     shell:
         """
-        python image_matchmaker/apply_transform.py \
+        python -m image_matchmaker.registration.apply_transform \
             {params.opts} \
             --moving_path {params.moving_path} \
             --moving_key {params.moving_key} \
@@ -129,5 +145,5 @@ rule apply_transform_n5:
             {params.output_resolution_opt} \
             --interpolation_order {params.interpolation_order} \
             --log_dir {log_dir} \
-            --parameter_map_path {input.parameter_map_path}
+            --parameter_map_path {input.parameter_map_path} \
         """

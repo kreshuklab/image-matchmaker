@@ -10,7 +10,7 @@ def load_config(config_path):
 
     Parameters
     ----------
-    config_path : str
+    config_path : str or pathlib.Path
         Path to a ``.yaml`` config file. Must exist.
 
     Returns
@@ -18,7 +18,7 @@ def load_config(config_path):
     dict
         The parsed configuration.
     """
-    assert config_path.endswith("yaml")
+    assert str(config_path).endswith("yaml")
     assert Path(config_path).exists()
 
     try:
@@ -168,3 +168,8 @@ def check_no_new_ids(vol1, vol2):
     new_ids = np.setdiff1d(ids2, ids1)
 
     return len(new_ids) == 0, new_ids
+
+
+def assert_arrays_equal(arr1, arr2):
+    assert arr1.dtype == arr2.dtype
+    assert np.array_equal(arr1, arr2)

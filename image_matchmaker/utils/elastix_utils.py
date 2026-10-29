@@ -1,15 +1,8 @@
 import itk
 import logging
 import numpy as np
-from pathlib import Path
-
-
-def initial_alignment(ventral_img_np, dorsal_img_np):
-    """
-    Place samples close enough that elastix registration works. In this case it's just a rotation around Y axis.
-    """
-    dorsal_img_np_rotated = dorsal_img_np[:, ::-1, :, ::-1]
-    return ventral_img_np, dorsal_img_np_rotated
+from contextlib import ExitStack
+from importlib.resources import as_file, files
 
 
 def itk_scalar_img(img: np.array, resolution, ch=0):
@@ -116,23 +109,6 @@ def elastix_pointset_registration(
     return result_image, result_transform_parameters
 
 
-def serialize_parameter_object(parameter_object, prefix, write_dir):
-    write_dir = Path(write_dir)
-    for index in range(parameter_object.GetNumberOfParameterMaps()):
-        parameter_map = parameter_object.GetParameterMap(index)
-        parameter_object.WriteParameterFile(
-            parameter_map, write_dir / f"{prefix}_{index}.txt"
-        )
-
-
-def deserialize_parameter_object(prefix, cur_dir=Path("./")):
-    parameter_files = sorted(list(cur_dir.glob(f"{prefix}*.txt")))
-    parameter_files = [str(fname) for fname in parameter_files]
-    parameter_object = itk.ParameterObject.New()
-    parameter_object.ReadParameterFile(parameter_files)
-    return parameter_object
-
-
 def create_transformix_object(transform_parameter_object):
     ImageType = itk.Image[itk.F, 3]
     transformix_filter = itk.TransformixFilter[ImageType].New()
@@ -166,3 +142,16 @@ def apply_transform_chanwise(transform_parameter_object, moving_img_np, resoluti
             f"Expected moving image with shape (Z,Y,X) or (C,Z,Y,X), got {moving_img_np.shape}."
         )
     return result_img
+
+
+def get_parameter_map_paths(parameter_map_paths, default_parameter_maps):
+    with ExitStack() as stack:
+        if parameter_map_paths is None:
+            parameter_map_paths = []
+            for default_pm in default_parameter_maps:
+                resource = files("image_matchmaker.configs.elastix").joinpath(default_pm)
+                parameter_map_path = stack.enter_context(as_file(resource))
+                parameter_map_paths.append(str(parameter_map_path))
+        else:
+            parameter_map_paths = [str(path) for path in parameter_map_paths]
+    return parameter_map_paths

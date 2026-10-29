@@ -4,7 +4,7 @@ import click
 from shutil import rmtree
 import pandas as pd
 import numpy as np
-from elf.io import open_file
+import z5py
 import mobie
 
 from mobie import add_segmentation
@@ -67,7 +67,7 @@ def check_consistency(table_path, seg_path, key):
     tab = pd.read_csv(table_path, sep="\t")
     tab_max_id = tab["label_id"].max().item()
 
-    with open_file(seg_path, "r") as f:
+    with z5py.File(seg_path, mode="r") as f:
         seg_max_id = f[key].attrs["maxId"]
 
     assert tab_max_id == seg_max_id, f"{tab_max_id}, {seg_max_id}"
