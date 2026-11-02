@@ -1,16 +1,15 @@
 [build-system]
-requires = ["setuptools>=77"]
+requires = ["setuptools>=61"]
 build-backend = "setuptools.build_meta"
 
 
 [project]
 name = "image-matchmaker"
 version = "0.1.0"
-description = "Tool for segmentation-based deformable registration"
+description = "Registration of instance segmentations."
 readme = "README.md"
 requires-python = ">=3.11"
-license = "MIT"
-license-files = ["LICENSE"]
+license = { text = "MIT" }
 authors = [
     { name = "Elena Buglakova" }
 ]
@@ -38,13 +37,6 @@ dependencies = [
 
 [project.scripts]
 image-matchmaker = "image_matchmaker.cli:main"
-
-
-[project.urls]
-Homepage = "https://github.com/kreshuklab/image-matchmaker"
-Documentation = "https://image-matchmaker.readthedocs.io/"
-Repository = "https://github.com/kreshuklab/image-matchmaker"
-Issues = "https://github.com/kreshuklab/image-matchmaker/issues"
 
 
 [tool.setuptools.packages.find]
