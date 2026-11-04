@@ -1,4 +1,5 @@
 import shutil
+import sys
 from pathlib import Path
 
 import yaml
@@ -26,8 +27,11 @@ if __name__ == "__main__":
     config_path = "register_config_test_elastic_apply_transform.yaml"
     results_folder = Path("results")
     snakemake_folder = Path(".snakemake")
+    select_tags = sys.argv[1:]  # settings to run, e.g. "ri-0.1"; all if empty
 
     for result_dir in sorted(results_folder.iterdir()):
+        if select_tags and result_dir.name not in select_tags:
+            continue
         transform_path = result_dir / "05_elastix_deformable_pointset_registration" / "TransformParameters.2.txt"
         if not transform_path.exists():
             continue

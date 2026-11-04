@@ -1,4 +1,5 @@
 import shutil
+import sys
 from pathlib import Path
 
 import yaml
@@ -11,19 +12,17 @@ if __name__ == "__main__":
     config_path = "register_config_test_elastic.yaml"
     src_folder = Path("data")
     snakemake_folder = Path(".snakemake")
-    select_folders = None   # specify a keyword to select folders
+    select_tags = sys.argv[1:]  # settings to run, e.g. "ri-0.1"; all if empty
 
     for folder in sorted(src_folder.glob("deformed_data_*")):
         if not folder.is_dir():
             continue
-        if select_folders is not None:
-            if not any(select_folder in folder.name for select_folder in select_folders):
-                continue
+        tag = folder.name.removeprefix("deformed_data_")
+        if select_tags and tag not in select_tags:
+            continue
 
         if snakemake_folder.exists():
             shutil.rmtree(snakemake_folder)
-
-        tag = folder.name.removeprefix("deformed_data_")
 
         try:
             config = load_config(config_path)
