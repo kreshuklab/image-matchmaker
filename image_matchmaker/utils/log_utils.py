@@ -16,6 +16,7 @@ def setup_logging(log_dir, log_filename, mode="w"):
             logging.StreamHandler(sys.stdout),
         ],
         datefmt="%Y-%m-%d %H:%M:%S",
+        force=True,
     )
 
     logging.info(f"Logging initialized. Writing to {log_path}")

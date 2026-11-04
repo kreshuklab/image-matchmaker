@@ -22,7 +22,7 @@ dependencies:
     - ipykernel
     - seaborn
     - matplotlib
-    - cupy
+    # - cupy
 
     - mobie_utils
 

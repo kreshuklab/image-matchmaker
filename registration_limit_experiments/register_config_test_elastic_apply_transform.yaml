@@ -1,0 +1,24 @@
+fixed_image:
+  input_path: "data/platy1_muscles_stardist_fixed_rotated.tif"
+  input_key: "input"
+
+# "deformed_data" is replaced per setting: data/deformed_data_<tag>/ for inputs, results/<tag>/ for outputs.
+moving_images:
+  -
+    input_path: "data/deformed_data/platy1_muscles_stardist_elastic_full.tif"
+    input_key: "input"
+    input_resolution:
+      x_res: 1
+      y_res: 1
+      z_res: 1
+    output_path: "results/deformed_data/moving_image.n5"
+    output_key: "full_pointset_alignment_transform"
+    output_resolution:
+      x_res:
+      y_res:
+      z_res:
+    interpolation_order: 0
+
+log_dir: "results/deformed_data/06_apply_transform"
+parameter_map_path: "results/deformed_data/05_elastix_deformable_pointset_registration/TransformParameters.2.txt"
+prealignment_transform_path: "results/deformed_data/01_svd_prealignment/svd_prealignment_transform.json"

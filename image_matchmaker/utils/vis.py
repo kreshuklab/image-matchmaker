@@ -743,20 +743,19 @@ def transform_axes_vis(Vt, T):
     return Vt_vis / np.linalg.norm(Vt_vis, axis=1, keepdims=True)
 
 
-def plot_removal(original, degraded, save_path=None, mode="random_instances",):
+def plot_removal(original, degraded, save_path=None):
     """Plot original, degraded, and removed regions on three orthogonal slices.
+
+    Each instance has the same color in the original and degraded row. The last
+    row shows the kept voxels in grey and the removed voxels in red.
 
     Args:
         original: Original 3D instance segmentation.
-        degraded: Degraded 3D instance segmentation.
+        degraded: Degraded 3D instance segmentation, with removed voxels set to 0.
         save_path: Path to save the figure.
-        mode: Removal mode {"random_instances", "clustered_instances",
-            "box", or "sphere"}.
     """
     assert original.ndim == 3
     assert degraded.shape == original.shape
-    if mode not in ("random_instances", "clustered_instances", "box", "sphere"):
-        raise ValueError(f"Unsupported removal mode: {mode}")
 
     removed = (original > 0) & (degraded == 0)
 
@@ -778,33 +777,21 @@ def plot_removal(original, degraded, save_path=None, mode="random_instances",):
     fig, axes = plt.subplots(3, 3, figsize=(15, 15))
 
     for col, (axis, pos, orig, deg, rem) in enumerate(slices):
-        # Original
-        ax = axes[0, col]
-        ax.imshow(label2rgb(orig, bg_label=0, bg_color=(1, 1, 1)))
-        ax.set_title(f"{axis} slice at {pos}")
+        orig_rgb = label2rgb(orig, bg_label=0, bg_color=(1, 1, 1))
 
-        # Degraded
-        ax = axes[1, col]
-        ax.imshow(label2rgb(deg, bg_label=0, bg_color=(1, 1, 1)))
+        # label2rgb assigns colors by the labels present, so the degraded image is
+        # built from the original colors to keep the color of each instance.
+        deg_rgb = orig_rgb.copy()
+        deg_rgb[deg == 0] = 1
 
-        # Removed
-        ax = axes[2, col]
-        ax.imshow(label2rgb(orig, bg_label=0, bg_color=(1, 1, 1)))
+        rem_rgb = np.ones_like(orig_rgb)
+        rem_rgb[deg > 0] = 0.75
+        rem_rgb[rem] = (0.85, 0.1, 0.1)
 
-        if mode in ("random_instances", "clustered_instances"):
-            # Show the boundaries of removed instances.
-            ax.contour(rem, levels=[0.5], colors="red", linewidths=1.5)
-
-        else:
-            # Show both the removed voxels and their region boundary.
-            ax.imshow(
-                np.ma.masked_where(~rem, rem),
-                cmap="Reds",
-                alpha=0.7,
-                vmin=0,
-                vmax=1,
-            )
-            ax.contour(rem, levels=[0.5], colors="red", linewidths=1.5)
+        axes[0, col].imshow(orig_rgb)
+        axes[0, col].set_title(f"{axis} slice at {pos}")
+        axes[1, col].imshow(deg_rgb)
+        axes[2, col].imshow(rem_rgb)
 
         for row in range(3):
             axes[row, col].set_xticks([])

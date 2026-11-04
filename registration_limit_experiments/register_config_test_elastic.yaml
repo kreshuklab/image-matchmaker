@@ -1,0 +1,34 @@
+fixed_image:
+  source_path: "../example_data/platy1_muscles_stardist_fixed.tif"
+  path: "data/platy1_muscles_stardist_fixed_rotated.tif"
+  x_res: 1
+  y_res: 1
+  z_res: 1
+
+moving_image:
+  path: "data/deformed_data/platy1_muscles_stardist_elastic.tif"
+  x_res: 1
+  y_res: 1
+  z_res: 1
+  ref_path:
+  ref_url:
+
+log_dir: "data/test_elastic_registration"
+
+prealignment:
+  axis_orientation: "auto" # auto or one of the options listed in svd_prealignment/axis_orientation
+
+coherent_point_drift:
+  w: 0.00001
+  lmd: 0.1
+  beta: 100
+  maxiter: 100
+
+matching:
+  method: hungarian        # ilp | hungarian | sinkhorn
+  min_neighbours: 10
+  max_dist: 30  # reduce if matching step runs out of memory
+
+mobie_export: False
+semantic_seg: True
+mobie_dataset_name: "platy1_muscles_stardist"
