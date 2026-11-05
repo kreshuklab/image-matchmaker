@@ -25,6 +25,8 @@ registration_limit_experiments/
 └── metric_ids.txt                                    # landmark IDs
 ```
 
+On the cluster, this layout is under `$OUT=/mnt/lustre-grete/usr/u19382/matchmaker/registration_tests`, not in the repo (see `HANDOFF.md`).
+
 ## Step 01: create the data (`01_create_deform_data.py`)
 
 Source: `../example_data/platy1_muscles_stardist_fixed.tif`, a StarDist instance segmentation of platy muscle nuclei with 13,756 instances and isotropic spacing of 1 (so voxels = µm).
@@ -131,3 +133,31 @@ Runs in `imm_env`. Computes the LRE of `nucleisky_full.tif` and `nucleisky_jitte
 Output:
 - `results/lre_nucleisky.tsv`: one row per setting and variant, with the same columns as `lre_imm.tsv`.
 - `results/<tag>/lre_nucleisky_<variant>.txt`: the distance for each landmark.
+
+## Step 08: check the similarity part of the error (`08_check_similarity_fit.py`)
+
+Added after the first run, to understand the NucleiSky3D results. Runs in `imm_env` from `$OUT`, after steps 05 and 07.
+
+- For each setting and method (`full` variant), fits a similarity transform (Umeyama) from the warped to the fixed landmark centroids. Reports the fitted scale, rotation and shift, and the LRE after removing this fit.
+- Also fits the best similarity transform from the unwarped full moving image to the fixed image ("oracle"). Its LRE is the lowest any similarity-only method can reach on this data.
+- Output: `results/similarity_fit.tsv` (stdout) and an overlay of fixed and warped images for `ji-0.25` (`results/ji-0.25/overlay_fixed_warped.pdf`).
+
+## Results (run of 2026-11-04/05)
+
+All 22 settings ran for both methods; none failed. Mean LRE of the `full` variant in voxels (mean instance distance: 3.74). The full tables, the NucleiSky analysis and the observations are in `results.md`.
+
+| Setting | IMM | NucleiSky3D |
+|---|---|---|
+| ji-0.25 / 0.5 / 0.75 / 1 / 1.5 / 2 / 2.5 | 2.20 / 2.77 / 2.97 / 3.42 / 3.88 / 4.41 / 4.39 | 32.07 / 15.45 / 15.34 / 36.45 / 36.40 / 28.15 / 26.47 |
+| ri-0.1 / 0.3 / 0.5 / 0.7 / 0.9 | 2.38 / 2.48 / 2.45 / 2.86 / 4.50 | 19.36 / 30.33 / 36.93 / 17.79 / 18.06 |
+| sphere-center1-0.1 / 0.2 / 0.3 / 0.4 / 0.5 | 2.06 / 2.51 / 3.99 / 6.73 / 10.79 | 15.20 / 10.03 / 28.55 / 16.59 / 6.56 |
+| sphere-center2-0.1 / 0.2 / 0.3 / 0.4 / 0.5 | 2.06 / 3.03 / 5.82 / 10.50 / 18.42 | 11.26 / 19.71 / 10.51 / 17.32 / 6.95 |
+
+IMM `jitter` variant (registered, jittered moving image): 2.64 / 3.67 / 4.55 / 5.59 / 7.42 / 8.69 / 10.06 for `ji-0.25` … `ji-2.5`.
+
+Similarity floor (oracle): 4.90 for all settings.
+
+Observations:
+- IMM stays below one instance spacing for random removal up to 70 % and for all jitter levels on the full image.
+- IMM breaks down for sphere removals from about 4–9 % removed instances (tail earlier than head). The error is mostly a global misalignment, not only near the hole.
+- NucleiSky3D fails because its scale (often at its lower search bound 0.8) and rotation estimates are wrong. Without this global error, it reaches exactly the similarity floor. Its numbers are not a fair similarity baseline.
