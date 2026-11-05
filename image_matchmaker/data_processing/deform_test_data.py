@@ -19,6 +19,7 @@ from image_matchmaker.utils import (
     get_spacings,
     get_paths,
     plot_removal,
+    plot_jitter,
     setup_logging,
 )
 
@@ -423,14 +424,14 @@ def deform_test_data(
         full_path = Path(moving_path)
         full_path = str(full_path.with_name(f"{full_path.stem}_full{full_path.suffix}"))
         ids, counts = np.unique(seg_full, return_counts=True)
-        seg_full = seg_full[z0:z1, y0:y1, x0:x1].copy()
-        cropped_ids, cropped_counts = np.unique(seg_full, return_counts=True)
+        seg_full_crop = seg_full[z0:z1, y0:y1, x0:x1].copy()
+        cropped_ids, cropped_counts = np.unique(seg_full_crop, return_counts=True)
         cut_ids = cropped_ids[cropped_counts != counts[np.searchsorted(ids, cropped_ids)]]
         cut_ids = cut_ids[cut_ids != 0]
-        seg_full[np.isin(seg_full, cut_ids)] = 0
+        seg_full_crop[np.isin(seg_full_crop, cut_ids)] = 0
         logging.info(f"Full moving: removed {len(cut_ids)} instances cut by the bbox")
-        logging.info(f"Full moving: {_count_instances(seg_full)} instances, saved to {full_path}")
-        save_data(seg_full, full_path, output_key="seg", n5_exists=False, chunks=chunks,
+        logging.info(f"Full moving: {_count_instances(seg_full_crop)} instances, saved to {full_path}")
+        save_data(seg_full_crop, full_path, output_key="seg", n5_exists=False, chunks=chunks,
                   attrs={"resolution": moving_spacing})
 
     if visualize:
@@ -444,6 +445,10 @@ def deform_test_data(
         plot_three_slices(seg_fixed, save_path=fixed_plot_dir/f"seg_{iso_name}fixed.png")
         plot_three_slices(seg_moving, save_path=plot_dir/f"seg_{iso_name}{elastic_name}.png")
         plot_overlay(seg_fixed, seg_moving, save_path=plot_dir/f"{iso_name}{elastic_name}_overlay.png")
+
+        if move_max_displacement is not None:
+            plot_jitter(seg_full[z0:z1, y0:y1, x0:x1], seg_moving,
+                        save_path=plot_dir/f"{iso_name}{elastic_name}_jitter.png")
 
         # Removal only sets voxels to 0, so the pre-removal bbox contains both volumes.
         seg_before_removal, bbox = crop_to_bbox(seg_before_removal, return_bbox=True)

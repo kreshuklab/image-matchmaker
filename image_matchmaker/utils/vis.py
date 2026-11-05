@@ -809,3 +809,73 @@ def plot_removal(original, degraded, save_path=None):
         _savefig(save_path, fig=fig)
 
     plt.close(fig)
+
+
+def plot_jitter(original, jittered, save_path=None):
+    """Plot original and jittered instances on three orthogonal slices through the volume center.
+
+    Rows: the original instances, the jittered instances (each instance has the same color
+    in both rows), and the original instances in grey with a red arrow from the original to
+    the jittered centroid of each instance in the slice. The arrows show the in-plane part
+    of the 3D centroid shift, in voxels.
+
+    Args:
+        original: 3D instance segmentation before jitter.
+        jittered: 3D instance segmentation after jitter, in the same voxel frame.
+        save_path: Path to save the figure.
+    """
+    from scipy.ndimage import center_of_mass
+
+    assert original.ndim == 3
+    assert jittered.shape == original.shape
+    original = original.astype(np.int64)
+    jittered = jittered.astype(np.int64)
+
+    ids = np.intersect1d(np.unique(original), np.unique(jittered))
+    ids = ids[ids != 0]
+    centroids_orig = np.array(center_of_mass(original > 0, original, ids))
+    centroids_jit = np.array(center_of_mass(jittered > 0, jittered, ids))
+
+    # Color by label ID, so the color does not depend on which labels are in the slice.
+    palette = np.array(plt.get_cmap("tab20").colors)
+    lut = palette[np.arange(max(original.max(), jittered.max()) + 1) % len(palette)]
+    lut[0] = 1
+
+    fig, axes = plt.subplots(3, 3, figsize=(15, 15))
+
+    for col, (axis, name) in enumerate(zip(range(3), "zyx")):
+        pos = original.shape[axis] // 2
+        orig = np.take(original, pos, axis=axis)
+        jit = np.take(jittered, pos, axis=axis)
+
+        shift_rgb = np.ones(orig.shape + (3,))
+        shift_rgb[orig > 0] = 0.75
+
+        in_slice = np.isin(ids, np.unique(orig))
+        plane = [a for a in range(3) if a != axis]  # volume axes shown as (row, col) of the slice
+        start = centroids_orig[in_slice][:, plane]
+        shift = centroids_jit[in_slice][:, plane] - start
+
+        axes[0, col].imshow(lut[orig])
+        axes[0, col].set_title(f"{name} slice at {pos}")
+        axes[1, col].imshow(lut[jit])
+        axes[2, col].imshow(shift_rgb)
+        axes[2, col].quiver(start[:, 1], start[:, 0], shift[:, 1], shift[:, 0], color=(0.85, 0.1, 0.1),
+                            angles="xy", scale_units="xy", scale=1, width=0.003)
+
+        for row in range(3):
+            axes[row, col].set_xticks([])
+            axes[row, col].set_yticks([])
+
+    axes[0, 0].set_ylabel("Original", fontsize=12)
+    axes[1, 0].set_ylabel("Jittered", fontsize=12)
+    axes[2, 0].set_ylabel("Centroid shift", fontsize=12)
+
+    plt.tight_layout()
+
+    if save_path is None:
+        plt.show()
+    else:
+        _savefig(save_path, fig=fig)
+
+    plt.close(fig)
