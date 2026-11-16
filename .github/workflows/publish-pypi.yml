@@ -1,0 +1,94 @@
+
+name: Publish to PyPI
+
+on:
+  push:
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+'
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build distributions
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.11"
+
+      - name: Install build tools
+        run: |
+          python -m pip install --upgrade build twine
+
+      - name: Check release version
+        run: |
+          python - <<'PY'
+          import os
+          import re
+          import tomllib
+
+          with open("pyproject.toml", "rb") as f:
+              version = tomllib.load(f)["project"]["version"]
+
+          tag = os.environ["GITHUB_REF_NAME"]
+
+          if not re.fullmatch(r"\d+\.\d+\.\d+", version):
+              raise ValueError(
+                  f"Invalid production version: {version}. "
+                  "Expected MAJOR.MINOR.PATCH."
+              )
+
+          if tag != f"v{version}":
+              raise ValueError(
+                  f"Git tag {tag} does not match package version {version}."
+              )
+
+          print(f"Validated release version: {version}")
+          PY
+
+      - name: Build distributions
+        run: python -m build
+
+      - name: Check distribution files
+        run: |
+          test -n "$(find dist -maxdepth 1 -name '*.whl' -print -quit)"
+          test -n "$(find dist -maxdepth 1 -name '*.tar.gz' -print -quit)"
+
+      - name: Check distributions
+        run: python -m twine check --strict dist/*
+
+      - name: Upload distributions
+        uses: actions/upload-artifact@v7
+        with:
+          name: python-package-distributions
+          path: dist/
+          if-no-files-found: error
+
+  publish:
+    name: Publish to PyPI
+    needs: build
+    runs-on: ubuntu-latest
+
+    environment:
+      name: pypi
+      url: https://pypi.org/project/image-matchmaker/
+
+    permissions:
+      id-token: write
+
+    steps:
+      - name: Download distributions
+        uses: actions/download-artifact@v8
+        with:
+          name: python-package-distributions
+          path: dist/
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
